@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
 import ImageUploader from '../components/ImageUploader';
-import AIActionButton from '../components/AIActionButton';
 import { isValidBannerUrl, normalizeBannerUrl } from '../utils/bannerUrl';
 
-const PLACEMENTS = [['home','الصفحة الرئيسية'],['products','صفحة المنتجات'],['product','صفحة المنتج'],['account','الصفحة الشخصية'],['categories','صفحة الأقسام'],['trend','الترند'],['new-arrivals','وصل حديثًا'],['offers','العروض'],['sale','السيل']];
+const PLACEMENTS = [['home','الصفحة الرئيسية'],['products','صفحة المنتجات'],['product','صفحة المنتج'],['account','الصفحة الشخصية'],['categories','صفحة الأقسام'],['trend','الترند'],['new-arrivals','وصل حديثًا'],['offers','العروض'],['sale','السيل']]];
 const emptyForm = { titleAr:'', subtitleAr:'', image:'', buttonTextAr:'', buttonLink:'', sortOrder:0, placements:['home'] };
 
 export default function BannersPage(){
  const [banners,setBanners]=useState([]),[form,setForm]=useState(emptyForm),[editingId,setEditingId]=useState(null),[error,setError]=useState(''),[showForm,setShowForm]=useState(false);
- const load=async()=>{const {data}=await api.get('/banners/all');setBanners(data.banners||[])};
+ const load=async()=>{try{const {data}=await api.get('/banners/all');setBanners(data.banners||[])}catch(err){setError(err?.response?.data?.message||'تعذر تحميل البنرات')}};
  useEffect(()=>{load()},[]);
- useEffect(()=>{const onAI=e=>{const a=e.detail;if(!a||!['create_banner','update_banner'].includes(a.type))return;const p=a.params||{};setEditingId(a.type==='update_banner'?(p.bannerId||null):null);setForm(c=>({...c,titleAr:p.titleAr??c.titleAr,subtitleAr:p.subtitleAr??c.subtitleAr,image:p.image??c.image,buttonTextAr:p.buttonTextAr??c.buttonTextAr,buttonLink:p.buttonLink??c.buttonLink,sortOrder:p.sortOrder??c.sortOrder,placements:Array.isArray(p.placements)?p.placements:c.placements}));setShowForm(true)};window.addEventListener('mybrand-ai-prefill',onAI);return()=>window.removeEventListener('mybrand-ai-prefill',onAI)},[]);
  const handleChange=(field,value)=>setForm(f=>({...f,[field]:value}));
  const togglePlacement=value=>setForm(f=>({...f,placements:f.placements.includes(value)?f.placements.filter(p=>p!==value):[...f.placements,value]}));
  const handleSubmit=async e=>{e.preventDefault();setError('');if(!form.image)return setError('يرجى رفع صورة البانر');if(!form.placements.length)return setError('اختر صفحة واحدة على الأقل لظهور البانر');if(form.buttonLink&&!isValidBannerUrl(form.buttonLink))return setError('رابط الزر غير صالح');try{const payload={...form,buttonLink:normalizeBannerUrl(form.buttonLink),sortOrder:Number(form.sortOrder)||0};if(editingId)await api.put(`/banners/${editingId}`,payload);else await api.post('/banners',payload);setForm(emptyForm);setEditingId(null);setShowForm(false);load()}catch(err){setError(err?.response?.data?.message||'حدث خطأ')}};
  const handleEdit=b=>{setEditingId(b._id);setForm({titleAr:b.titleAr,subtitleAr:b.subtitleAr||'',image:b.image,buttonTextAr:b.buttonTextAr||'',buttonLink:b.buttonLink||'',sortOrder:b.sortOrder||0,placements:Array.isArray(b.placements)&&b.placements.length?b.placements:['home']});setShowForm(true)};
- const toggle=async id=>{await api.put(`/banners/${id}/toggle`);load()}; const remove=async id=>{if(!confirm('حذف هذا البانر؟'))return;await api.delete(`/banners/${id}`);load()}; const label=v=>PLACEMENTS.find(([k])=>k===v)?.[1]||v;
- return <div><div style={styles.headerRow}><div><h1>البنرات</h1><p style={{color:'#64748B',marginBottom:0,fontSize:13}}>أضف البنر وحدد الصفحات التي تريد ظهوره فيها.</p></div><div style={{display:'flex',gap:8}}><button style={styles.addBtn} onClick={()=>{setForm(emptyForm);setEditingId(null);setShowForm(s=>!s)}}>{showForm?'إلغاء':'+ إضافة بانر'}</button><AIActionButton prompt="أنشئ بانرًا جديدًا وحدد مكان ظهوره. جهّز الإجراء ولا تنفذه بدون تأكيد."/></div></div>
+ const toggle=async id=>{try{await api.put(`/banners/${id}/toggle`);load()}catch(err){setError(err?.response?.data?.message||'تعذر تغيير حالة البانر')}};
+ const remove=async id=>{if(!confirm('حذف هذا البانر؟'))return;try{await api.delete(`/banners/${id}`);load()}catch(err){setError(err?.response?.data?.message||'تعذر حذف البانر')}};
+ const label=v=>PLACEMENTS.find(([k])=>k===v)?.[1]||v;
+ return <div><div style={styles.headerRow}><div><h1>البنرات</h1><p style={{color:'#64748B',marginBottom:0,fontSize:13}}>أضف البنر وحدد الصفحات التي تريد ظهوره فيها.</p></div><button style={styles.addBtn} onClick={()=>{setForm(emptyForm);setEditingId(null);setShowForm(s=>!s)}}>{showForm?'إلغاء':'+ إضافة بانر'}</button></div>
  {error&&<p style={{color:'#DC2626'}}>{error}</p>}
  {showForm&&<form onSubmit={handleSubmit} style={styles.form}><input style={styles.input} placeholder="العنوان الرئيسي" value={form.titleAr} onChange={e=>handleChange('titleAr',e.target.value)} required/><input style={styles.input} placeholder="نص فرعي (اختياري)" value={form.subtitleAr} onChange={e=>handleChange('subtitleAr',e.target.value)}/><ImageUploader images={form.image?[form.image]:[]} onChange={imgs=>handleChange('image',imgs[imgs.length-1]||'')}/>
  <div style={styles.placementBox}><div style={styles.placementTitle}>📍 مكان ظهور البنر <small>يمكن اختيار أكثر من صفحة</small></div><div style={styles.placementGrid}>{PLACEMENTS.map(([key,text])=><label key={key} style={{...styles.placementItem,...(form.placements.includes(key)?styles.placementSelected:{})}}><input type="checkbox" checked={form.placements.includes(key)} onChange={()=>togglePlacement(key)}/>{text}</label>)}</div></div>
