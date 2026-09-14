@@ -12,7 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [backend, web, admin-dashboard, merchant-dashboard]
+        # The Express API lives at the repository root; the remaining entries
+        # are independently deployable frontend applications.
+        project: ['.', web, admin-dashboard, merchant-dashboard]
     defaults:
       run:
         working-directory: ${{ matrix.project }}
@@ -24,17 +26,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ matrix.project }}/package.json
 
       - name: Install dependencies
         run: npm install
 
       - name: Verify all backend JavaScript
-        if: matrix.project == 'backend'
+        if: matrix.project == '.'
         run: |
           find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
 
       - name: Build frontend
-        if: matrix.project != 'backend'
+        if: matrix.project != '.'
         run: npm run build
