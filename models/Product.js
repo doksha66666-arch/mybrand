@@ -76,6 +76,26 @@ productSchema.post('findOneAndUpdate', async function syncVariantStockAfterUpdat
   }
 });
 
+productSchema.post('updateOne', async function syncVariantStockAfterUpdateOne() {
+  try {
+    if (!touchesVariantStock(this.getUpdate())) return;
+    const filter = this.getFilter() || {};
+    if (!filter._id || !mongoose.isValidObjectId(filter._id)) return;
+    const options = this.getOptions?.() || {};
+    const query = mongoose.model('Product').findById(filter._id).select('variants stock');
+    if (options.session) query.session(options.session);
+    const doc = await query;
+    if (!doc) return;
+    const nextStock = deriveAvailableStock(doc.variants);
+    if (Number(doc.stock) === nextStock) return;
+    const syncQuery = mongoose.model('Product').updateOne({ _id: doc._id }, { $set: { stock: nextStock } });
+    if (options.session) syncQuery.session(options.session);
+    await syncQuery;
+  } catch (error) {
+    console.error('Failed to synchronize product stock from updateOne:', error);
+  }
+});
+
 productSchema.index({ nameAr: 'text', nameEn: 'text', tags: 'text' });
 // Fast public category browsing: active + approval + category + newest first.
 productSchema.index({ category: 1, isActive: 1, status: 1, createdAt: -1 });
