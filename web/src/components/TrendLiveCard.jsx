@@ -4,12 +4,14 @@ import api from '../api/client';
 export default function TrendLiveCard({ stream }) {
   const videoRef = useRef(null);
   const viewerIdRef = useRef('');
+  const viewerKeyRef = useRef('');
   const [viewerCount, setViewerCount] = useState(Number(stream?.viewerCount || 0));
   const [videoRatio, setVideoRatio] = useState(null);
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let heartbeat;
     const key = (() => {
       try {
         const stored = localStorage.getItem('mybrand-live-viewer-key');
@@ -19,28 +21,46 @@ export default function TrendLiveCard({ stream }) {
         return value;
       } catch { return `viewer_${Date.now()}`; }
     })();
+    viewerKeyRef.current = key;
 
     const join = async () => {
-      if (!stream?.id) return undefined;
+      if (!stream?.id || cancelled) return false;
       try {
         const { data } = await api.post(`/live/${stream.id}/join`, { viewerKey: key });
-        if (cancelled) return undefined;
-        viewerIdRef.current = data.viewerId;
+        if (cancelled) return false;
+        viewerIdRef.current = data.viewerId || '';
         setViewerCount(data.viewerCount || stream.viewerCount || 0);
-        return setInterval(async () => {
-          if (!viewerIdRef.current) return;
-          try {
-            const r = await api.post(`/live/${stream.id}/heartbeat/${viewerIdRef.current}`);
-            if (!cancelled) setViewerCount(r.data.viewerCount || 0);
-          } catch {}
-        }, 15000);
+        return Boolean(viewerIdRef.current);
       } catch {
-        return undefined;
+        viewerIdRef.current = '';
+        return false;
       }
     };
 
-    let heartbeat;
-    join().then((timer) => { heartbeat = timer; });
+    const sendHeartbeat = async () => {
+      if (cancelled || !stream?.id) return;
+      if (!viewerIdRef.current) {
+        await join();
+        return;
+      }
+      try {
+        const r = await api.post(`/live/${stream.id}/heartbeat/${viewerIdRef.current}`);
+        if (!cancelled) setViewerCount(r.data.viewerCount || 0);
+      } catch (error) {
+        // Viewer sessions live in server memory. If the API restarts or the
+        // session expires, the old viewerId becomes invalid. Re-join once so
+        // the client recovers automatically instead of polling a permanent 404.
+        if (error?.response?.status === 404 && !cancelled) {
+          viewerIdRef.current = '';
+          await join();
+        }
+      }
+    };
+
+    join().then(() => {
+      if (!cancelled) heartbeat = setInterval(sendHeartbeat, 15000);
+    });
+
     return () => {
       cancelled = true;
       if (heartbeat) clearInterval(heartbeat);
