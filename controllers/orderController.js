@@ -186,7 +186,35 @@ exports.createOrder = async (req, res, next) => {
       reservations.push(bucket);
     }
 
-    const order = await Order.create({ orderNumber: generateOrderNumber(), user: req.user._id, items, customer: { name: customer?.name || req.user.name, email: req.user.email, phone: customer?.phone || req.user.phone }, shippingAddress: { country: shippingAddress.country || '', city: shippingAddress.city, street: shippingAddress.street, building: shippingAddress.building || '', notes: shippingAddress.notes || '' }, subtotal, discount, shippingFee, total, totalCommissionAmount, totalMerchantAmount, paymentMethod, paymentStatus: 'pending', couponCode: appliedCouponCode || undefined, vodafoneCashInfo: paymentMethod === 'vodafone_cash' ? { senderPhone: String(vodafoneCashInfo.senderPhone).trim(), transactionRef: String(vodafoneCashInfo.transactionRef || '').trim() } : undefined, status: 'pending' });
+    const orderPayload = {
+      user: req.user._id,
+      items,
+      customer: { name: customer?.name || req.user.name, email: req.user.email, phone: customer?.phone || req.user.phone },
+      shippingAddress: { country: shippingAddress.country || '', city: shippingAddress.city, street: shippingAddress.street, building: shippingAddress.building || '', notes: shippingAddress.notes || '' },
+      subtotal,
+      discount,
+      shippingFee,
+      total,
+      totalCommissionAmount,
+      totalMerchantAmount,
+      paymentMethod,
+      paymentStatus: 'pending',
+      couponCode: appliedCouponCode || undefined,
+      vodafoneCashInfo: paymentMethod === 'vodafone_cash' ? { senderPhone: String(vodafoneCashInfo.senderPhone).trim(), transactionRef: String(vodafoneCashInfo.transactionRef || '').trim() } : undefined,
+      status: 'pending',
+    };
+
+    let order;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        order = await Order.create({ ...orderPayload, orderNumber: generateOrderNumber() });
+        break;
+      } catch (err) {
+        const duplicateOrderNumber = err?.code === 11000 && (err?.keyPattern?.orderNumber || err?.keyValue?.orderNumber);
+        if (!duplicateOrderNumber || attempt === 4) throw err;
+      }
+    }
+
     couponReserved = null;
     res.status(201).json({ order });
   } catch (err) { await rollbackReservations(); await rollbackCoupon(); next(err); }
