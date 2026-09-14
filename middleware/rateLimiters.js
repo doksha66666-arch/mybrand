@@ -25,12 +25,20 @@ const passwordResetLimiter = rateLimit({
 });
 
 // حماية عامة لكل الـ API من الإغراق بالطلبات (DoS بسيط).
-// 600 طلب/15 دقيقة يسمح باستخدام لوحات الإدارة وعمليات LIVE الطبيعية
-// مع بقاء سقف واضح ضد الإغراق، خصوصًا لأن بعض صفحات الإنتاج تقوم بالتحديث الدوري.
+// 600 طلب/15 دقيقة يسمح باستخدام لوحات الإدارة وعمليات الإنتاج الطبيعية.
 const apiLimiter = rateLimit({
   ...commonOptions,
   windowMs: 15 * 60 * 1000,
   limit: 600,
+  skip: (req) => req.path.startsWith('/live'),
 });
 
-module.exports = { authLimiter, loginLimiter, passwordResetLimiter, apiLimiter };
+// LIVE له معدل مستقل لأن المشاهدة تحتاج heartbeat/polling دوريًا.
+// يظل هناك سقف واضح ضد الإغراق دون استهلاك ميزانية الـAPI العامة.
+const liveLimiter = rateLimit({
+  ...commonOptions,
+  windowMs: 60 * 1000,
+  limit: 120,
+});
+
+module.exports = { authLimiter, loginLimiter, passwordResetLimiter, apiLimiter, liveLimiter };
