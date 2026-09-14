@@ -1,0 +1,42 @@
+name: Remove homepage banner flicker
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'web/src/pages/HomePage.jsx'
+      - 'web/src/pages/HomePagePremium.css'
+      - '.github/workflows/remove-home-banner-flicker.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch homepage to remove legacy banners
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('web/src/pages/HomePage.jsx')
+          s=p.read_text()
+          new='''function HomeHero(){const [liveStream,setLiveStream]=useState(null);const [checked,setChecked]=useState(false);useEffect(()=>{let cancelled=false;const load=async()=>{try{const {data}=await api.get('/live/active');if(cancelled)return;const streams=Array.isArray(data?.streams)?data.streams:(data?.stream?[data.stream]:[]);const stream=streams.find(item=>item?.id&&item?.playbackUrl)||null;setLiveStream(stream)}catch{if(!cancelled)setLiveStream(null)}finally{if(!cancelled)setChecked(true)}};load();const id=setInterval(load,3000);return()=>{cancelled=true;clearInterval(id)}},[]);return <section className="home-hero home-hero-live-stream" aria-label="البث المباشر"><div className="home-live-card-wrap">{liveStream?<TrendLiveCard stream={liveStream}/>:checked?<div className="home-live-empty"><strong>لا يوجد بث مباشر الآن</strong><span>سيظهر البث هنا تلقائيًا عند بدء البث.</span></div>:<div className="home-live-loading"><span>جارٍ تجهيز البث المباشر...</span></div>}</div></section>}'''
+          pattern=re.compile(r'function HomeHero\([^)]*\)\{.*?\}\nfunction CategoryImages',re.S)
+          s,n=pattern.subn(new+'\nfunction CategoryImages',s,1)
+          if n!=1: raise SystemExit('HomeHero not found')
+          s=s.replace('<HomeHero banners={data?.banners||[]} />','<HomeHero />')
+          p.write_text(s)
+          css=Path('web/src/pages/HomePagePremium.css')
+          c=css.read_text()
+          marker='/* HOME LIVE EMPTY FIX */'
+          if marker not in c:
+            c+='''\n/* HOME LIVE EMPTY FIX */\n.home-hero-live-stream{width:100%;margin:24px auto 0;padding:0 28px;box-sizing:border-box}.home-live-card-wrap{width:100%;min-height:320px;border-radius:22px;overflow:hidden;background:#080808;display:flex;align-items:center;justify-content:center}.home-live-loading,.home-live-empty{min-height:320px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;text-align:center;font-family:Cairo,Arial,sans-serif}.home-live-loading span{opacity:.85;font-size:14px}.home-live-empty strong{font-size:20px}.home-live-empty span{font-size:12px;opacity:.7}.home-live-card-wrap .trend-live-card{width:100%;min-height:320px}\n@media(max-width:700px){.home-hero-live-stream{margin-top:14px;padding:0 14px}.home-live-card-wrap,.home-live-loading,.home-live-empty,.home-live-card-wrap .trend-live-card{min-height:240px;border-radius:14px}}\n'''
+            css.write_text(c)
+          PY
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/src/pages/HomePage.jsx web/src/pages/HomePagePremium.css
+          git commit -m 'fix(home): remove legacy homepage banners'
+          git push

@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "MYBRAND",
+    "slug": "mybrand",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "splash": {
+      "backgroundColor": "#E60023",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mybrand.app"
+    },
+    "android": {
+      "package": "com.mybrand.app"
+    },
+    "extra": {
+      "apiBaseUrl": "https://mybrand-app-production-e260.up.railway.app/api"
+    }
+  }
+}

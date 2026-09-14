@@ -1,0 +1,59 @@
+name: Fix homepage live viewer
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/src/pages/HomePage.jsx'
+      - '.github/workflows/fix-home-live-viewer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch homepage live viewer
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('web/src/pages/HomePage.jsx')
+          text = p.read_text(encoding='utf-8')
+          if "import TrendLiveCard from '../components/TrendLiveCard';" not in text:
+              anchor = "import api from '../api/client';\n"
+              text = text.replace(anchor, anchor + "import TrendLiveCard from '../components/TrendLiveCard';\n", 1)
+
+          replacement = r'''function HomeHero({banners}){const [index,setIndex]=useState(0);const [liveStream,setLiveStream]=useState(null);const live=useMemo(()=>Array.isArray(banners)?banners.filter(b=>b?.image):[],[banners]);useEffect(()=>{if(live.length<2)return;const id=setInterval(()=>setIndex(i=>(i+1)%live.length),5000);return()=>clearInterval(id)},[live.length]);useEffect(()=>{let cancelled=false;const load=async()=>{try{const {data}=await api.get('/live/active');if(cancelled)return;const streams=Array.isArray(data?.streams)?data.streams:(data?.stream?[data.stream]:[]);const stream=streams.find(item=>item?.id&&item?.playbackUrl)||streams[0]||null;setLiveStream(stream?.id?stream:null)}catch{if(!cancelled)setLiveStream(null)}};load();const id=setInterval(load,3000);return()=>{cancelled=true;clearInterval(id)}},[]);if(liveStream)return <section className="home-hero home-hero-live-stream" aria-label="البث المباشر"><div className="home-live-card-wrap"><TrendLiveCard stream={liveStream}/></div></section>;if(!live.length)return <section className="home-hero"><Link to="/categories" className="hero-side hero-side-one"><span className="hero-kicker">اختيارات MYBRAND</span><strong>إطلالتك تبدأ من هنا</strong><small>تشكيلة جديدة كل أسبوع</small><span className="hero-cta">تسوق الآن</span></Link><Link to="/categories" className="hero-main"><div className="hero-glow"/><span className="hero-kicker">MYBRAND EDIT</span><h1>اكتشف الجديد<br/><b>بأسلوبك الخاص</b></h1><p>منتجات مختارة، عروض يومية وتجربة تسوق أسهل.</p><span className="hero-cta">اكتشف المجموعة</span></Link><Link to="/categories" className="hero-side hero-side-two"><span className="hero-kicker">عروض اليوم</span><strong>خصومات حتى ٧٠٪</strong><small>لفترة محدودة</small><span className="hero-cta">شاهد العروض</span></Link></section>;const b=live[index];const target=b.buttonLink||'/categories';return <section className="home-hero home-hero-live"><Link to={target} className="hero-live-main"><img src={b.image} alt={b.titleAr||'MYBRAND'} loading="eager"/><div className="hero-live-overlay"><span className="hero-kicker">MYBRAND</span><h1>{b.titleAr}</h1>{b.subtitleAr&&<p>{b.subtitleAr}</p>}{b.buttonTextAr&&<span className="hero-cta">{b.buttonTextAr}</span>}</div></Link>{live.length>1&&<div className="hero-dots" aria-label="شرائح البنر">{live.map((_,i)=><button key={i} type="button" className={i===index?'active':''} onClick={e=>{e.preventDefault();setIndex(i)}} aria-label={`البنر ${i+1}`}/>)}</div>}</section>}'''
+
+          pattern = re.compile(r'function HomeHero\(\{banners\}\)\{.*?\}\nfunction CategoryImages', re.S)
+          new_text, count = pattern.subn(replacement + '\nfunction CategoryImages', text, count=1)
+          if count != 1:
+              raise SystemExit('HomeHero function not found')
+          p.write_text(new_text, encoding='utf-8')
+
+          css = Path('web/src/pages/HomePagePremium.css')
+          c = css.read_text(encoding='utf-8')
+          marker = '/* MYBRAND live hero */'
+          if marker not in c:
+              c += '\n/* MYBRAND live hero */\n.home-hero-live-stream{display:block;max-width:1320px;padding:0 28px;margin:28px auto 0;direction:rtl}.home-live-card-wrap{width:100%;aspect-ratio:16/7;min-height:300px;background:#080808;border-radius:22px;overflow:hidden;box-shadow:0 14px 40px rgba(17,17,17,.12)}.home-live-card-wrap .trend-live-card,.home-live-card-wrap .trend-live-video{width:100%;height:100%;min-height:300px}.home-live-card-wrap .trend-live-card{border-radius:0}@media (max-width:700px){.home-hero-live-stream{margin-top:14px;padding:0 14px}.home-live-card-wrap{aspect-ratio:16/10;min-height:0;border-radius:14px}.home-live-card-wrap .trend-live-card,.home-live-card-wrap .trend-live-video{min-height:0}}\n'
+              css.write_text(c, encoding='utf-8')
+          PY
+
+          if git diff --quiet; then
+            echo 'No changes needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/src/pages/HomePage.jsx web/src/pages/HomePagePremium.css
+          git commit -m 'fix(live): use proven OBS viewer on homepage'
+          git push
