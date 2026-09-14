@@ -6,6 +6,7 @@ const {
   getMerchantOrders,
   getOrderById,
 } = require('../controllers/orderController');
+const { cancelOrder } = require('../controllers/orderCancellationController');
 const { getAllOrders, updatePaymentStatus } = require('../controllers/adminOrderController');
 const { getDailyReports, getDailyReport, archiveDailyReport } = require('../controllers/dailyOrderReportController');
 const { updateOrderStatus } = require('../controllers/orderStatusController');
@@ -25,6 +26,9 @@ router.get('/my', customerOrderDataSanitizer, getMyOrders);
 router.get('/merchant/mine', merchantOnly, approvedMerchantOnly, merchantOrderDataSanitizer, getMerchantOrders);
 router.get('/merchant/fulfillment', merchantOnly, approvedMerchantOnly, getMerchantFulfillmentOrders);
 router.put('/merchant/fulfillment/:id', merchantOnly, approvedMerchantOnly, updateMerchantFulfillmentStatus);
+
+// العميل يستطيع إلغاء الطلب فقط قبل التجهيز، مع إعادة المخزون والكوبون والنقاط بأمان.
+router.post('/:id/cancel', cancelOrder);
 
 // تقارير وأرشيف الطلبات النهائيّة — للإدارة فقط
 router.get('/reports/daily', adminOnly, getDailyReports);
