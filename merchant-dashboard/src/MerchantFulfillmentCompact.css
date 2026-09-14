@@ -1,0 +1,114 @@
+/* Compact product cards for small screens: show the complete fulfillment card inside the phone viewport. */
+@media(max-width:700px){
+  .merchant-content>div:has(.privacy) article{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:12px!important;
+    border-radius:18px!important;
+    overflow:hidden!important;
+  }
+  .merchant-content>div:has(.privacy) article .item{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    padding:9px!important;
+    margin:0!important;
+    border-radius:14px!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+  .merchant-content>div:has(.privacy) article .itemMain{
+    display:flex!important;
+    align-items:flex-start!important;
+    gap:9px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .merchant-content>div:has(.privacy) article .imageWrap{
+    width:64px!important;
+    height:64px!important;
+    min-width:64px!important;
+    flex:0 0 64px!important;
+    border-radius:12px!important;
+    overflow:hidden!important;
+  }
+  .merchant-content>div:has(.privacy) article .image,
+  .merchant-content>div:has(.privacy) article .placeholder{
+    width:64px!important;
+    height:64px!important;
+    max-width:64px!important;
+    object-fit:cover!important;
+    border-radius:12px!important;
+  }
+  .merchant-content>div:has(.privacy) article .itemBody{
+    width:calc(100% - 73px)!important;
+    max-width:calc(100% - 73px)!important;
+    min-width:0!important;
+    overflow:hidden!important;
+  }
+  .merchant-content>div:has(.privacy) article .nameRow{
+    display:flex!important;
+    align-items:flex-start!important;
+    gap:7px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .merchant-content>div:has(.privacy) article .nameBlock{
+    min-width:0!important;
+    flex:1 1 auto!important;
+    overflow:hidden!important;
+  }
+  .merchant-content>div:has(.privacy) article .productName{
+    display:block!important;
+    font-size:12px!important;
+    line-height:1.45!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .merchant-content>div:has(.privacy) article .qty{
+    flex:0 0 42px!important;
+    width:42px!important;
+    padding:5px!important;
+  }
+  .merchant-content>div:has(.privacy) article .details{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:5px!important;
+    margin-top:7px!important;
+  }
+  .merchant-content>div:has(.privacy) article .detail{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    font-size:9px!important;
+  }
+  .merchant-content>div:has(.privacy) article .detail b{
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .merchant-content>div:has(.privacy) article .orderTools{
+    width:100%!important;
+    min-width:0!important;
+    padding:7px 0!important;
+  }
+  .merchant-content>div:has(.privacy) article .progress{
+    max-width:100%!important;
+    overflow-x:auto!important;
+    padding:7px 0!important;
+  }
+}
+@media(max-width:380px){
+  .merchant-content>div:has(.privacy) article{padding:10px!important;border-radius:16px!important}
+  .merchant-content>div:has(.privacy) article .item{padding:8px!important}
+  .merchant-content>div:has(.privacy) article .imageWrap,
+  .merchant-content>div:has(.privacy) article .image,
+  .merchant-content>div:has(.privacy) article .placeholder{width:58px!important;height:58px!important;min-width:58px!important;max-width:58px!important}
+  .merchant-content>div:has(.privacy) article .itemBody{width:calc(100% - 67px)!important;max-width:calc(100% - 67px)!important}
+  .merchant-content>div:has(.privacy) article .productName{font-size:11px!important}
+}
