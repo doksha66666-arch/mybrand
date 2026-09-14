@@ -47,7 +47,7 @@ app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'd
 app.use(express.json({ limit: '32mb' }));
 app.use(sanitizeInput);
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim().replace(/\/$/, '')).filter(Boolean);
-const railwayFrontendOrigins = ['https://friendly-nourishment-production-25fc.up.railway.app','https://confident-embrace-production.up.railway.app','https://luminous-adaptation-production-3f56.up.railway.app'];
+const railwayFrontendOrigins = ['https://enchanting-miracle-production-a5d2.up.railway.app','https://lovely-serenity-production.up.railway.app','https://independent-flow-production.up.railway.app'];
 const productionOrigins = [...new Set([...allowedOrigins, ...railwayFrontendOrigins])];
 const isAllowedOrigin = (origin) => { if (!origin) return true; const normalizedOrigin = origin.replace(/\/$/, ''); if (productionOrigins.includes(normalizedOrigin)) return true; return process.env.NODE_ENV !== 'production' && allowedOrigins.length === 0; };
 app.use(cors({ origin(origin, callback) { return isAllowedOrigin(origin) ? callback(null, true) : callback(null, false); }, credentials: true, optionsSuccessStatus: 204 }));
