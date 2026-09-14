@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import UnifiedLoginPage from './UnifiedLoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import MerchantFulfillmentCenterPage from './pages/MerchantFulfillmentCenterPage';
@@ -20,7 +19,7 @@ export default function App() {
     <MerchantAuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<UnifiedLoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/merchant-login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
