@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const DEFAULT_PRODUCTION_API_BASE_URL = 'https://mybrand-app-production-e260.up.railway.app/api';
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://mybrand-production-587c.up.railway.app/api';
 const configuredApiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
 const API_BASE_URL = import.meta.env.DEV
   ? 'http://localhost:5000/api'
