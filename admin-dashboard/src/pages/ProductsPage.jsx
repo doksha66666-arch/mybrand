@@ -1,41 +1,74 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import ImageUploader from '../components/ImageUploader';
-import VideoUploader from '../components/VideoUploader';
 import AIActionButton from '../components/AIActionButton';
 
-const empty = { nameAr:'', nameEn:'', slug:'', price:'', compareAtPrice:'', category:'', stock:0, sku:'', descriptionAr:'', images:[], videoUrl:'', videoPoster:'', variants:[] };
-const labels = { draft:'مسودة', pending:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض', hidden:'مخفي', out_of_stock:'نفد المخزون' };
+const labels = { draft: 'مسودة', pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض', hidden: 'مخفي', out_of_stock: 'نفد المخزون' };
 
-export default function ProductsPage(){
- const [products,setProducts]=useState([]),[categories,setCategories]=useState([]),[form,setForm]=useState(empty),[editingId,setEditingId]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[search,setSearch]=useState('');
- const change=(key,value)=>setForm(prev=>({...prev,[key]:value}));
- const load=async()=>{setLoading(true);try{const [productsRes,categoriesRes]=await Promise.all([api.get('/products/admin/all',{params:{limit:200}}),api.get('/categories')]);setProducts(productsRes.data.products||[]);setCategories(categoriesRes.data.categories||[]);setError('')}catch(e){setError(e?.response?.data?.message||'تعذر تحميل المنتجات')}finally{setLoading(false)}};
- useEffect(()=>{load()},[]);
- const addVariant=type=>{const variant=type==='color'?{name:'color',value:'',image:'',stock:0,priceModifier:0}:{name:'size',value:'',stock:0,sku:'',priceModifier:0};change('variants',[...form.variants,variant])};
- const updateVariant=(index,key,value)=>change('variants',form.variants.map((variant,i)=>i===index?{...variant,[key]:value}:variant));
- const removeVariant=index=>change('variants',form.variants.filter((_,i)=>i!==index));
- const submit=async event=>{event.preventDefault();setSaving(true);setError('');try{const variants=form.variants.filter(v=>String(v.value||'').trim()).map(v=>({...v,value:String(v.value).trim(),stock:Number(v.stock||0),priceModifier:Number(v.priceModifier||0)}));const payload={...form,price:Number(form.price),compareAtPrice:form.compareAtPrice===''?null:Number(form.compareAtPrice),stock:Number(form.stock||0),variants};if(editingId)await api.put(`/products/${editingId}`,payload);else await api.post('/products',payload);setForm(empty);setEditingId(null);await load()}catch(e){setError(e?.response?.data?.message||'تعذر حفظ المنتج')}finally{setSaving(false)}};
- const edit=product=>{setEditingId(product._id);setForm({...empty,...product,category:product.category?._id||product.category||'',variants:product.variants||[]});window.scrollTo({top:0,behavior:'smooth'})};
- const remove=async id=>{if(!window.confirm('هل تريد حذف هذا المنتج نهائيًا؟'))return;try{await api.delete(`/products/${id}`);await load()}catch(e){setError(e?.response?.data?.message||'تعذر حذف المنتج')}};
- const approve=async(id,action)=>{try{await api.put(`/products/${id}/review`,{action});await load()}catch(e){setError(e?.response?.data?.message||'تعذر تحديث مراجعة المنتج')}};
- const filtered=products.filter(product=>{const text=`${product.nameAr||''} ${product.nameEn||''} ${product.slug||''}`.toLowerCase();return !search||text.includes(search.toLowerCase())});
- const colors=form.variants.filter(v=>v.name==='color'),sizes=form.variants.filter(v=>v.name==='size');
- return <div dir="rtl" style={styles.page}>
-  <div style={styles.header}><div><h1 style={styles.h1}>المنتجات</h1><p style={styles.muted}>إدارة المنتجات بطريقة أسرع وأسهل — صور، فيديو، ألوان، مقاسات، أسعار ومخزون.</p></div><AIActionButton prompt="ساعدني في تجهيز بيانات المنتج الحالي. لا تنفذ أي تغيير بدون تأكيد."/></div>
-  <form onSubmit={submit} style={styles.form}>{error&&<div style={styles.error}>{error}</div>}
-   <Section title="بيانات المنتج"><div style={styles.row}><input style={styles.input} placeholder="اسم المنتج بالعربي" value={form.nameAr} onChange={e=>change('nameAr',e.target.value)} required/><input style={styles.input} placeholder="اسم المنتج بالإنجليزي" value={form.nameEn} onChange={e=>change('nameEn',e.target.value)} required/></div><div style={styles.row}><input style={styles.input} placeholder="Slug" value={form.slug} onChange={e=>change('slug',e.target.value)} required/><select style={styles.input} value={form.category} onChange={e=>change('category',e.target.value)} required><option value="">اختر القسم</option>{categories.map(c=><option key={c._id} value={c._id}>{c.nameAr}</option>)}</select></div><div style={styles.row}><input style={styles.input} type="number" min="0" placeholder="سعر البيع" value={form.price} onChange={e=>change('price',e.target.value)} required/><input style={styles.input} type="number" min="0" placeholder="السعر قبل الخصم" value={form.compareAtPrice} onChange={e=>change('compareAtPrice',e.target.value)}/><input style={styles.input} type="number" min="0" placeholder="المخزون العام" value={form.stock} onChange={e=>change('stock',e.target.value)}/><input style={styles.input} placeholder="SKU" value={form.sku} onChange={e=>change('sku',e.target.value)}/></div></Section>
-   <Section title="الصور والفيديو"><ImageUploader images={form.images||[]} onChange={value=>change('images',value)}/><VideoUploader value={form.videoUrl||''} onChange={value=>change('videoUrl',value)}/></Section>
-   <Section title="الألوان" action={<button type="button" style={styles.add} onClick={()=>addVariant('color')}>+ إضافة لون</button>}><p style={styles.hint}>لكل لون اسم وصورة ومخزون مستقل. المخزون هنا خاص باللون نفسه.</p>{colors.map(variant=>{const index=form.variants.indexOf(variant);return <div style={styles.colorVariant} key={index}><div style={styles.colorFields}><div><label style={styles.label}>اسم اللون</label><input style={styles.input} placeholder="مثال: أسود" value={variant.value} onChange={e=>updateVariant(index,'value',e.target.value)}/></div><div><label style={styles.label}>مخزون اللون</label><input style={styles.stockInput} type="number" min="0" placeholder="0" value={variant.stock??0} onChange={e=>updateVariant(index,'stock',e.target.value)}/><small style={styles.stockHint}>قطعة متاحة</small></div><div style={styles.upload}><span>صورة اللون</span><ImageUploader images={variant.image?[variant.image]:[]} onChange={value=>updateVariant(index,'image',value[0]||'')}/></div><button type="button" style={styles.remove} onClick={()=>removeVariant(index)}>حذف</button></div></div>})}{!colors.length&&<div style={styles.emptySmall}>لم تتم إضافة ألوان.</div>}</Section>
-   <Section title="المقاسات" action={<button type="button" style={styles.add} onClick={()=>addVariant('size')}>+ إضافة مقاس</button>}><p style={styles.hint}>لكل مقاس مخزون وSKU وتعديل سعر اختياري.</p>{sizes.map(variant=>{const index=form.variants.indexOf(variant);return <div style={styles.size} key={index}><input style={styles.input} placeholder="S / M / L / XL أو 36 / 38" value={variant.value} onChange={e=>updateVariant(index,'value',e.target.value)}/><input style={styles.input} type="number" min="0" placeholder="المخزون" value={variant.stock} onChange={e=>updateVariant(index,'stock',e.target.value)}/><input style={styles.input} placeholder="SKU" value={variant.sku||''} onChange={e=>updateVariant(index,'sku',e.target.value)}/><input style={styles.input} type="number" step="0.01" placeholder="تعديل السعر" value={variant.priceModifier||0} onChange={e=>updateVariant(index,'priceModifier',e.target.value)}/><button type="button" style={styles.remove} onClick={()=>removeVariant(index)}>×</button></div>})}{!sizes.length&&<div style={styles.emptySmall}>لم تتم إضافة مقاسات.</div>}</Section>
-   <Section title="الوصف"><textarea style={styles.textarea} placeholder="الوصف بالعربي" value={form.descriptionAr} onChange={e=>change('descriptionAr',e.target.value)}/></Section>
-   <div style={styles.actions}><button style={styles.primary} disabled={saving}>{saving?'جارٍ الحفظ...':editingId?'حفظ التعديلات':'إضافة المنتج'}</button>{editingId&&<button type="button" style={styles.secondary} onClick={()=>{setForm(empty);setEditingId(null)}}>إلغاء</button>}</div>
-  </form>
-  <div style={styles.listHead}><div><h2>قائمة المنتجات</h2><span style={styles.count}>{filtered.length} منتج</span></div><input style={styles.search} placeholder="ابحث باسم المنتج أو Slug..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
-  {loading?<div style={styles.empty}>جارٍ التحميل...</div>:<div style={styles.grid}>{filtered.map(product=><div key={product._id} style={styles.card}><div style={styles.cardTop}>{product.images?.[0]?<img src={product.images[0]} alt="" style={styles.thumb}/>:<div style={styles.noimg}>بدون صورة</div>}<div style={{flex:1}}><b>{product.nameAr}</b><div style={styles.small}>{product.nameEn}</div><div style={styles.small}>SKU: {product.sku||'—'}</div></div><span style={styles.badge}>{labels[product.status]||product.status}</span></div><div style={styles.stats}><span>السعر: <b>{Number(product.price||0).toLocaleString('ar-EG')} ج.م</b></span><span>المخزون: <b>{product.stock}</b></span><span>الألوان: <b>{product.variants?.filter(v=>v.name==='color').length||0}</b></span><span>المقاسات: <b>{product.variants?.filter(v=>v.name==='size').length||0}</b></span></div><div style={styles.colorStockList}>{(product.variants||[]).filter(v=>v.name==='color').map((v,i)=><span key={v._id||i}>{v.value||'لون'}: <b>{Number(v.stock||0)}</b></span>)}</div><div style={styles.cardActions}><button type="button" style={styles.secondary} onClick={()=>edit(product)}>تعديل</button><button type="button" style={styles.danger} onClick={()=>remove(product._id)}>حذف</button>{product.status==='pending'&&<><button type="button" style={styles.approve} onClick={()=>approve(product._id,'approve')}>اعتماد</button><button type="button" style={styles.reject} onClick={()=>approve(product._id,'reject')}>رفض</button></>}</div></div>)}</div>}
- </div>;
+export default function ProductsPage() {
+  const navigate = useNavigate();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/products/admin/all', { params: { limit: 200 } });
+      setProducts(response.data.products || []);
+      setError('');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'تعذر تحميل المنتجات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const remove = async (id) => {
+    if (!window.confirm('هل تريد حذف هذا المنتج نهائيًا؟')) return;
+    try { await api.delete(`/products/${id}`); await load(); }
+    catch (err) { setError(err?.response?.data?.message || 'تعذر حذف المنتج'); }
+  };
+
+  const approve = async (id, action) => {
+    try { await api.put(`/products/${id}/review`, { action }); await load(); }
+    catch (err) { setError(err?.response?.data?.message || 'تعذر تحديث مراجعة المنتج'); }
+  };
+
+  const filtered = useMemo(() => products.filter(product => {
+    const text = `${product.nameAr || ''} ${product.nameEn || ''} ${product.slug || ''} ${product.sku || ''}`.toLowerCase();
+    return (!search || text.includes(search.toLowerCase())) && (status === 'all' || product.status === status);
+  }), [products, search, status]);
+
+  return <div dir="rtl" style={styles.page}>
+    <header style={styles.header}>
+      <div><h1 style={styles.h1}>المنتجات</h1><p style={styles.muted}>إدارة المنتجات ومراجعتها من مكان واحد. إنشاء المنتج أصبح في صفحة مستقلة لتجنب التكرار.</p></div>
+      <div style={styles.headerActions}>
+        <AIActionButton label="مساعد المنتجات" prompt="ساعدني في مراجعة قائمة المنتجات واقترح ما يحتاج إلى انتباه، بدون تنفيذ أي تغيير." />
+        <button type="button" style={styles.primary} onClick={() => navigate('/products/add')}>+ إضافة منتج</button>
+      </div>
+    </header>
+    {error && <div style={styles.error}>{error}</div>}
+    <section style={styles.toolbar}>
+      <input style={styles.search} placeholder="ابحث باسم المنتج أو Slug أو SKU..." value={search} onChange={e => setSearch(e.target.value)} />
+      <select style={styles.select} value={status} onChange={e => setStatus(e.target.value)}>
+        <option value="all">كل الحالات</option><option value="approved">معتمد</option><option value="pending">قيد المراجعة</option><option value="draft">مسودة</option><option value="hidden">مخفي</option><option value="rejected">مرفوض</option><option value="out_of_stock">نفد المخزون</option>
+      </select>
+      <span style={styles.count}>{filtered.length} منتج</span>
+    </section>
+    {loading ? <div style={styles.empty}>جارٍ تحميل المنتجات...</div> : !filtered.length ? <div style={styles.empty}><strong>لا توجد منتجات مطابقة.</strong><button type="button" style={styles.secondary} onClick={() => navigate('/products/add')}>إضافة أول منتج</button></div> :
+      <div style={styles.grid}>{filtered.map(product => <article key={product._id} style={styles.card}>
+        <div style={styles.cardTop}>{product.images?.[0] ? <img src={product.images[0]} alt="" style={styles.thumb} /> : <div style={styles.noimg}>بدون صورة</div>}<div style={{ flex: 1, minWidth: 0 }}><b style={styles.name}>{product.nameAr || product.nameEn || 'منتج بدون اسم'}</b><div style={styles.small}>{product.nameEn || '—'}</div><div style={styles.small}>SKU: {product.sku || '—'}</div></div><span style={styles.badge}>{labels[product.status] || product.status || 'غير محدد'}</span></div>
+        <div style={styles.stats}><span>السعر <b>{Number(product.price || 0).toLocaleString('ar-EG')} ج.م</b></span><span>المخزون <b>{Number(product.stock || 0)}</b></span><span>الألوان <b>{product.variants?.filter(v => v.name === 'color').length || 0}</b></span><span>المقاسات <b>{product.variants?.filter(v => v.name === 'size').length || 0}</b></span></div>
+        <div style={styles.cardActions}><button type="button" style={styles.secondary} onClick={() => navigate(`/products/edit/${product._id}`)}>تعديل</button>{product.status === 'pending' && <><button type="button" style={styles.approve} onClick={() => approve(product._id, 'approve')}>اعتماد</button><button type="button" style={styles.reject} onClick={() => approve(product._id, 'reject')}>رفض</button></>}<button type="button" style={styles.danger} onClick={() => remove(product._id)}>حذف</button></div>
+      </article>)}</div>}
+  </div>;
 }
-function Section({title,action,children}){return <section style={styles.section}><div style={styles.sectionHead}><h2 style={{margin:0}}>{title}</h2>{action}</div>{children}</section>}
-const styles={
- page:{maxWidth:1250,margin:'0 auto',padding:'8px 4px 40px'},header:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:20},h1:{margin:'0 0 6px',fontSize:30},muted:{color:'#64748B',fontSize:14,margin:0},form:{background:'#fff',padding:22,borderRadius:18,boxShadow:'0 4px 18px rgba(15,23,42,.06)',marginBottom:30},section:{border:'1px solid #E2E8F0',borderRadius:14,padding:18,marginBottom:14},sectionHead:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:12},row:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginBottom:10},input:{width:'100%',padding:'11px 12px',border:'1px solid #CBD5E1',borderRadius:9,boxSizing:'border-box',fontSize:14},textarea:{width:'100%',minHeight:110,padding:12,border:'1px solid #CBD5E1',borderRadius:9,boxSizing:'border-box'},label:{display:'block',fontSize:12,fontWeight:800,color:'#334155',marginBottom:6},add:{padding:'9px 14px',border:'1px solid #CBD5E1',borderRadius:9,background:'#fff',fontWeight:800,cursor:'pointer'},hint:{fontSize:12,color:'#64748B',margin:'0 0 10px'},colorVariant:{padding:12,border:'1px solid #E2E8F0',borderRadius:12,marginBottom:10,background:'#F8FAFC'},colorFields:{display:'grid',gridTemplateColumns:'minmax(170px,1fr) minmax(130px,.65fr) minmax(260px,1.5fr) auto',gap:12,alignItems:'end'},stockInput:{width:'100%',padding:'11px 12px',border:'2px solid #0F172A',borderRadius:9,boxSizing:'border-box',fontSize:15,fontWeight:800,background:'#fff'},stockHint:{display:'block',fontSize:10,color:'#64748B',marginTop:4},upload:{fontSize:12,color:'#475569'},remove:{padding:'9px 12px',border:0,borderRadius:8,background:'#FEE2E2',color:'#B91C1C',cursor:'pointer'},size:{display:'grid',gridTemplateColumns:'1.2fr 1fr 1fr 1fr auto',gap:8,alignItems:'center',padding:10,border:'1px solid #E2E8F0',borderRadius:12,marginBottom:8},emptySmall:{padding:14,color:'#64748B',background:'#F8FAFC',borderRadius:9,fontSize:13},actions:{display:'flex',gap:9},primary:{padding:'11px 22px',border:0,borderRadius:9,background:'#0F172A',color:'#fff',fontWeight:800,cursor:'pointer'},secondary:{padding:'10px 16px',border:'1px solid #CBD5E1',borderRadius:9,background:'#fff',cursor:'pointer'},error:{padding:12,background:'#FEF2F2',color:'#B91C1C',borderRadius:9,marginBottom:14},listHead:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:15,marginBottom:14},count:{fontSize:12,color:'#64748B'},search:{padding:11,border:'1px solid #CBD5E1',borderRadius:9,minWidth:280},grid:{display:'grid',gap:12},card:{background:'#fff',padding:16,borderRadius:14,boxShadow:'0 2px 10px rgba(15,23,42,.05)'},cardTop:{display:'flex',gap:12,alignItems:'center'},thumb:{width:72,height:72,objectFit:'cover',borderRadius:10},noimg:{width:72,height:72,display:'grid',placeItems:'center',background:'#F1F5F9',borderRadius:10,fontSize:11,color:'#64748B'},small:{fontSize:11,color:'#64748B',marginTop:3},badge:{padding:'5px 9px',borderRadius:999,background:'#EEF2FF',color:'#3730A3',fontSize:11},stats:{display:'flex',gap:18,flexWrap:'wrap',margin:'13px 0',fontSize:12,color:'#475569'},colorStockList:{display:'flex',gap:8,flexWrap:'wrap',padding:'10px 12px',background:'#F8FAFC',borderRadius:9,fontSize:11,color:'#475569',marginBottom:12},danger:{padding:'8px 13px',border:0,borderRadius:8,background:'#DC2626',color:'#fff',cursor:'pointer'},cardActions:{display:'flex',gap:7,flexWrap:'wrap'},approve:{padding:'8px 13px',border:0,borderRadius:8,background:'#16A34A',color:'#fff',cursor:'pointer'},reject:{padding:'8px 13px',border:0,borderRadius:8,background:'#B91C1C',color:'#fff',cursor:'pointer'},empty:{padding:30,textAlign:'center',color:'#64748B'}
+
+const styles = {
+  page:{maxWidth:1250,margin:'0 auto',padding:'8px 4px 40px'},header:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:20,flexWrap:'wrap'},headerActions:{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'},h1:{margin:'0 0 6px',fontSize:30},muted:{color:'#64748B',fontSize:14,margin:0},toolbar:{background:'#fff',padding:14,borderRadius:14,display:'flex',gap:10,alignItems:'center',marginBottom:14,boxShadow:'0 2px 10px rgba(15,23,42,.05)',flexWrap:'wrap'},search:{flex:1,minWidth:260,padding:11,border:'1px solid #CBD5E1',borderRadius:9,boxSizing:'border-box'},select:{padding:11,border:'1px solid #CBD5E1',borderRadius:9,background:'#fff'},count:{color:'#64748B',fontSize:13,fontWeight:700},grid:{display:'grid',gap:12},card:{background:'#fff',padding:16,borderRadius:14,boxShadow:'0 2px 10px rgba(15,23,42,.05)'},cardTop:{display:'flex',gap:12,alignItems:'center'},thumb:{width:72,height:72,objectFit:'cover',borderRadius:10},noimg:{width:72,height:72,borderRadius:10,background:'#F1F5F9',display:'grid',placeItems:'center',color:'#64748B',fontSize:11},name:{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},small:{color:'#64748B',fontSize:12,marginTop:3},badge:{padding:'5px 9px',borderRadius:999,background:'#F1F5F9',fontSize:11,whiteSpace:'nowrap'},stats:{display:'flex',gap:18,flexWrap:'wrap',padding:'13px 0',marginTop:12,borderTop:'1px solid #E2E8F0',borderBottom:'1px solid #E2E8F0',fontSize:12,color:'#64748B'},cardActions:{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'},primary:{padding:'11px 18px',border:0,borderRadius:9,background:'#0F172A',color:'#fff',fontWeight:800,cursor:'pointer'},secondary:{padding:'9px 14px',border:'1px solid #CBD5E1',borderRadius:9,background:'#fff',cursor:'pointer'},danger:{padding:'9px 14px',border:0,borderRadius:9,background:'#FEE2E2',color:'#B91C1C',cursor:'pointer'},approve:{padding:'9px 14px',border:0,borderRadius:9,background:'#DCFCE7',color:'#166534',cursor:'pointer'},reject:{padding:'9px 14px',border:0,borderRadius:9,background:'#FEF3C7',color:'#92400E',cursor:'pointer'},error:{padding:12,background:'#FEF2F2',color:'#B91C1C',borderRadius:9,marginBottom:14},empty:{padding:35,background:'#fff',borderRadius:14,display:'flex',justifyContent:'center',alignItems:'center',gap:14,flexDirection:'column',color:'#64748B'}
 };
