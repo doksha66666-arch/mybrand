@@ -56,7 +56,8 @@ export default function AddProductPage() {
       compareAtPrice: form.compareAtPrice ? Number(form.compareAtPrice) : undefined,
       stock: Number(form.stock || 0), sku: form.sku.trim() || undefined,
       images: form.images, videoUrl: form.videoUrl || '', videoPoster: form.videoPoster || '', variants,
-      tags: form.tags, isActive: status === 'approved' ? Boolean(form.isActive) : false,
+      tags: form.tags, seoTitle: form.seoTitle.trim() || undefined, seoDescription: form.seoDescription.trim() || undefined,
+      isActive: status === 'approved' ? Boolean(form.isActive) : false,
       isFeatured: status === 'approved' ? Boolean(form.isFeatured) : false, status,
     };
   };
