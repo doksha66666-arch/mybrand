@@ -1,0 +1,40 @@
+logLevel: info
+logDestinations: [stdout]
+
+# Railway exposes the existing HTTP service domain on :8889.
+# Use HLS on that same HTTP port so viewers do not depend on UDP/ICE.
+hls: true
+hlsAddress: :8889
+hlsEncryption: false
+hlsAllowOrigins: ["*"]
+hlsVariant: fmp4
+hlsAlwaysRemux: true
+
+# WebRTC/WHEP is intentionally disabled for the public viewer path on Railway.
+# OBS continues to publish over RTMP.
+webrtc: false
+
+rtmp: true
+rtmpAddress: :1935
+
+# Use MediaMTX internal authentication. This avoids HTTP-authentication
+# challenges on HLS child playlists while keeping publishing/read access
+# restricted to the cryptographically generated live_* stream path.
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+        path: "~^live_[a-f0-9]{64}$"
+      - action: read
+        path: "~^live_[a-f0-9]{64}(?:/.*)?$"
+
+# OBS publishing and browser HLS reading are both restricted by the
+# live_* capability path above. No HTTP authentication is used.
+authHTTPAddress:
+authHTTPExclude: []
+
+paths:
+  "~^live_[a-f0-9]{64}(?:/.*)?$": {}
