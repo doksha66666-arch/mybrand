@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import AIActionButton from '../components/AIActionButton';
 
 const labels = { draft: 'مسودة', pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض', hidden: 'مخفي', out_of_stock: 'نفد المخزون' };
 
@@ -48,7 +47,6 @@ export default function ProductsPage() {
     <header style={styles.header}>
       <div><h1 style={styles.h1}>المنتجات</h1><p style={styles.muted}>إدارة المنتجات ومراجعتها من مكان واحد. إنشاء المنتج أصبح في صفحة مستقلة لتجنب التكرار.</p></div>
       <div style={styles.headerActions}>
-        <AIActionButton label="مساعد المنتجات" prompt="ساعدني في مراجعة قائمة المنتجات واقترح ما يحتاج إلى انتباه، بدون تنفيذ أي تغيير." />
         <button type="button" style={styles.primary} onClick={() => navigate('/products/add')}>+ إضافة منتج</button>
       </div>
     </header>
