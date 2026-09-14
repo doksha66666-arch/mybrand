@@ -39,7 +39,7 @@ const returnRoutes = require('./routes/returnRoutes');
 const loyaltyRoutes = require('./routes/loyaltyRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const sanitizeInput = require('./middleware/sanitizeInput');
-const { apiLimiter } = require('./middleware/rateLimiters');
+const { apiLimiter, liveLimiter } = require('./middleware/rateLimiters');
 const app = express();
 
 app.set('trust proxy', 1);
@@ -53,6 +53,7 @@ const isAllowedOrigin = (origin) => { if (!origin) return true; const normalized
 app.use(cors({ origin(origin, callback) { return isAllowedOrigin(origin) ? callback(null, true) : callback(null, false); }, credentials: true, optionsSuccessStatus: 204 }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.use('/api/live', liveLimiter);
 app.use('/api', apiLimiter);
 const uploadsDirectory = path.join(__dirname, 'uploads');
 app.use('/uploads', (req, res, next) => { res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); next(); }, express.static(uploadsDirectory, { fallthrough: true, maxAge: '1d' }));
