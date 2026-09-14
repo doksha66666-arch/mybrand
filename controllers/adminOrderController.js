@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const MerchantOrderStatus = require('../models/MerchantOrderStatus');
+const mongoose = require('mongoose');
 
 const buildMerchantFulfillment = (order, statusByMerchant) => {
   const merchants = new Map();
@@ -29,6 +30,14 @@ const buildMerchantFulfillment = (order, statusByMerchant) => {
     totalMerchants: result.length,
     allReady: result.length > 0 && result.every((m) => m.status === 'ready'),
   };
+};
+
+const allowedPaymentStatuses = new Set(['pending', 'paid', 'failed', 'refunded']);
+const allowedPaymentTransitions = {
+  pending: new Set(['pending', 'paid', 'failed']),
+  paid: new Set(['paid', 'refunded']),
+  failed: new Set(['failed', 'pending', 'paid']),
+  refunded: new Set(['refunded']),
 };
 
 exports.getAllOrders = async (req, res, next) => {
@@ -67,19 +76,25 @@ exports.getAllOrders = async (req, res, next) => {
 
 exports.updatePaymentStatus = async (req, res, next) => {
   try {
-    const allowed = ['pending', 'paid', 'failed', 'refunded'];
+    if (!mongoose.isValidObjectId(req.params?.id)) {
+      return res.status(400).json({ message: 'معرف الطلب غير صالح' });
+    }
+
     const paymentStatus = String(req.body?.paymentStatus || '').trim().toLowerCase();
-    if (!allowed.includes(paymentStatus)) {
+    if (!allowedPaymentStatuses.has(paymentStatus)) {
       return res.status(400).json({ message: 'حالة الدفع غير صالحة' });
     }
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { paymentStatus },
-      { new: true, runValidators: true }
-    );
-
+    const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    const currentStatus = String(order.paymentStatus || 'pending');
+    if (!allowedPaymentTransitions[currentStatus]?.has(paymentStatus)) {
+      return res.status(409).json({ message: `لا يمكن تغيير حالة الدفع من ${currentStatus} إلى ${paymentStatus}` });
+    }
+
+    order.paymentStatus = paymentStatus;
+    await order.save();
     res.json({ order });
   } catch (error) {
     next(error);
