@@ -3,7 +3,7 @@ import api from '../api/client';
 import ImageUploader from '../components/ImageUploader';
 import { isValidBannerUrl, normalizeBannerUrl } from '../utils/bannerUrl';
 
-const PLACEMENTS = [['home','الصفحة الرئيسية'],['products','صفحة المنتجات'],['product','صفحة المنتج'],['account','الصفحة الشخصية'],['categories','صفحة الأقسام'],['trend','الترند'],['new-arrivals','وصل حديثًا'],['offers','العروض'],['sale','السيل']]];
+const PLACEMENTS = [['home','الصفحة الرئيسية'],['products','صفحة المنتجات'],['product','صفحة المنتج'],['account','الصفحة الشخصية'],['categories','صفحة الأقسام'],['trend','الترند'],['new-arrivals','وصل حديثًا'],['offers','العروض'],['sale','السيل']];
 const emptyForm = { titleAr:'', subtitleAr:'', image:'', buttonTextAr:'', buttonLink:'', sortOrder:0, placements:['home'] };
 
 export default function BannersPage(){
