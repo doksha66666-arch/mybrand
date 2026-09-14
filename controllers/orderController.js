@@ -122,7 +122,10 @@ exports.createOrder = async (req, res, next) => {
       if (product.merchant) { merchantId = product.merchant._id; commissionRate = typeof product.commissionRateOverride === 'number' ? product.commissionRateOverride : Number(product.merchant.commissionRate || 0); }
       const commissionAmount = Math.round(lineTotal * commissionRate) / 100;
       const merchantAmount = Math.round((lineTotal - commissionAmount) * 100) / 100;
-      items.push({ product: product._id, nameSnapshot: product.nameAr, variantId: explicitVariant?._id || selectedVariants[0]?._id || null, selectedOptions, quantity, unitPrice, lineTotal, merchant: merchantId, commissionRate, commissionAmount, merchantAmount });
+      const imageSnapshot = selectedVariants.find((variant) => variant?.image)?.image || product.images?.[0] || '';
+      const productCodeSnapshot = selectedVariants.find((variant) => variant?.sku)?.sku || product.sku || '';
+      const notesSnapshot = raw.notes != null ? String(raw.notes).trim() : '';
+      items.push({ product: product._id, nameSnapshot: product.nameAr, variantId: explicitVariant?._id || selectedVariants[0]?._id || null, selectedOptions, quantity, unitPrice, lineTotal, merchant: merchantId, commissionRate, commissionAmount, merchantAmount, imageSnapshot, productCodeSnapshot, notesSnapshot });
 
       if (selectedVariants.length) {
         for (const selectedVariant of selectedVariants) {
@@ -159,7 +162,6 @@ exports.createOrder = async (req, res, next) => {
     const shippingFee = shippingMethod === 'express' ? 45 : 0;
     const total = Math.max(0, Math.round((subtotal - discount + shippingFee) * 100) / 100);
 
-    // Enforce COD limit against the server-calculated final total, never a client-supplied amount.
     if (paymentMethod === 'cod') {
       const paymentSettings = await PaymentSettings.findOne({ key: 'global' }).lean();
       if (paymentSettings?.codLimitEnabled) {
@@ -193,4 +195,3 @@ exports.createOrder = async (req, res, next) => {
 exports.getMyOrders = async (req, res, next) => { try { const orders = await Order.find({ user: req.user._id }).sort('-createdAt'); res.json({ orders: orders.map(sanitizeCustomerOrder) }); } catch (err) { next(err); } };
 exports.getMerchantOrders = async (req, res, next) => { try { const orders = await Order.find({ 'items.merchant': req.merchant._id }).populate('user', 'name email phone').sort('-createdAt'); const scoped = orders.map((order) => { const myItems = order.items.filter((i) => i.merchant && i.merchant.toString() === req.merchant._id.toString()); return { _id: order._id, orderNumber: order.orderNumber, customer: order.customer, status: order.status, paymentStatus: order.paymentStatus, createdAt: order.createdAt, items: myItems, myTotal: myItems.reduce((s,i)=>s+i.lineTotal,0), myCommission: myItems.reduce((s,i)=>s+i.commissionAmount,0), myNet: myItems.reduce((s,i)=>s+i.merchantAmount,0) }; }); res.json({ orders: scoped }); } catch (err) { next(err); } };
 exports.getOrderById = async (req, res, next) => { try { const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ message: 'الطلب غير موجود' }); const isOwner = order.user.toString() === req.user._id.toString(); const isAdmin = req.user.role === 'admin'; const isMerchant = req.user.role === 'merchant' && order.items.some((i) => i.merchant && i.merchant.toString() === req.merchant?._id?.toString()); if (!isOwner && !isAdmin && !isMerchant) return res.status(403).json({ message: 'غير مصرح' }); res.json({ order: isOwner ? sanitizeCustomerOrder(order) : order }); } catch (err) { next(err); } };
-exports.cancelOrder = async (req, res, next) => { try { const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ message: 'الطلب غير موجود' }); if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') return res.status(403).json({ message: 'غير مصرح' }); if (!['pending', 'confirmed'].includes(order.status)) return res.status(400).json({ message: 'لا يمكن إلغاء الطلب في حالته الحالية' }); order.status = 'cancelled'; if (order.paymentStatus === 'pending') order.paymentStatus = 'failed'; await order.save(); for (const item of order.items) { if (item.variantId) await Product.updateOne({ _id: item.product, 'variants._id': item.variantId }, { $inc: { 'variants.$.stock': item.quantity } }); else await Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } }); } if (order.couponCode) await Coupon.updateOne({ code: order.couponCode }, { $inc: { usedCount: -1 } }); res.json({ order: sanitizeCustomerOrder(order) }); } catch (err) { next(err); } };
