@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const DEFAULT_PRODUCTION_API_BASE_URL = 'https://mybrand-app-production-e260.up.railway.app/api';
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://mybrand-production-587c.up.railway.app/api';
 const configuredApiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
 
 // Development keeps the local backend; production uses the Railway variable
@@ -11,7 +11,7 @@ const API_BASE_URL = import.meta.env.DEV
 
 export const MERCHANT_DASHBOARD_URL = import.meta.env.DEV
   ? 'http://localhost:5175'
-  : 'https://friendly-nourishment-production-25fc.up.railway.app';
+  : 'https://independent-flow-production.up.railway.app';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
