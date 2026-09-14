@@ -66,9 +66,17 @@ exports.updateOrderStatus = async (req, res, next) => {
 
         for (const bucket of buckets.values()) {
           const result = bucket.variantId
-            ? await Product.updateOne({ _id: bucket.productId, 'variants._id': bucket.variantId }, { $inc: { 'variants.$.stock': bucket.quantity } }, { session })
-            : await Product.updateOne({ _id: bucket.productId }, { $inc: { stock: bucket.quantity } }, { session });
-          if (!result.matchedCount) { const error = new Error('تعذر إعادة مخزون أحد منتجات الطلب، تم إلغاء العملية بالكامل'); error.statusCode = 409; throw error; }
+            ? await Product.findOneAndUpdate(
+                { _id: bucket.productId, 'variants._id': bucket.variantId },
+                { $inc: { 'variants.$.stock': bucket.quantity } },
+                { new: true, session }
+              )
+            : await Product.findOneAndUpdate(
+                { _id: bucket.productId },
+                { $inc: { stock: bucket.quantity } },
+                { new: true, session }
+              );
+          if (!result) { const error = new Error('تعذر إعادة مخزون أحد منتجات الطلب، تم إلغاء العملية بالكامل'); error.statusCode = 409; throw error; }
         }
 
         const usage = await CouponUsage.findOneAndUpdate({ order: order._id, status: { $in: ['reserved', 'consumed'] } }, { $set: { status: 'released' } }, { new: true, session });
