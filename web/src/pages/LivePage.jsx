@@ -50,27 +50,43 @@ export default function LivePage() {
   useEffect(() => {
     if (broadcaster || !active?.id) return undefined;
     let cancelled = false;
+    const stopHeartbeat = () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    };
     const join = async () => {
       try {
         const { data } = await api.post(`/live/${active.id}/join`, { viewerKey: viewerKeyRef.current });
         if (cancelled) return;
         viewerIdRef.current = data.viewerId;
         setViewerCount(data.viewerCount || active.viewerCount || 0);
+        stopHeartbeat();
         heartbeatRef.current = setInterval(async () => {
-          if (!viewerIdRef.current) return;
-          try { const r = await api.post(`/live/${active.id}/heartbeat/${viewerIdRef.current}`); if (!cancelled) setViewerCount(r.data.viewerCount || 0); } catch {}
+          if (!viewerIdRef.current || cancelled) return;
+          try {
+            const r = await api.post(`/live/${active.id}/heartbeat/${viewerIdRef.current}`);
+            if (!cancelled) setViewerCount(r.data.viewerCount || 0);
+          } catch (e) {
+            const status = e?.response?.status;
+            if (status === 404 || status === 410) {
+              stopHeartbeat();
+              viewerIdRef.current = null;
+              if (!cancelled) loadStreams();
+            }
+          }
         }, 15000);
-      } catch (e) { if (!cancelled) setError(e?.response?.data?.message || 'تعذر فتح العرض.'); }
+      } catch (e) {
+        if (!cancelled) setError(e?.response?.data?.message || 'تعذر فتح العرض.');
+      }
     };
     join();
     return () => {
       cancelled = true;
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-      heartbeatRef.current = null;
+      stopHeartbeat();
       if (viewerIdRef.current) api.delete(`/live/${active.id}/viewer/${viewerIdRef.current}`).catch(() => {});
       viewerIdRef.current = null;
     };
-  }, [active?.id, broadcaster]);
+  }, [active?.id, broadcaster, loadStreams]);
 
   const sendComment = async (e) => {
     e.preventDefault();
