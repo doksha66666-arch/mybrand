@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import ImageUploader from '../components/ImageUploader';
-import AIActionButton from '../components/AIActionButton';
 import './CategoriesPage.css';
 
 const ICONS = ['◈','◇','✦','◆','✚','⬢','●','■','★','✿','⌂','♢'];
@@ -32,18 +31,6 @@ export default function CategoriesPage() {
 
   useEffect(() => { load(); }, []);
 
-  useEffect(() => {
-    const onAI = (event) => {
-      const action = event.detail;
-      if (!action || action.type !== 'create_category') return;
-      const p = action.params || {};
-      setEditingId(null);
-      setForm((current) => ({ ...current, ...p, parentCategory: p.parentCategory || '' }));
-    };
-    window.addEventListener('mybrand-ai-prefill', onAI);
-    return () => window.removeEventListener('mybrand-ai-prefill', onAI);
-  }, []);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return categories;
@@ -51,7 +38,6 @@ export default function CategoriesPage() {
   }, [categories, search]);
 
   const parentName = (id) => categories.find((c) => c._id === id)?.nameAr || 'قسم رئيسي';
-
   const resetForm = () => { setEditingId(null); setForm(emptyForm); setError(''); };
 
   const handleSubmit = async (e) => {
@@ -119,10 +105,7 @@ export default function CategoriesPage() {
     <div className="categories-page" dir="rtl">
       <div className="categories-head">
         <div><h1>إضافة وإدارة الأقسام</h1><p>نظّم أقسام MYBRAND، حدّد الأقسام الرئيسية والفرعية ورتّب ظهورها للعميل.</p></div>
-        <div className="category-actions">
-          <AIActionButton label="اقتراح أقسام بـ AI" prompt="اقترح لي 5 أقسام مناسبة لمتجر MYBRAND مع اسم عربي وإنجليزي وSlug، ثم اسألني أي قسم أريد إنشاءه. جهّز الإجراء ولا تنفذه بدون تأكيد." />
-          <button className="cat-btn primary" onClick={resetForm}>＋ قسم جديد</button>
-        </div>
+        <div className="category-actions"><button className="cat-btn primary" onClick={resetForm}>＋ قسم جديد</button></div>
       </div>
 
       <div className="cat-kpis">
