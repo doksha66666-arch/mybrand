@@ -4,7 +4,7 @@ import api from '../api/client';
 import './TrackingPage.css';
 
 const labels = { pending:'قيد الانتظار', confirmed:'تم التأكيد', processing:'قيد التجهيز', shipped:'تم الشحن', delivered:'تم التسليم', cancelled:'ملغي' };
-const steps = ['confirmed','processing','shipped','delivered'];
+const steps = ['pending','confirmed','processing','shipped','delivered'];
 const normalizeOrder = (value) => value?.order || value?.data?.order || value?.data || value || null;
 const asObject = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const getOptions = (item) => {
