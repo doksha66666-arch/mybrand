@@ -1,10 +1,10 @@
 import React,{useEffect,useState}from'react';import{NavLink,Outlet,useLocation}from'react-router-dom';import{useAdminAuth}from'../context/AdminAuthContext';import api from'../api/client';import CommandCenter from'./CommandCenter';import LiveEngagementPanel from'./LiveEngagementPanel';import'./AdminShell.css';
 const groups=[
  {title:'الرئيسية',links:[['/','لوحة التحكم','⌂',true],['orders','الطلبات','🛍️'],['customers','العملاء','👤']]},
- {title:'المتجر',links:[['products','المنتجات','📦'],['categories','الأقسام','▦'],['store-customizer','تخصيص المتجر','✦'],['payment-methods','طرق الدفع','▣']]},
- {title:'التسويق',links:[['banners','البنرات','🖼️'],['campaigns','الحملات','📣'],['offers','العروض والخصومات','％'],['coupons','الكوبونات','★'],['gift-cards','بطاقات الهدايا','🎁'],['loyalty','النقاط والولاء','◆']]},
+ {title:'المتجر',links:[['products','المنتجات','📦'],['products/add','إضافة منتج','＋'],['categories','الأقسام','▦'],['store-customizer','تخصيص المتجر','✦'],['payment-methods','طرق الدفع','▣']]},
+ {title:'التسويق والنمو',links:[['banners','البنرات','🖼️'],['campaigns','الحملات','📣'],['offers','العروض والخصومات','％'],['coupons','الكوبونات','★'],['gift-cards','بطاقات الهدايا','🎁'],['loyalty','النقاط والولاء','◆']]},
  {title:'التجار والشركاء',links:[['merchants','التجار','🏪'],['models','المودلز','◎']]},
- {title:'خدمة العملاء',links:[['customer-service','خدمة العملاء','🎧']]},
+ {title:'خدمة العملاء',links:[['customer-service','مركز خدمة العملاء','🎧'],['support-tickets','تذاكر الدعم','▣']]},
  {title:'المحتوى والبث',links:[['studio','استديو MYBRAND','✦'],['trend','Trend Hub','↗'],['live','البث المباشر','●']]},
  {title:'الإدارة والنظام',links:[['staff','الفريق والصلاحيات','✓'],['reports','التقارير','▥'],['settings','الإعدادات','⚙']]}
 ];
