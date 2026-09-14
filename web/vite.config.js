@@ -7,16 +7,20 @@ const railwayHosts = railwayPublicDomain
   ? [railwayPublicDomain]
   : ['.up.railway.app'];
 
+// Railway healthchecks originate from healthcheck.railway.app.
+// Vite preview rejects unknown Host headers unless they are explicitly allowed.
+const allowedRailwayHosts = ['healthcheck.railway.app', ...railwayHosts];
+
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: Number(process.env.PORT) || 5174,
+    port: Number(process.env.PORT) || 5173,
     host: '0.0.0.0',
-    allowedHosts: ['localhost', '127.0.0.1', ...railwayHosts],
+    allowedHosts: ['localhost', '127.0.0.1', ...allowedRailwayHosts],
   },
   preview: {
-    port: Number(process.env.PORT) || 5174,
+    port: Number(process.env.PORT) || 5173,
     host: '0.0.0.0',
-    allowedHosts: ['localhost', '127.0.0.1', ...railwayHosts],
+    allowedHosts: ['localhost', '127.0.0.1', ...allowedRailwayHosts],
   },
 });
