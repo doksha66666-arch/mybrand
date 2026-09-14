@@ -1,0 +1,15 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../api/client';
+import './BannerPlacement.css';
+
+export default function BannerPlacement({ placement }) {
+  const [banners, setBanners] = useState([]);
+  useEffect(() => {
+    let active = true;
+    api.get('/banners', { params: { placement } }).then(({ data }) => active && setBanners(data.banners || [])).catch(() => active && setBanners([]));
+    return () => { active = false; };
+  }, [placement]);
+  if (!banners.length) return null;
+  return <section className="mybrand-page-banners" aria-label="بنرات الصفحة">{banners.map((banner) => <div className="mybrand-page-banner" key={banner._id}>{banner.buttonLink ? <Link to={banner.buttonLink}><img src={banner.image} alt={banner.titleAr || 'بانر'} loading="lazy" /></Link> : <img src={banner.image} alt={banner.titleAr || 'بانر'} loading="lazy" />}</div>)}</section>;
+}

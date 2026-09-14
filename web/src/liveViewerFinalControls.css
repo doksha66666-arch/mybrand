@@ -1,0 +1,12 @@
+.mybrand-live .viewer-reels .viewer-top span,.mybrand-live .viewer-reels .viewer-top b,.mybrand-live .viewer-reels .viewer-actions,.mybrand-live .viewer-reels .live-progress{display:none!important}.mybrand-live .viewer-reels .viewer-bottom{padding-right:16px!important}.mybrand-live .viewer-reels .viewer-bottom .connection{display:none!important}.mybrand-live .viewer-reels .viewer-bottom form{margin-top:10px}.mybrand-live .viewer-reels .viewer-buy-button{display:flex!important;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin:10px 0 8px;border:0;border-radius:999px;background:#e60023;color:#fff;font-weight:900;text-decoration:none;cursor:pointer;box-shadow:0 10px 22px rgba(0,0,0,.25)}.mybrand-live .viewer-reels .viewer-buy-button:hover{filter:brightness(.96)}
+
+/* Transparent live overlays: keep the video visible underneath the UI. */
+.mybrand-live .viewer-reels .viewer-top,
+.mybrand-live .viewer-reels .viewer-bottom{background:transparent!important}
+.mybrand-live .viewer-reels .viewer-top button,
+.mybrand-live .viewer-reels .viewer-top a,
+.mybrand-live .viewer-reels .viewer-info,
+.mybrand-live .viewer-reels .stream-info,
+.mybrand-live .viewer-reels .comment-panel,
+.mybrand-live .viewer-reels .comments{background:rgba(0,0,0,.16)!important;border-color:rgba(255,255,255,.12)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.mybrand-live .viewer-reels .viewer-bottom{background:linear-gradient(to top,rgba(0,0,0,.28),rgba(0,0,0,.08) 42%,transparent 100%)!important}

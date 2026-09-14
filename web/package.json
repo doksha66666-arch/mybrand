@@ -1,0 +1,25 @@
+{
+  "name": "mybrand-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite preview --host 0.0.0.0 --port $PORT",
+    "start:preview": "vite preview --host 0.0.0.0 --port $PORT",
+    "start:dev": "vite --host 0.0.0.0 --port $PORT"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "hls.js": "^1.6.13",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.24.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.3.1"
+  }
+}

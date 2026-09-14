@@ -1,0 +1,118 @@
+* { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #f7f8fa; color: #0F172A; }
+#root { width: 100%; min-height: 100vh; }
+a,button{transition:opacity .15s,transform .12s,box-shadow .15s,filter .12s}a:hover{opacity:.92}a:active,button:active:not(:disabled){transform:scale(.97);filter:brightness(1.04)}a:focus-visible,button:focus-visible{outline:2px solid #B08D57;outline-offset:2px}
+@media (min-width: 701px) {
+  html, body, #root { width: 100%; min-width: 0; }
+  main { width: 100% !important; max-width: none !important; margin: 0 !important; padding-bottom: 90px !important; }
+  .desktop-header { display: flex; width: 100%; }
+  .desktop-header > * { max-width: none; }
+  .premium-carousel, .products-grid, .product-grid, footer { width: 100%; }
+}
+.mybrand-splash { position: fixed; inset: 0; z-index: 99999; width: 100%; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #253451 0%, #111827 34%, #070b13 72%, #03050a 100%); color: #fff; }
+.mybrand-splash-glow { position: absolute; width: 42vw; height: 42vw; max-width: 430px; max-height: 430px; border-radius: 50%; filter: blur(70px); opacity: .24; animation: splashGlow 2.2s ease-in-out infinite alternate; pointer-events: none; }
+.mybrand-splash .glow-one { background: #d4af5a; transform: translate(-28%, -18%); }
+.mybrand-splash .glow-two { background: #5d78a8; transform: translate(32%, 22%); animation-delay: .4s; }
+.mybrand-splash-logo { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; animation: splashLogo .8s cubic-bezier(.2,.8,.2,1) both; }
+.logo-ring { width: clamp(74px, 20vw, 112px); height: clamp(74px, 20vw, 112px); border: 1px solid rgba(216,184,102,.8); border-radius: 30% 70% 45% 55% / 55% 40% 60% 45%; display: grid; place-items: center; transform: rotate(-12deg); box-shadow: 0 0 0 7px rgba(216,184,102,.05), 0 18px 60px rgba(0,0,0,.35); }
+.logo-mark { transform: rotate(12deg); font-size: clamp(38px, 10vw, 58px); font-weight: 800; font-family: Georgia, serif; color: #d8b866; text-shadow: 0 0 28px rgba(216,184,102,.22); }
+.logo-word { font-size: clamp(20px, 5vw, 30px); font-weight: 800; letter-spacing: .28em; color: #fff; margin-left: .28em; }
+.mybrand-splash-line { position: relative; z-index: 1; display: flex; gap: 7px; margin-top: 24px; }
+.mybrand-splash-line i { width: 7px; height: 7px; border-radius: 50%; background: #d8b866; animation: splashDot 1s ease-in-out infinite; }
+.mybrand-splash-line i:nth-child(2) { animation-delay: .15s; opacity: .65; }
+.mybrand-splash-line i:nth-child(3) { animation-delay: .3s; opacity: .35; }
+@keyframes splashLogo { from { opacity: 0; transform: scale(.78) translateY(18px); filter: blur(8px); } to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } }
+@keyframes splashDot { 0%,100% { transform: scale(.65); } 50% { transform: scale(1.25); } }
+@keyframes splashGlow { from { opacity: .14; } to { opacity: .3; } }
+.mobile-header { display: none; }
+.app-content-with-bottom-nav { min-height: 100vh; }
+@media (max-width: 700px) {
+  html, body, #root { width: 100%; min-width: 0; overflow-x: hidden; }
+  body { -webkit-text-size-adjust: 100%; background:#fff; }
+  .desktop-header { display: none !important; }
+  .mobile-header { display: block; position: relative; width: 100%; background: #fff; color: #111827; padding: 8px 10px 10px; border-bottom:1px solid #ECECEC; }
+  .mobile-topbar { width: 100%; min-height: 46px; display: grid; grid-template-columns: 38px 1fr 38px 38px; align-items: center; gap: 4px; direction: rtl; }
+  .mobile-logo { justify-self: center; color: #E60023; text-decoration: none; font-size: 15px; line-height: 1; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+  .mobile-icon-btn { position: relative; width: 34px; height: 34px; border: 0; border-radius: 9px; background: transparent; color: #111827; display: flex; align-items: center; justify-content: center; font-size: 17px; padding: 0; cursor: pointer; text-decoration: none; }
+  .mobile-icon-btn span { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: #E60023; color: #fff; font: 700 8px/15px Arial,sans-serif; text-align: center; }
+  .mobile-search { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 34px; margin-top: 4px; padding: 0 10px; border-radius: 8px; background: #F5F5F5; color: #A1A1AA; text-decoration: none; font-size: 8px; direction: rtl; overflow: hidden; white-space: nowrap; }
+  .mobile-search span { color: #64748B; font-size: 15px; line-height: 1; flex: 0 0 auto; }
+  .mobile-notification-panel { position: absolute !important; top: 62px !important; left: 10px !important; right: 10px !important; width: auto !important; z-index: 1000 !important; }
+  .premium-carousel { display:none !important; }
+  main { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 10px !important; overflow-x: hidden; }
+  .app-content-with-bottom-nav { padding-bottom: 82px; }
+  .app-content-with-bottom-nav main { padding-bottom: 0 !important; }
+  .mybrand-splash { height: 100dvh; }
+  .viewer { height: calc(100svh - 0px); min-height: 0; }
+  .viewer-video { inset: 0 0 auto; width: 100%; height: min(56.25vw, 58vh); aspect-ratio: 16 / 9; object-fit: cover; object-position: center; }
+  .viewer-bottom { bottom: 0; padding-top: 28px; }
+  .mybrand-live .viewer { width: 100% !important; height: min(100vw + 250px, 680px) !important; min-height: 0 !important; margin: 0 !important; border-radius: 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; justify-content: flex-start !important; }
+  .mybrand-live .viewer-video { position: relative !important; inset: auto !important; flex: 0 0 auto !important; display: block !important; width: 100% !important; height: min(100vw, 430px) !important; aspect-ratio: auto !important; object-fit: cover !important; object-position: center !important; background: #000 !important; }
+  .mybrand-live .viewer-bottom { position: relative !important; inset: auto !important; flex: 0 0 250px !important; width: 100% !important; margin: 0 !important; padding: 22px 15px 15px !important; border-radius: 0 !important; background: linear-gradient(to bottom, #05060a 0%, #05060a 100%) !important; }
+  .mybrand-live .viewer-top { z-index: 4 !important; top: 12px !important; }
+  .site-main-inner, .site-main-inner > *, main > * { max-width: 100%; min-width: 0; }
+  img, video, iframe, canvas, svg { max-width: 100%; }
+  input, select, textarea, button { max-width: 100%; }
+  table { max-width: 100%; display: block; overflow-x: auto; }
+  pre, code { max-width: 100%; overflow-x: auto; }
+  [style*="width: 100vw"] { max-width: 100% !important; }
+}
+@media (prefers-reduced-motion: reduce) { .mybrand-splash-glow, .mybrand-splash-logo, .mybrand-splash-line i { animation: none; } }
+
+/* Cart count badge: isolated to the cart item in the bottom navigation. */
+.bottom-nav .nav-item.cart { position: relative; }
+.bottom-nav .nav-item.cart .bottom-cart-badge {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(9px);
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #E60023;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 800 9px/1 Arial, sans-serif;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+}
+.bottom-nav .nav-item.cart .bottom-cart-badge:empty { display: none; }
+@media (max-width: 700px) {
+  .bottom-nav .nav-item.cart .bottom-cart-badge {
+    top: -6px;
+    transform: translateX(8px);
+  }
+
+  /* Home page uses Header's mobile bottom navigation instead of BottomNav. */
+  .mobile-bottom-nav .mobile-nav-item[href="/cart"] > span {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-bottom-nav .mobile-nav-item[href="/cart"] > span > b {
+    position: absolute;
+    top: -8px;
+    left: calc(50% + 8px);
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #E60023;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font: 800 9px/1 Arial, sans-serif;
+    white-space: nowrap;
+    z-index: 5;
+    pointer-events: none;
+  }
+}

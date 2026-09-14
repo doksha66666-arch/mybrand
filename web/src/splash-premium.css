@@ -1,0 +1,20 @@
+.mybrand-splash{background:linear-gradient(135deg,#fff 0%,#fff 45%,#fff7f8 100%);color:#111111;}
+.mybrand-splash-glow{width:42vw;height:42vw;max-width:520px;max-height:520px;filter:blur(70px);opacity:.2;animation:splashGlow 2.2s ease-in-out infinite alternate;}
+.mybrand-splash .glow-one{background:#E60023;transform:translate(-34%,-24%);}
+.mybrand-splash .glow-two{background:#FFD23F;transform:translate(36%,24%);animation-delay:.35s;}
+.mybrand-splash-logo{gap:12px;animation:splashLogo .85s cubic-bezier(.2,.8,.2,1) both;}
+.logo-ring{width:clamp(88px,20vw,126px);height:clamp(88px,20vw,126px);border:3px solid #E60023;border-radius:32px;transform:rotate(-8deg);background:#fff;box-shadow:0 18px 55px rgba(230,0,35,.18),0 0 0 10px rgba(255,210,63,.18);}
+.logo-mark{transform:rotate(8deg);font-size:clamp(48px,10vw,66px);font-weight:900;font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#E60023;text-shadow:0 5px 18px rgba(230,0,35,.14);}
+.logo-word{font-size:clamp(24px,5vw,34px);font-weight:900;letter-spacing:.16em;color:#111111;margin-left:.16em;}
+.logo-word::first-letter{color:#E60023;}
+.mybrand-splash-logo::after{content:'أهلًا بك في MYBRAND';direction:rtl;display:block;margin-top:10px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:clamp(16px,3.5vw,21px);font-weight:800;color:#111111;animation:splashWelcome .65s .35s ease both;}
+.mybrand-splash-line{gap:8px;margin-top:22px;}
+.mybrand-splash-line i{width:9px;height:9px;background:#E60023;box-shadow:0 0 12px rgba(230,0,35,.25);}
+.mybrand-splash-line i:nth-child(2){background:#FFD23F;opacity:1;}
+.mybrand-splash-line i:nth-child(3){background:#E60023;opacity:.45;}
+.mybrand-splash::after{content:'كل اللي بتحبه... أقرب ليك.';position:absolute;bottom:15%;direction:rtl;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:clamp(13px,3vw,17px);font-weight:700;color:#555;letter-spacing:.01em;animation:splashTagline .7s .65s ease both;}
+@keyframes splashLogo{from{opacity:0;transform:scale(.72) translateY(24px);filter:blur(8px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
+@keyframes splashWelcome{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes splashTagline{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes splashGlow{from{opacity:.12;transform:scale(.9)}to{opacity:.28;transform:scale(1.08)}}
+@media(max-width:700px){.mybrand-splash{height:100dvh}.mybrand-splash::after{bottom:13%}.logo-ring{border-radius:28px}}

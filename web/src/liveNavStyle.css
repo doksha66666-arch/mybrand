@@ -1,0 +1,6 @@
+@import './livePagePremium.css';
+
+.bottom-nav .nav-item.live{position:relative;margin-top:-22px}.bottom-nav .nav-item.live .live-circle{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--orange));display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 4px 10px rgba(255,59,48,.35)}.bottom-nav .nav-item.live span:last-child{color:var(--ink);font-weight:700;margin-top:2px}.bottom-nav .nav-item.live .live-circle svg{display:block}.bottom-nav{gap:0}.bottom-nav .nav-item{min-width:0;flex:1}.bottom-nav .nav-item.live,.bottom-nav .nav-item.trend{z-index:1}@media (max-width:360px){.bottom-nav .nav-item{font-size:9px}.bottom-nav .nav-item.trend .trend-circle,.bottom-nav .nav-item.live .live-circle{width:42px;height:42px}.bottom-nav .nav-item.trend,.bottom-nav .nav-item.live{margin-top:-19px}}
+
+/* Customer store: no LIVE / livestream entry point. */
+.trend-seg-tabs .trend-seg-tab:nth-child(2){display:none!important}

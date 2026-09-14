@@ -1,0 +1,126 @@
+/* MYBRAND Live — premium visual layer. UI only; WebRTC/API behavior is untouched. */
+.mybrand-live{min-height:100vh;background:radial-gradient(circle at 50% 0%,#1d2536 0,#0b0f18 42%,#05070c 100%);color:#fff;overflow:hidden}
+.mybrand-live *{box-sizing:border-box}
+.mybrand-live .live-loading{min-height:100vh;display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px}
+.mybrand-live .viewer{position:relative;width:min(100%,1180px);height:min(92vh,860px);min-height:620px;margin:24px auto;border-radius:28px;overflow:hidden;background:#05070c;box-shadow:0 28px 90px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.08);isolation:isolate}
+.mybrand-live .viewer-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#020306}
+.mybrand-live .viewer::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to bottom,rgba(0,0,0,.58),transparent 25%,transparent 48%,rgba(0,0,0,.78) 100%)}
+.mybrand-live .viewer-top{position:absolute;z-index:5;top:18px;left:18px;right:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none}
+.mybrand-live .viewer-top>*{pointer-events:auto}
+.mybrand-live .viewer-top button,.mybrand-live .viewer-top a{border:1px solid rgba(255,255,255,.16);background:rgba(8,11,18,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#fff;border-radius:999px;padding:9px 13px;text-decoration:none;font-weight:800;box-shadow:0 8px 25px rgba(0,0,0,.22)}
+.mybrand-live .viewer-bottom{position:absolute;z-index:4;left:0;right:0;bottom:0;padding:26px 28px 22px;display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,38%);gap:22px;align-items:end;background:linear-gradient(to top,rgba(3,5,9,.98) 0%,rgba(3,5,9,.84) 62%,transparent 100%)}
+.mybrand-live .viewer-bottom h1,.mybrand-live .viewer-bottom h2,.mybrand-live .viewer-bottom h3{margin:0;color:#fff}
+.mybrand-live .viewer-bottom p{margin:8px 0 0;color:rgba(255,255,255,.72);line-height:1.7}
+.mybrand-live .viewer-bottom button{border:0;border-radius:14px;cursor:pointer}
+.mybrand-live .live-badge,.mybrand-live [class*="live-badge"]{display:inline-flex;align-items:center;gap:7px;width:max-content;padding:8px 12px;border-radius:999px;background:rgba(225,29,72,.92);color:#fff;font-size:12px;font-weight:900;box-shadow:0 10px 30px rgba(225,29,72,.28);backdrop-filter:blur(10px)}
+.mybrand-live .viewer .live-badge{position:absolute;z-index:5;top:20px;right:20px}
+.mybrand-live .viewer .live-badge::first-letter{color:#fff}
+.mybrand-live .viewer .viewer-info,.mybrand-live .viewer .stream-info{display:flex;align-items:center;gap:12px}
+.mybrand-live .viewer .viewer-info img,.mybrand-live .viewer .stream-info img{width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.8)}
+.mybrand-live .comments,.mybrand-live .comment-panel,.mybrand-live [class*="comments"]{scrollbar-width:thin}
+.mybrand-live .viewer-bottom .comments,.mybrand-live .viewer-bottom .comment-panel{max-height:280px;overflow:auto;padding:12px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.mybrand-live .comments>*{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.mybrand-live .comments>*:last-child{border-bottom:0}
+.mybrand-live form{display:flex;gap:8px}
+.mybrand-live form input,.mybrand-live input,.mybrand-live textarea{width:100%;min-height:44px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:rgba(255,255,255,.075);color:#fff;padding:10px 13px;outline:0}
+.mybrand-live form input::placeholder,.mybrand-live input::placeholder,.mybrand-live textarea::placeholder{color:rgba(255,255,255,.45)}
+.mybrand-live form input:focus,.mybrand-live input:focus,.mybrand-live textarea:focus{border-color:rgba(216,184,102,.75);box-shadow:0 0 0 3px rgba(216,184,102,.12)}
+.mybrand-live form button{min-width:92px;padding:10px 16px;background:linear-gradient(135deg,#d8b866,#a9823e);color:#111;font-weight:900;box-shadow:0 10px 24px rgba(216,184,102,.18)}
+.mybrand-live .empty,.mybrand-live .count{position:absolute;z-index:4;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle,rgba(28,37,54,.94),rgba(3,5,9,.98));gap:10px}
+.mybrand-live .empty{font-size:42px}
+.mybrand-live .empty b{font-size:22px}
+.mybrand-live .empty span{font-size:14px;color:rgba(255,255,255,.62)}
+.mybrand-live .count b{font-size:96px;line-height:1;color:#d8b866;text-shadow:0 12px 45px rgba(216,184,102,.25)}
+.mybrand-live .count span{font-size:15px;color:rgba(255,255,255,.7)}
+.mybrand-live .studio{width:min(100%,1320px);margin:0 auto;padding:28px 22px 70px}
+.mybrand-live .studio-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.75fr);gap:22px;align-items:stretch}
+.mybrand-live .preview{position:relative;min-height:620px;border-radius:28px;overflow:hidden;background:#03050a;box-shadow:0 25px 70px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.08)}
+.mybrand-live .preview video{width:100%;height:100%;min-height:620px;display:block;object-fit:cover;background:#000}
+.mybrand-live .panel{border-radius:26px;padding:24px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.035));border:1px solid rgba(255,255,255,.1);box-shadow:0 22px 55px rgba(0,0,0,.28);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.mybrand-live .panel h2{margin:0 0 24px;font-size:24px;color:#fff}
+.mybrand-live .panel label{display:block;margin:14px 0 7px;color:rgba(255,255,255,.72);font-size:13px;font-weight:800}
+.mybrand-live .panel textarea{min-height:110px;resize:vertical}
+.mybrand-live .panel button{width:100%;min-height:48px;margin-top:12px;border:0;border-radius:14px;cursor:pointer;font-weight:900}
+.mybrand-live .panel button[type="submit"],.mybrand-live .panel .primary{background:linear-gradient(135deg,#d8b866,#a9823e);color:#111}
+.mybrand-live .alert{width:min(100%,900px);margin:0 auto 18px;padding:13px 16px;border-radius:14px;background:rgba(225,29,72,.14);border:1px solid rgba(225,29,72,.35);color:#fecdd3;font-weight:800}
+.mybrand-live .status,.mybrand-live .viewer-count{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);font-size:12px;font-weight:800}
+.mybrand-live [class*="stream-list"],.mybrand-live [class*="streams"]{display:flex;gap:10px;overflow:auto;padding:10px 2px;scrollbar-width:thin}
+.mybrand-live [class*="stream-list"] button,.mybrand-live [class*="streams"] button{flex:0 0 auto;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.055);color:#fff;padding:10px 13px;cursor:pointer}
+
+/* Phase 2 — stronger hierarchy, touch controls and commerce-ready surfaces. */
+.mybrand-live .viewer-bottom{padding-top:58px}
+.mybrand-live .viewer-bottom>*{min-width:0}
+.mybrand-live .viewer-bottom .stream-info,.mybrand-live .viewer-bottom .viewer-info{padding:10px 12px;border-radius:18px;background:rgba(8,11,18,.42);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.mybrand-live .viewer-bottom .stream-info strong,.mybrand-live .viewer-bottom .viewer-info strong{font-size:15px;font-weight:900}
+.mybrand-live .viewer-bottom .stream-info small,.mybrand-live .viewer-bottom .viewer-info small{display:block;margin-top:3px;color:rgba(255,255,255,.58);font-size:11px}
+.mybrand-live .viewer-bottom .comments,.mybrand-live .viewer-bottom .comment-panel{box-shadow:0 14px 35px rgba(0,0,0,.18)}
+.mybrand-live .viewer-bottom .comment-panel form{margin-top:10px}
+.mybrand-live .viewer-bottom .comment-panel button{background:linear-gradient(135deg,#d8b866,#a9823e);color:#111;font-weight:900}
+.mybrand-live .viewer-bottom button:not(.icon-button),.mybrand-live .viewer-top button{font-family:inherit}
+.mybrand-live .viewer-top .viewer-count,.mybrand-live .viewer-top .status{background:rgba(8,11,18,.68);border-color:rgba(255,255,255,.12)}
+.mybrand-live .viewer-top a:hover,.mybrand-live .viewer-top button:hover{transform:translateY(-1px);filter:brightness(1.08);opacity:1}
+.mybrand-live .panel{position:relative}
+.mybrand-live .panel::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.06),transparent 38%)}
+.mybrand-live .panel>*{position:relative}
+.mybrand-live .panel input,.mybrand-live .panel textarea{font-size:14px}
+.mybrand-live .panel button:disabled{opacity:.5;cursor:not-allowed;filter:none;transform:none}
+.mybrand-live .preview::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.48),transparent 28%)}
+.mybrand-live .preview .live-badge{top:18px;right:18px;z-index:8}
+.mybrand-live .preview .count,.mybrand-live .preview .empty{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.mybrand-live [class*="product"]{border-radius:18px;overflow:hidden}
+.mybrand-live [class*="product"] img{max-width:100%;object-fit:cover}
+
+@media (max-width:900px){
+  .mybrand-live .viewer{width:100%;height:100svh;min-height:0;margin:0;border-radius:0;box-shadow:none}
+  .mybrand-live .viewer-bottom{grid-template-columns:1fr;gap:10px;padding:22px 16px calc(18px + env(safe-area-inset-bottom));padding-top:58px}
+  .mybrand-live .viewer-bottom .comments,.mybrand-live .viewer-bottom .comment-panel{max-height:180px}
+  .mybrand-live .studio{padding:0 10px 78px}
+  .mybrand-live .studio-grid{grid-template-columns:1fr;gap:12px}
+  .mybrand-live .preview,.mybrand-live .preview video{min-height:0;height:min(72svh,680px)}
+  .mybrand-live .panel{border-radius:20px;padding:18px}
+}
+
+@media (max-width:600px){
+  .mybrand-live .viewer-video{height:100%}
+  .mybrand-live .viewer-top{top:10px;left:10px;right:10px}
+  .mybrand-live .viewer-top button,.mybrand-live .viewer-top a{padding:8px 10px;font-size:12px}
+  .mybrand-live .viewer-bottom{padding:18px 12px calc(14px + env(safe-area-inset-bottom));padding-top:52px}
+  .mybrand-live .viewer-bottom p{font-size:13px}
+  .mybrand-live .viewer-bottom .comments,.mybrand-live .viewer-bottom .comment-panel{max-height:150px}
+  .mybrand-live .viewer .live-badge{top:12px;right:12px}
+  .mybrand-live .count b{font-size:76px}
+  .mybrand-live .viewer-bottom .stream-info,.mybrand-live .viewer-bottom .viewer-info{padding:8px 10px}
+  .mybrand-live form{gap:6px}
+  .mybrand-live form button{min-width:76px;padding:9px 10px}
+  .mybrand-live .preview,.mybrand-live .preview video{height:68svh}
+}
+
+@media (prefers-reduced-motion:no-preference){
+  .mybrand-live .live-badge{animation:mybrandLivePulse 1.8s ease-in-out infinite}
+  .mybrand-live .viewer-top a,.mybrand-live .viewer-top button{transition:transform .18s ease,filter .18s ease}
+}
+@keyframes mybrandLivePulse{0%,100%{box-shadow:0 10px 30px rgba(225,29,72,.25)}50%{box-shadow:0 10px 38px rgba(225,29,72,.48)}}
+
+/* Full-height viewer frame — visual-only, no WebRTC/API changes. */
+@media (min-width:901px){
+  .mybrand-live .viewer{width:100%;max-width:none;height:100dvh;min-height:100dvh;margin:0;border-radius:0;box-shadow:none}
+}
+@media (max-width:900px){
+  .mybrand-live .viewer{width:100vw;height:100dvh;min-height:100dvh;max-height:none;margin:0;border-radius:0;box-shadow:none}
+}
+.mybrand-live .viewer-video{height:100%;min-height:100%;object-fit:cover}
+
+/* Final mobile viewer frame: pin the live template to the real viewport. UI-only. */
+@media (max-width:900px){
+  html,body,#root{min-height:100%;margin:0}
+  .mybrand-live{position:fixed;inset:0;width:100vw;height:100dvh;min-height:100dvh;overflow:hidden;z-index:9999}
+  .mybrand-live .viewer-reels{position:absolute;inset:0;width:100%;height:100%;min-height:0;max-height:none;margin:0;padding:0;display:block;overflow:hidden}
+  .mybrand-live .viewer-reels-stage{position:absolute;inset:0;width:100%;height:100%;max-width:none;margin:0;overflow:hidden}
+  .mybrand-live .viewer-video{position:absolute;inset:0;width:100%;height:100%;min-height:0;object-fit:cover}
+  .mybrand-live .viewer-bottom{position:absolute;left:0;right:0;bottom:0;width:100%;height:auto;min-height:198px;max-height:42%;overflow:auto;padding:15px 64px 14px 12px;background:linear-gradient(transparent,#05060a 22%,#05060a 100%)}
+  .mybrand-live .viewer-actions{position:absolute;z-index:21;right:10px;bottom:calc(198px + 18px);display:flex;flex-direction:column;gap:10px}
+}
+@media (max-width:390px){
+  .mybrand-live .viewer-bottom{min-height:188px;max-height:44%;padding-right:60px}
+  .mybrand-live .viewer-actions{bottom:calc(188px + 18px)}
+}

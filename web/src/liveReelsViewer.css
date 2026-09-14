@@ -1,0 +1,34 @@
+/* Clean live viewer presentation with bottom interaction icons. */
+body:has(.mybrand-live .viewer) { background:#000 !important; overflow:hidden !important; }
+.mybrand-live:has(.viewer){position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;background:#000!important;overflow:hidden!important;z-index:9990!important;}
+.mybrand-live .viewer{position:relative!important;width:100vw!important;height:100dvh!important;max-width:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important;background:#000!important;}
+.mybrand-live .viewer-video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;background:#000!important;z-index:1!important;}
+.mybrand-live .viewer::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0) 42%,rgba(0,0,0,.72));}
+.mybrand-live .viewer-top{display:none!important;}
+
+/* Interaction icons: visible and pinned to the bottom-right of the viewer. */
+.mybrand-live .viewer .viewer-actions,
+.mybrand-live .viewer .actions,
+.mybrand-live .viewer .viewer-stats,
+.mybrand-live .viewer .likes,
+.mybrand-live .viewer .like{display:flex!important;position:absolute!important;right:12px!important;bottom:max(18px,env(safe-area-inset-bottom))!important;z-index:8!important;flex-direction:column!important;align-items:center!important;gap:10px!important;}
+.mybrand-live .viewer .viewer-actions button,
+.mybrand-live .viewer .actions button,
+.mybrand-live .viewer .likes button,
+.mybrand-live .viewer .like button,
+.mybrand-live .viewer button[aria-label*="إعجاب"],
+.mybrand-live .viewer button[aria-label*="كتم"],
+.mybrand-live .viewer button[aria-label*="صوت"],
+.mybrand-live .viewer button[title*="إعجاب"],
+.mybrand-live .viewer button[title*="كتم"],
+.mybrand-live .viewer button[title*="الصوت"]{display:flex!important;align-items:center!important;justify-content:center!important;width:48px!important;height:48px!important;padding:0!important;border:1px solid rgba(255,255,255,.2)!important;border-radius:50%!important;background:rgba(0,0,0,.45)!important;color:#fff!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;z-index:9!important;}
+.mybrand-live .viewer-video{muted:false!important;}
+.mybrand-live .viewer-bottom{left:20px!important;right:80px!important;bottom:max(18px,env(safe-area-inset-bottom))!important;padding:0!important;background:transparent!important;z-index:5!important;}
+.mybrand-live .viewer-bottom strong{font-size:clamp(18px,2.6vw,28px)!important;text-shadow:0 2px 18px rgba(0,0,0,.7)!important;}
+.mybrand-live .viewer-bottom>span{color:#fff!important;max-width:760px!important;line-height:1.55!important;text-shadow:0 2px 12px rgba(0,0,0,.7)!important;}
+.mybrand-live .comments{max-height:150px!important;overflow:auto!important;margin-bottom:12px!important;}
+.mybrand-live .comments div{background:rgba(0,0,0,.42)!important;backdrop-filter:blur(10px)!important;}
+.mybrand-live .viewer-bottom form{margin-top:12px!important;max-width:760px!important;}
+.mybrand-live .viewer-bottom input{background:rgba(0,0,0,.5)!important;color:#fff!important;border:1px solid rgba(255,255,255,.25)!important;backdrop-filter:blur(10px)!important;}
+.mybrand-live .retry{z-index:10!important;border-radius:999px!important;}
+@media (max-width:760px){.mybrand-live .viewer .viewer-actions,.mybrand-live .viewer .actions,.mybrand-live .viewer .viewer-stats,.mybrand-live .viewer .likes,.mybrand-live .viewer .like{right:10px!important;bottom:max(14px,env(safe-area-inset-bottom))!important;gap:8px!important}.mybrand-live .viewer .viewer-actions button,.mybrand-live .viewer .actions button,.mybrand-live .viewer .likes button,.mybrand-live .viewer .like button,.mybrand-live .viewer button[aria-label*="إعجاب"],.mybrand-live .viewer button[aria-label*="كتم"],.mybrand-live .viewer button[aria-label*="صوت"],.mybrand-live .viewer button[title*="إعجاب"],.mybrand-live .viewer button[title*="كتم"],.mybrand-live .viewer button[title*="الصوت"]{width:44px!important;height:44px!important}.mybrand-live .viewer-bottom{left:12px!important;right:64px!important}.mybrand-live .comments{max-height:120px!important;}}
