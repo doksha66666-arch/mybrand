@@ -27,6 +27,7 @@ export default function TrackingPage() {
   const [order, setOrder] = useState(stateOrder);
   const [loading, setLoading] = useState(!stateOrder);
   const [error, setError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -69,16 +70,34 @@ export default function TrackingPage() {
   const shippingAddress = asObject(order.shippingAddress);
   const customer = asObject(order.customer);
   const trackingValue = order.trackingNumber || order.orderNumber || '';
+  const canCancel = ['pending', 'confirmed'].includes(current);
   const copyTracking = async () => { try { if (navigator.clipboard && trackingValue) await navigator.clipboard.writeText(String(trackingValue)); } catch (_) {} };
+  const cancelOrder = async () => {
+    if (!order?._id || cancelling || !canCancel) return;
+    const confirmed = window.confirm('هل أنت متأكد من إلغاء هذا الطلب؟ سيتم إعادة المخزون والقسيمة والنقاط المستبدلة إن وجدت.');
+    if (!confirmed) return;
+    try {
+      setCancelling(true);
+      setError('');
+      const { data } = await api.post(`/orders/${encodeURIComponent(order._id)}/cancel`);
+      const next = normalizeOrder(data);
+      if (next) setOrder(next);
+    } catch (e) {
+      setError(e?.response?.data?.message || 'تعذر إلغاء الطلب. قد يكون دخل مرحلة التجهيز بالفعل.');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return <div className="tracking-app" dir="rtl">
     <div className="tracking-topbar"><button className="tracking-back-btn" type="button" onClick={() => navigate('/orders')}>‹</button><h1>تتبع الطلب</h1><button className="tracking-support-btn" type="button" onClick={() => navigate('/contact')}>💬</button></div>
     <div className="status-hero"><div className="status-badge">{current==='delivered'?'✓ تم التسليم':current==='cancelled'?'✕ ملغي':'🚚 '+(labels[current]||'قيد الانتظار')}</div><h2>{order.orderNumber || '—'}</h2><p>{current==='delivered'?'تم تسليم طلبك بنجاح':current==='cancelled'?'تم إلغاء هذا الطلب':'يمكنك متابعة حالة طلبك من هنا'}</p><div className="order-meta"><div><span>الإجمالي</span><b>{Number(order.total || 0).toLocaleString('ar-EG')} ج.م</b></div><div><span>الحالة</span><b>{labels[current] || 'قيد الانتظار'}</b></div></div></div>
     {trackingValue && <div className="track-strip"><div><div className="track-label">رقم تتبع الشحنة</div><div className="track-value">{trackingValue}</div></div><button className="copy-btn" type="button" onClick={copyTracking}>نسخ</button></div>}
     <div className="tracking-block"><div className="tracking-block-title">حالة الطلب</div><div className="timeline">{steps.map((step, index) => <div className={`timeline-item ${index < currentIndex ? 'done' : index === currentIndex ? 'current' : 'todo'}`} key={step}><div className="timeline-dot">{index < currentIndex ? '✓' : ''}</div><TimelineBody title={labels[step]} text={index === currentIndex ? 'الحالة الحالية للطلب' : ''} /></div>)}</div></div>
+    {error && <div className="tracking-block"><div className="tracking-block-title">{error}</div></div>}
     {Object.keys(shippingAddress).length > 0 && <div className="tracking-block"><div className="tracking-block-title">عنوان التوصيل</div><div className="address-row"><div className="address-icon">📍</div><div className="address-text"><b>{customer.name || ''}{customer.phone ? ` — ${customer.phone}` : ''}</b><span>{[shippingAddress.street, shippingAddress.city].filter(Boolean).join(' — ') || 'عنوان التوصيل مسجل في الطلب'}</span></div></div></div>}
     <div className="tracking-block"><div className="tracking-block-title">محتويات الطلب ({items.length})</div>{items.length ? items.map((item, index) => { const attrs = optionEntries(item); const product = asObject(item.product); const image = Array.isArray(product.images) ? product.images[0] : (item.image || ''); const title = product.nameAr || product.name || item.nameSnapshot || item.name || 'منتج'; const unitPrice = item.unitPrice ?? item.price ?? 0; return <div className="order-item" key={item._id || `${title}-${index}`}><div className="order-img">{image ? <img src={image} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} /> : null}</div><div className="order-body"><div className="order-title">{title}</div><div className="order-attrs">{attrs.map(([name, value]) => <span key={`${name}-${value}`} style={{display:'block'}}>{name}: {value}</span>)}<span>الكمية: {Number(item.quantity || 0)}</span></div><div className="order-price">{Number(unitPrice || 0).toLocaleString('ar-EG')} ج.م</div></div></div>; }) : <div className="tracking-block-title">لا توجد تفاصيل منتجات متاحة.</div>}</div>
-    <div className="action-row"><button className="action-btn" type="button" onClick={() => navigate('/contact')}>💬 تواصل مع الدعم</button><button className="action-btn primary" type="button" onClick={() => navigate('/orders')}>العودة إلى طلباتي</button></div>
+    <div className="action-row">{canCancel && <button className="action-btn" type="button" onClick={cancelOrder} disabled={cancelling}>{cancelling ? 'جارٍ الإلغاء...' : '✕ إلغاء الطلب'}</button>}<button className="action-btn" type="button" onClick={() => navigate('/contact')}>💬 تواصل مع الدعم</button><button className="action-btn primary" type="button" onClick={() => navigate('/orders')}>العودة إلى طلباتي</button></div>
   </div>;
 }
 function TimelineBody({ title, text }) { return <div className="timeline-body"><b>{title}</b>{text && <span>{text}</span>}</div>; }
