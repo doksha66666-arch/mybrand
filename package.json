@@ -1,26 +1,29 @@
 {
-  "name": "mybrand-unified-dashboard",
+  "name": "mybrand-backend",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "workspaces": [
-    "merchant-dashboard"
-  ],
-  "engines": {
-    "node": ">=20"
-  },
+  "description": "Backend API for MYBRAND e-commerce app",
+  "main": "server.js",
   "scripts": {
-    "build": "npm --workspace merchant-dashboard run build",
-    "start": "npm --workspace merchant-dashboard run start -- --host 0.0.0.0 --port $PORT"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
-    "axios": "^1.7.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.24.0"
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.5.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.2.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^9.0.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.3.1"
+    "nodemon": "^3.1.4"
   }
 }
