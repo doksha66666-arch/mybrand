@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import '../components/AdminShell.css';
 
 export default function LoginPage() {
   const { login } = useAdminAuth();
@@ -16,7 +17,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      navigate('/admin', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'تعذر تسجيل الدخول');
     } finally {
@@ -25,41 +26,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={styles.wrapper}>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h1 style={styles.title}>MYBRAND — لوحة التحكم</h1>
-        {error && <p style={styles.error}>{error}</p>}
-        <input
-          style={styles.input}
-          type="email"
-          placeholder="البريد الإلكتروني"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-          required
-        />
-        <input
-          style={styles.input}
-          type="password"
-          placeholder="كلمة المرور"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-        <button style={{ ...styles.button, opacity: submitting ? 0.7 : 1 }} type="submit" disabled={submitting}>
-          {submitting ? 'جارٍ الدخول...' : 'دخول'}
-        </button>
-      </form>
-    </div>
+    <main className="admin-login" dir="rtl">
+      <div className="login-decoration login-decoration-a" />
+      <div className="login-decoration login-decoration-b" />
+      <section className="login-card">
+        <div className="login-brand">
+          <div className="login-mark">M</div>
+          <div><strong>MYBRAND</strong><span>مركز الإدارة</span></div>
+        </div>
+        <div className="login-copy">
+          <span>PRIVATE ADMIN AREA</span>
+          <h1>أهلًا بك من جديد</h1>
+          <p>سجّل الدخول للوصول إلى إدارة MYBRAND.</p>
+        </div>
+        {error && <div className="login-error" role="alert">{error}</div>}
+        <form onSubmit={handleSubmit} className="login-form">
+          <label>البريد الإلكتروني<input type="email" placeholder="admin@mybrand.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required /></label>
+          <label>كلمة المرور<input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required /></label>
+          <button className="login-submit" type="submit" disabled={submitting}><span>{submitting ? 'جارٍ التحقق...' : 'دخول إلى لوحة التحكم'}</span><b>←</b></button>
+        </form>
+        <div className="login-foot"><span>وصول خاص بالمشرفين فقط</span><span className="login-secure">● اتصال آمن</span></div>
+      </section>
+    </main>
   );
 }
-
-const styles = {
-  wrapper: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#F8FAFC' },
-  form: { background: '#fff', padding: 32, borderRadius: 16, width: 340, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
-  title: { fontSize: 20, marginBottom: 20, textAlign: 'center', color: '#0F172A' },
-  input: { width: '100%', padding: 12, marginBottom: 12, borderRadius: 8, border: '1px solid #E2E8F0', boxSizing: 'border-box' },
-  button: { width: '100%', padding: 12, borderRadius: 8, border: 'none', background: '#0F172A', color: '#fff', fontWeight: 600, cursor: 'pointer' },
-  error: { color: '#DC2626', marginBottom: 12, fontSize: 14 },
-};
