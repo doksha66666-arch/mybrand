@@ -69,7 +69,7 @@ export default function App() {
               <Route path="campaigns" element={<PermissionRoute path="/campaigns"><CampaignsPage /></PermissionRoute>} />
               <Route path="offers" element={<PermissionRoute path="/offers"><OffersPage /></PermissionRoute>} />
               <Route path="coupons" element={<PermissionRoute path="/coupons"><CouponsPage /></PermissionRoute>} />
-              <Route path="store-customizer" element={<PermissionRoute path="/store-customizer"><StoreCustomizerPage /></PermissionRoute>} />
+              <Route path="store-customizer" element={<PermissionRoute path="/store-customizer" action="edit"><StoreCustomizerPage /></PermissionRoute>} />
               <Route path="customer-service" element={<PermissionRoute path="/customer-service"><CustomerServicePage /></PermissionRoute>} />
               <Route path="support-tickets" element={<PermissionRoute path="/support-tickets"><SupportTicketsPage /></PermissionRoute>} />
               <Route path="live" element={<PermissionRoute path="/live"><LiveOBSPage /></PermissionRoute>} />
