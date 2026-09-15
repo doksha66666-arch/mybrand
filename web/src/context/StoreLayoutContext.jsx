@@ -27,13 +27,16 @@ export function StoreLayoutProvider({ children }) {
 export function useStoreLayout(pageId) {
   const { layouts, loading } = useContext(StoreLayoutContext);
   const configured = layouts?.[pageId];
-  const map = new Map(Array.isArray(configured) ? configured.map((item, index) => [item.id, item]) : []);
+  const map = new Map(Array.isArray(configured) ? configured.map((item) => [item.id, item]) : []);
   return {
     loading,
     getStyle(id) {
       const item = map.get(id);
       if (!item) return { order: 0 };
-      return { order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0, display: item.enabled === false ? 'none' : undefined };
+      return {
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0,
+        display: item.enabled === false ? 'none' : undefined,
+      };
     },
     isEnabled(id) {
       return !map.has(id) || map.get(id)?.enabled !== false;
