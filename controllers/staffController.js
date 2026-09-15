@@ -5,6 +5,7 @@ const allowedRoles = new Set(['super_admin', 'orders_manager', 'products_manager
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const MIN_PASSWORD_LENGTH = 12;
 const safePermissions = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+const canManageSuperAdmin = (req) => req.user?.role === 'admin' || req.staff?.role === 'super_admin';
 
 exports.listStaff = async (req, res, next) => {
   try {
@@ -25,6 +26,7 @@ exports.createStaff = async (req, res, next) => {
     if (!/^([^\s@]+)@([^\s@]+)\.([^\s@]+)$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
     if (password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ message: `كلمة مرور الموظف يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفًا على الأقل` });
     if (!allowedRoles.has(role)) return res.status(400).json({ message: 'الدور المحدد غير صالح' });
+    if (role === 'super_admin' && !canManageSuperAdmin(req)) return res.status(403).json({ message: 'لا يمكن إلا للمشرف الرئيسي إنشاء حساب super_admin' });
     const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email }).select('_id'), User.findOne({ email }).select('_id')]);
     if (staffExists || userExists) return res.status(409).json({ message: 'يوجد حساب أو مسئول مسجل بهذا البريد بالفعل' });
     const user = await User.create({ name, email, phone: phone || undefined, password, role: 'staff', isEmailVerified: true, isActive: true });
@@ -56,6 +58,7 @@ exports.updateStaff = async (req, res, next) => {
     if (!name || !email) return res.status(400).json({ message: 'الاسم والبريد الإلكتروني مطلوبان' });
     if (!/^([^\s@]+)@([^\s@]+)\.([^\s@]+)$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
     if (!allowedRoles.has(role)) return res.status(400).json({ message: 'الدور المحدد غير صالح' });
+    if (role === 'super_admin' && !canManageSuperAdmin(req)) return res.status(403).json({ message: 'لا يمكن إلا للمشرف الرئيسي ترقية عضو إلى super_admin' });
     if (email !== staff.email) {
       const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email, _id: { $ne: staff._id } }).select('_id'), User.findOne({ email }).select('_id')]);
       if (staffExists || userExists) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
