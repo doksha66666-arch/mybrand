@@ -31,6 +31,7 @@ router.post('/:id/cancel', cancelOrder);
 router.get('/reports/daily', adminOnly, getDailyReports);
 router.get('/reports/daily/:date', adminOnly, getDailyReport);
 router.post('/reports/daily/archive', adminOnly, archiveDailyReport);
+router.get('/reports/summary', adminOnly, getDashboardStats);
 router.get('/stats/summary', getDashboardStats);
 router.get('/:id', merchantOrderAccess, merchantOrderDataSanitizer, customerOrderDataSanitizer, getOrderById);
 router.get('/', adminOnly, getAllOrders);
