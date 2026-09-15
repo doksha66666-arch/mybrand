@@ -17,7 +17,11 @@ const roleDefaults = {
 const routePermission = (req) => {
   const base = String(req.baseUrl || '').replace(/^\/api\//, '').replace(/\//g, '');
   const path = String(req.path || '');
-  if (base === 'orders') return path.startsWith('/stats') ? 'dashboard' : 'orders';
+  if (base === 'orders') {
+    if (path.startsWith('/stats')) return 'dashboard';
+    if (path.startsWith('/reports')) return 'reports';
+    return 'orders';
+  }
   if (base === 'products') return 'products';
   if (base === 'categories') return 'categories';
   if (['banners','campaigns','offers','coupons','gift-cards','loyalty'].includes(base)) return 'marketing';
