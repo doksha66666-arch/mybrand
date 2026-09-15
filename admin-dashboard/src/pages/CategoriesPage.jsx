@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
+import { useAdminAuth } from '../context/AdminAuthContext';
+import { canAccess } from '../utils/permissions';
 import ImageUploader from '../components/ImageUploader';
 import './CategoriesPage.css';
 
@@ -7,6 +9,7 @@ const ICONS = ['◈','◇','✦','◆','✚','⬢','●','■','★','✿','⌂'
 const emptyForm = { nameAr: '', nameEn: '', slug: '', image: '', icon: '◈', parentCategory: '', isActive: true };
 
 export default function CategoriesPage() {
+  const { user } = useAdminAuth();
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -17,6 +20,10 @@ export default function CategoriesPage() {
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [reorderDirty, setReorderDirty] = useState(false);
+
+  const allowCreate = canAccess(user, '/categories', 'create');
+  const allowEdit = canAccess(user, '/categories', 'edit');
+  const allowDelete = canAccess(user, '/categories', 'delete');
 
   const load = async () => {
     setLoading(true);
@@ -41,7 +48,10 @@ export default function CategoriesPage() {
   const resetForm = () => { setEditingId(null); setForm(emptyForm); setError(''); };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setError(''); setSaving(true);
+    e.preventDefault();
+    const allowed = editingId ? allowEdit : allowCreate;
+    if (!allowed) return;
+    setError(''); setSaving(true);
     try {
       const payload = { ...form, parentCategory: form.parentCategory || null };
       if (editingId) await api.put(`/categories/${editingId}`, payload);
@@ -53,6 +63,7 @@ export default function CategoriesPage() {
   };
 
   const handleEdit = (category) => {
+    if (!allowEdit) return;
     setEditingId(category._id);
     setForm({
       nameAr: category.nameAr || '', nameEn: category.nameEn || '', slug: category.slug || '',
@@ -63,6 +74,7 @@ export default function CategoriesPage() {
   };
 
   const handleToggle = async (category) => {
+    if (!allowEdit) return;
     try {
       const { data } = await api.put(`/categories/${category._id}`, { isActive: !category.isActive });
       setCategories((items) => items.map((c) => c._id === category._id ? data.category : c));
@@ -70,13 +82,14 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (id) => {
+    if (!allowDelete) return;
     if (!window.confirm('حذف هذا القسم نهائيًا؟')) return;
     try { await api.delete(`/categories/${id}`); await load(); }
     catch (err) { setError(err?.response?.data?.message || 'تعذر حذف القسم'); }
   };
 
   const moveCategory = (fromId, toId) => {
-    if (!fromId || !toId || fromId === toId) return;
+    if (!allowEdit || !fromId || !toId || fromId === toId) return;
     setCategories((items) => {
       const next = [...items];
       const from = next.findIndex((c) => c._id === fromId);
@@ -89,6 +102,7 @@ export default function CategoriesPage() {
   };
 
   const saveOrder = async () => {
+    if (!allowEdit) return;
     setSaving(true); setError('');
     try {
       const { data } = await api.put('/categories/admin/reorder', { items: categories.map((c) => ({ id: c._id })) });
@@ -105,7 +119,7 @@ export default function CategoriesPage() {
     <div className="categories-page" dir="rtl">
       <div className="categories-head">
         <div><h1>إضافة وإدارة الأقسام</h1><p>نظّم أقسام MYBRAND، حدّد الأقسام الرئيسية والفرعية ورتّب ظهورها للعميل.</p></div>
-        <div className="category-actions"><button className="cat-btn primary" onClick={resetForm}>＋ قسم جديد</button></div>
+        <div className="category-actions">{allowCreate && <button className="cat-btn primary" onClick={resetForm}>＋ قسم جديد</button>}</div>
       </div>
 
       <div className="cat-kpis">
@@ -117,19 +131,16 @@ export default function CategoriesPage() {
 
       {error && <div className="form-error">{error}</div>}
 
-      <div className="cat-layout">
+      {(allowCreate || allowEdit) && <div className="cat-layout">
         <form className="cat-panel" onSubmit={handleSubmit}>
           <h3>{editingId ? 'تعديل القسم' : 'إضافة قسم جديد'}</h3>
           <div className="field"><label>اسم القسم بالعربي</label><input value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} placeholder="مثال: ملابس نسائية" required /></div>
           <div className="field"><label>اسم القسم بالإنجليزي</label><input value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} placeholder="Women's Fashion" required /></div>
           <div className="field"><label>Slug</label><input dir="ltr" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })} placeholder="womens-fashion" required /><div className="help">يُستخدم في رابط القسم داخل المتجر.</div></div>
-          <div className="two">
-            <div className="field"><label>القسم الرئيسي</label><select value={form.parentCategory} onChange={(e) => setForm({ ...form, parentCategory: e.target.value })}><option value="">قسم رئيسي</option>{categories.filter((c) => c._id !== editingId).map((c) => <option key={c._id} value={c._id}>{c.nameAr}</option>)}</select></div>
-            <div className="field"><label>الحالة</label><select value={form.isActive ? 'active' : 'inactive'} onChange={(e) => setForm({ ...form, isActive: e.target.value === 'active' })}><option value="active">مفعّل</option><option value="inactive">متوقف</option></select></div>
-          </div>
+          <div className="two"><div className="field"><label>القسم الرئيسي</label><select value={form.parentCategory} onChange={(e) => setForm({ ...form, parentCategory: e.target.value })}><option value="">قسم رئيسي</option>{categories.filter((c) => c._id !== editingId).map((c) => <option key={c._id} value={c._id}>{c.nameAr}</option>)}</select></div><div className="field"><label>الحالة</label><select value={form.isActive ? 'active' : 'inactive'} onChange={(e) => setForm({ ...form, isActive: e.target.value === 'active' })}><option value="active">مفعّل</option><option value="inactive">متوقف</option></select></div></div>
           <div className="field"><label>أيقونة القسم</label><div className="icon-grid">{ICONS.map((icon) => <button type="button" key={icon} className={`icon-option ${form.icon === icon ? 'selected' : ''}`} onClick={() => setForm({ ...form, icon })}>{icon}</button>)}</div></div>
           <div className="field"><label>صورة القسم <span>(اختياري)</span></label><div className="image-box">{form.image ? <img src={form.image} alt="معاينة القسم" /> : 'ارفع صورة للقسم أو اتركها بدون صورة'}</div><ImageUploader images={form.image ? [form.image] : []} onChange={(images) => setForm({ ...form, image: images[0] || '' })} /></div>
-          <div className="form-actions"><button className="cat-btn primary" type="submit" disabled={saving}>{saving ? 'جارٍ الحفظ...' : editingId ? 'حفظ التعديلات' : 'إضافة القسم'}</button>{editingId && <button className="cat-btn ghost" type="button" onClick={resetForm}>إلغاء</button>}</div>
+          <div className="form-actions">{editingId && <button className="cat-btn ghost" type="button" onClick={resetForm}>إلغاء</button>}<button className="cat-btn primary" type="submit" disabled={saving}>{saving ? 'جارٍ الحفظ...' : editingId ? 'حفظ التعديلات' : 'إضافة القسم'}</button></div>
         </form>
 
         <section>
@@ -137,17 +148,18 @@ export default function CategoriesPage() {
           {reorderDirty && <div className="sticky-save"><span className="help">تم تغيير الترتيب — احفظه ليظهر بنفس الشكل في المتجر.</span><button className="cat-btn primary" onClick={saveOrder} disabled={saving}>حفظ الترتيب</button></div>}
           {loading ? <div className="empty-state">جارٍ تحميل الأقسام...</div> : filtered.length === 0 ? <div className="empty-state">لا توجد أقسام مطابقة للبحث.</div> : <div className="category-list">
             {filtered.map((category) => (
-              <article key={category._id} className={`category-row ${dragId === category._id ? 'dragging' : ''} ${dragOverId === category._id ? 'drag-over' : ''}`} draggable onDragStart={() => setDragId(category._id)} onDragOver={(e) => { e.preventDefault(); setDragOverId(category._id); }} onDrop={(e) => { e.preventDefault(); moveCategory(dragId, category._id); setDragId(null); setDragOverId(null); }} onDragEnd={() => { setDragId(null); setDragOverId(null); }}>
-                <div className="drag-handle" title="اسحب لإعادة الترتيب">⠿</div>
+              <article key={category._id} className={`category-row ${dragId === category._id ? 'dragging' : ''} ${dragOverId === category._id ? 'drag-over' : ''}`} draggable={allowEdit} onDragStart={() => setDragId(category._id)} onDragOver={(e) => { if (!allowEdit) return; e.preventDefault(); setDragOverId(category._id); }} onDrop={(e) => { if (!allowEdit) return; e.preventDefault(); moveCategory(dragId, category._id); setDragId(null); setDragOverId(null); }} onDragEnd={() => { setDragId(null); setDragOverId(null); }}>
+                <div className="drag-handle" title={allowEdit ? 'اسحب لإعادة الترتيب' : 'الترتيب غير متاح'}>⠿</div>
                 <div className="cat-info"><div className="cat-icon">{category.icon || '◈'}</div><div><strong>{category.nameAr}</strong><span>{category.nameEn} · {category.slug}</span></div></div>
                 <div className="cat-parent">{category.parentCategory ? <>فرعي من<br /><b>{parentName(category.parentCategory?._id || category.parentCategory)}</b></> : 'قسم رئيسي'}</div>
                 <div className="cat-order">الترتيب<b>{Number(category.sortOrder || 0) + 1}</b></div>
-                <div className="cat-status"><span className={`status-chip ${category.isActive !== false ? 'on' : 'off'}`}>{category.isActive !== false ? 'مفعّل' : 'متوقف'}</span><div className="row-actions"><button className="icon-btn" title="تعديل" onClick={() => handleEdit(category)}>✎</button><button className="icon-btn" title={category.isActive !== false ? 'إيقاف' : 'تفعيل'} onClick={() => handleToggle(category)}>{category.isActive !== false ? '◉' : '○'}</button><button className="icon-btn" title="حذف" onClick={() => handleDelete(category._id)}>⌫</button></div></div>
+                <div className="cat-status"><span className={`status-chip ${category.isActive !== false ? 'on' : 'off'}`}>{category.isActive !== false ? 'مفعّل' : 'متوقف'}</span><div className="row-actions">{allowEdit && <><button className="icon-btn" title="تعديل" onClick={() => handleEdit(category)}>✎</button><button className="icon-btn" title={category.isActive !== false ? 'إيقاف' : 'تفعيل'} onClick={() => handleToggle(category)}>{category.isActive !== false ? '◉' : '○'}</button></>}{allowDelete && <button className="icon-btn" title="حذف" onClick={() => handleDelete(category._id)}>⌫</button>}</div></div>
               </article>
             ))}
           </div>}
         </section>
-      </div>
+      </div>}
+      {!allowCreate && !allowEdit && <div className="empty-state">حسابك لديه صلاحية مشاهدة الأقسام فقط.</div>}
     </div>
   );
 }
