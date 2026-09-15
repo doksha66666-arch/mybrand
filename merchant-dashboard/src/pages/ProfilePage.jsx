@@ -37,10 +37,7 @@ export default function ProfilePage() {
     setError('');
   }, [merchant]);
 
-  const dirty = useMemo(
-    () => JSON.stringify(form) !== JSON.stringify(savedForm),
-    [form, savedForm],
-  );
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(savedForm), [form, savedForm]);
 
   const handleChange = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -68,7 +65,8 @@ export default function ProfilePage() {
     try {
       await api.put('/merchants/me', payload);
       await refresh();
-      setSavedForm(form);
+      setForm(payload);
+      setSavedForm(payload);
       setSaved(true);
     } catch (err) {
       setError(err?.response?.data?.message || 'حدث خطأ أثناء حفظ البيانات');
