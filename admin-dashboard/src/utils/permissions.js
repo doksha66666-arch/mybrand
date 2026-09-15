@@ -13,7 +13,8 @@ const moduleForPath = (path) => {
   const clean = String(path || '/').replace(/^\//, '');
   if (!clean || clean === '/') return 'dashboard';
   const first = clean.split('/')[0];
-  if (first === 'products' || first === 'categories') return 'products';
+  if (first === 'products') return 'products';
+  if (first === 'categories') return 'categories';
   if (['orders','customers','payment-methods','merchants','models','staff','reports','settings'].includes(first)) return first === 'payment-methods' ? 'payments' : first;
   if (['banners','campaigns','offers','coupons','gift-cards','loyalty'].includes(first)) return 'marketing';
   if (['customer-service','support-tickets'].includes(first)) return 'support';
@@ -37,7 +38,7 @@ export const canAccess = (user, path, action = actionForPath(path)) => {
   if (role === 'super_admin') return true;
   const moduleName = moduleForPath(path);
   const custom = user.staffPermissions?.[moduleName];
-  if (custom && typeof custom === 'object' && custom[action] === true) return true;
+  if (custom && typeof custom === 'object' && Object.prototype.hasOwnProperty.call(custom, action)) return custom[action] === true;
   const defaults = roleDefaults[role] || {};
   if (defaults.allView) return action === 'view';
   return Array.isArray(defaults[moduleName]) && defaults[moduleName].includes(action);
