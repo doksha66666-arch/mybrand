@@ -13,7 +13,7 @@ const roles = [
 ];
 const modules = [
   ['dashboard','الرئيسية'],['orders','الطلبات'],['products','المنتجات'],['categories','الأقسام'],['customers','العملاء'],
-  ['marketing','التسويق'],['merchants','التجار'],['staff','الفريق والصلاحيات'],['studio','استديو MYBRAND'],
+  ['support','خدمة العملاء'],['marketing','التسويق'],['merchants','التجار'],['staff','الفريق والصلاحيات'],['studio','استديو MYBRAND'],
   ['payments','طرق الدفع'],['reports','التقارير'],['settings','الإعدادات']
 ];
 const actions = [['view','مشاهدة'],['create','إضافة'],['edit','تعديل'],['delete','حذف']];
