@@ -4,6 +4,7 @@ const User = require('../models/User');
 const allowedRoles = new Set(['super_admin', 'orders_manager', 'products_manager', 'marketing_manager', 'support', 'accountant', 'cashier', 'viewer']);
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const MIN_PASSWORD_LENGTH = 12;
+const safePermissions = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 
 exports.listStaff = async (req, res, next) => {
   try {
@@ -19,19 +20,13 @@ exports.createStaff = async (req, res, next) => {
     const phone = String(req.body.phone || '').trim();
     const password = String(req.body.password || '');
     const role = String(req.body.role || 'viewer');
-    const permissions = req.body.permissions && typeof req.body.permissions === 'object' && !Array.isArray(req.body.permissions) ? req.body.permissions : {};
-
+    const permissions = safePermissions(req.body.permissions);
     if (!name || !email || !password) return res.status(400).json({ message: 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
     if (password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ message: `كلمة مرور الموظف يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفًا على الأقل` });
     if (!allowedRoles.has(role)) return res.status(400).json({ message: 'الدور المحدد غير صالح' });
-
-    const [staffExists, userExists] = await Promise.all([
-      StaffMember.findOne({ email }).select('_id'),
-      User.findOne({ email }).select('_id'),
-    ]);
+    const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email }).select('_id'), User.findOne({ email }).select('_id')]);
     if (staffExists || userExists) return res.status(409).json({ message: 'يوجد حساب أو مسئول مسجل بهذا البريد بالفعل' });
-
     const user = await User.create({ name, email, phone: phone || undefined, password, role: 'staff', isEmailVerified: true, isActive: true });
     try {
       const staff = await StaffMember.create({ name, email, phone, role, permissions, isActive: true });
@@ -44,4 +39,56 @@ exports.createStaff = async (req, res, next) => {
     if (err?.code === 11000 && err?.keyPattern?.email) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
     next(err);
   }
+};
+
+exports.updateStaff = async (req, res, next) => {
+  try {
+    const staff = await StaffMember.findById(req.params.id);
+    if (!staff) return res.status(404).json({ message: 'عضو الفريق غير موجود' });
+    if (String(staff.email) === String(req.user?.email)) return res.status(400).json({ message: 'لا يمكن تعديل حسابك الإداري من هنا' });
+    const name = String(req.body.name ?? staff.name).trim();
+    const email = normalizeEmail(req.body.email ?? staff.email);
+    const phone = String(req.body.phone ?? staff.phone ?? '').trim();
+    const role = String(req.body.role ?? staff.role);
+    if (!name || !email) return res.status(400).json({ message: 'الاسم والبريد الإلكتروني مطلوبان' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
+    if (!allowedRoles.has(role)) return res.status(400).json({ message: 'الدور المحدد غير صالح' });
+    if (email !== staff.email) {
+      const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email, _id: { $ne: staff._id } }).select('_id'), User.findOne({ email }).select('_id')]);
+      if (staffExists || userExists) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
+    }
+    staff.name = name; staff.email = email; staff.phone = phone; staff.role = role;
+    if (req.body.permissions !== undefined) staff.permissions = safePermissions(req.body.permissions);
+    if (req.body.isActive !== undefined) staff.isActive = Boolean(req.body.isActive);
+    await staff.save();
+    const user = await User.findOne({ email: staff.email === email ? email : staff.email });
+    const account = await User.findOne({ _id: user?._id || undefined, role: 'staff' }).select('+password');
+    if (!account) return res.status(404).json({ message: 'حساب الدخول المرتبط غير موجود' });
+    account.name = name;
+    account.email = email;
+    account.phone = phone || undefined;
+    account.isActive = staff.isActive;
+    if (req.body.password !== undefined && String(req.body.password)) {
+      const password = String(req.body.password);
+      if (password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ message: `كلمة المرور يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفًا على الأقل` });
+      account.password = password;
+    }
+    await account.save();
+    res.json({ staff: { ...staff.toObject(), userId: account._id } });
+  } catch (err) {
+    if (err?.code === 11000 && err?.keyPattern?.email) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
+    next(err);
+  }
+};
+
+exports.removeStaff = async (req, res, next) => {
+  try {
+    const staff = await StaffMember.findById(req.params.id);
+    if (!staff) return res.status(404).json({ message: 'عضو الفريق غير موجود' });
+    if (String(staff.email) === String(req.user?.email)) return res.status(400).json({ message: 'لا يمكن حذف حسابك الإداري من هنا' });
+    const account = await User.findOne({ email: staff.email, role: 'staff' }).select('_id');
+    await StaffMember.deleteOne({ _id: staff._id });
+    if (account) await User.deleteOne({ _id: account._id });
+    res.json({ message: 'تم حذف عضو الفريق وحساب الدخول المرتبط به' });
+  } catch (err) { next(err); }
 };
