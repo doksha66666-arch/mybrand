@@ -21,27 +21,17 @@ router.get('/admin/all', protect, adminOnly, getAllProductsAdmin);
 router.get('/', getProducts);
 router.get('/:slug', getProductBySlug);
 
-// الإضافة: الأدمن دايمًا مسموح، والتاجر لازم يكون معتمد أولًا
-router.post('/', protect, (req, res, next) => {
-  if (req.user.role === 'admin') return next();
-  if (req.user.role === 'merchant') return approvedMerchantOnly(req, res, next);
-  return res.status(403).json({ message: 'هذا الإجراء متاح للأدمن أو التجار المعتمدين فقط' });
-}, createProduct);
+// الموظفون يمرون عبر RBAC، والتجار يحتاجون اعتمادًا مسبقًا.
+const adminOrApprovedMerchant = (req, res, next) => {
+  if (req.user?.role === 'merchant') return approvedMerchantOnly(req, res, next);
+  return adminOnly(req, res, next);
+};
 
-// التعديل والحذف: الأدمن دايمًا مسموح، والتاجر لازم يكون معتمد + مالك المنتج (يتحقق منه الكنترولر)
-router.put('/:id', protect, (req, res, next) => {
-  if (req.user.role === 'admin') return next();
-  if (req.user.role === 'merchant') return approvedMerchantOnly(req, res, next);
-  return res.status(403).json({ message: 'هذا الإجراء متاح للأدمن أو التجار المعتمدين فقط' });
-}, updateProduct);
+router.post('/', protect, adminOrApprovedMerchant, createProduct);
+router.put('/:id', protect, adminOrApprovedMerchant, updateProduct);
+router.delete('/:id', protect, adminOrApprovedMerchant, deleteProduct);
 
-router.delete('/:id', protect, (req, res, next) => {
-  if (req.user.role === 'admin') return next();
-  if (req.user.role === 'merchant') return approvedMerchantOnly(req, res, next);
-  return res.status(403).json({ message: 'هذا الإجراء متاح للأدمن أو التجار المعتمدين فقط' });
-}, deleteProduct);
-
-// مراجعة المنتج (قبول/رفض) - Admin فقط
+// مراجعة المنتج: adminOnly يطبق RBAC للموظفين حسب صلاحية المنتجات.
 router.put('/:id/review', protect, adminOnly, reviewProduct);
 
 module.exports = router;
