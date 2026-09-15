@@ -46,6 +46,9 @@ exports.updateStaff = async (req, res, next) => {
     const staff = await StaffMember.findById(req.params.id);
     if (!staff) return res.status(404).json({ message: 'عضو الفريق غير موجود' });
     if (String(staff.email) === String(req.user?.email)) return res.status(400).json({ message: 'لا يمكن تعديل حسابك الإداري من هنا' });
+    const linkedAccount = await User.findOne({ email: staff.email, role: 'staff' }).select('+password');
+    if (!linkedAccount) return res.status(404).json({ message: 'حساب الدخول المرتبط غير موجود' });
+    const oldEmail = staff.email;
     const name = String(req.body.name ?? staff.name).trim();
     const email = normalizeEmail(req.body.email ?? staff.email);
     const phone = String(req.body.phone ?? staff.phone ?? '').trim();
@@ -57,24 +60,15 @@ exports.updateStaff = async (req, res, next) => {
       const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email, _id: { $ne: staff._id } }).select('_id'), User.findOne({ email }).select('_id')]);
       if (staffExists || userExists) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
     }
+    const password = req.body.password === undefined ? '' : String(req.body.password);
+    if (password && password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ message: `كلمة المرور يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفًا على الأقل` });
     staff.name = name; staff.email = email; staff.phone = phone; staff.role = role;
     if (req.body.permissions !== undefined) staff.permissions = safePermissions(req.body.permissions);
     if (req.body.isActive !== undefined) staff.isActive = Boolean(req.body.isActive);
-    await staff.save();
-    const user = await User.findOne({ email: staff.email === email ? email : staff.email });
-    const account = await User.findOne({ _id: user?._id || undefined, role: 'staff' }).select('+password');
-    if (!account) return res.status(404).json({ message: 'حساب الدخول المرتبط غير موجود' });
-    account.name = name;
-    account.email = email;
-    account.phone = phone || undefined;
-    account.isActive = staff.isActive;
-    if (req.body.password !== undefined && String(req.body.password)) {
-      const password = String(req.body.password);
-      if (password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ message: `كلمة المرور يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفًا على الأقل` });
-      account.password = password;
-    }
-    await account.save();
-    res.json({ staff: { ...staff.toObject(), userId: account._id } });
+    linkedAccount.name = name; linkedAccount.email = email; linkedAccount.phone = phone || undefined; linkedAccount.isActive = staff.isActive;
+    if (password) linkedAccount.password = password;
+    await Promise.all([staff.save(), linkedAccount.save()]);
+    res.json({ staff: { ...staff.toObject(), userId: linkedAccount._id, previousEmail: oldEmail !== email ? oldEmail : undefined } });
   } catch (err) {
     if (err?.code === 11000 && err?.keyPattern?.email) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' });
     next(err);
