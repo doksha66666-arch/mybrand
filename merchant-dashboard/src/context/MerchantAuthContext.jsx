@@ -9,10 +9,18 @@ export function MerchantAuthProvider({ children }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearSession = () => {
+    localStorage.removeItem('mybrand_merchant_token');
+    setUser(null);
+    setMerchant(null);
+    setStats(null);
+  };
+
   const loadProfile = async () => {
     const { data } = await api.get('/merchants/me');
     setMerchant(data.merchant);
-    setStats(data.stats);
+    setStats(data.stats || null);
+    return data;
   };
 
   useEffect(() => {
@@ -21,43 +29,55 @@ export function MerchantAuthProvider({ children }) {
       setLoading(false);
       return;
     }
+
     api
       .get('/auth/me')
       .then(async ({ data }) => {
-        if (data.user.role !== 'merchant') {
-          localStorage.removeItem('mybrand_merchant_token');
-          setLoading(false);
+        if (data.user?.role !== 'merchant') {
+          clearSession();
           return;
         }
+
         setUser(data.user);
         await loadProfile();
       })
-      .catch(() => localStorage.removeItem('mybrand_merchant_token'))
+      .catch(() => {
+        clearSession();
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password });
-    if (data.user.role !== 'merchant') {
-      throw new Error('هذا الحساب ليس حساب تاجر');
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
+      if (data.user?.role !== 'merchant') {
+        throw new Error('هذا الحساب ليس حساب تاجر');
+      }
+
+      localStorage.setItem('mybrand_merchant_token', data.token);
+      setUser(data.user);
+      await loadProfile();
+    } catch (error) {
+      clearSession();
+      throw error;
     }
-    localStorage.setItem('mybrand_merchant_token', data.token);
-    setUser(data.user);
-    await loadProfile();
   };
 
   const register = async (payload) => {
-    const { data } = await api.post('/merchants/register', payload);
-    localStorage.setItem('mybrand_merchant_token', data.token);
-    setUser(data.user);
-    setMerchant(data.merchant);
+    try {
+      const { data } = await api.post('/merchants/register', payload);
+      localStorage.setItem('mybrand_merchant_token', data.token);
+      setUser(data.user);
+      setMerchant(data.merchant);
+      await loadProfile();
+    } catch (error) {
+      clearSession();
+      throw error;
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem('mybrand_merchant_token');
-    setUser(null);
-    setMerchant(null);
-    setStats(null);
+    clearSession();
   };
 
   return (
