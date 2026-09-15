@@ -17,9 +17,9 @@ const roleDefaults = {
 const routePermission = (req) => {
   const base = String(req.baseUrl || '').replace(/^\/api\//, '').replace(/\//g, '');
   const path = String(req.path || '');
-  if (base === 'orders') return 'orders';
+  if (base === 'orders') return path.startsWith('/stats') ? 'dashboard' : 'orders';
   if (base === 'products') return 'products';
-  if (base === 'categories') return 'categories';
+  if (base === 'categories') return 'products';
   if (['banners','campaigns','offers','coupons','gift-cards','loyalty'].includes(base)) return 'marketing';
   if (['customers','support','chat'].includes(base)) return base === 'customers' ? 'customers' : 'support';
   if (base === 'payment-methods') return 'payments';
@@ -39,7 +39,7 @@ const hasPermission = (req, moduleName, action) => {
   if (req.user?.role !== 'staff' || !req.staff) return false;
   if (req.staff.role === 'super_admin') return true;
   const custom = req.staff.permissions?.[moduleName];
-  if (custom && typeof custom === 'object' && custom[action] === true) return true;
+  if (custom && typeof custom === 'object' && Object.prototype.hasOwnProperty.call(custom, action)) return custom[action] === true;
   const defaults = roleDefaults[req.staff.role] || {};
   if (defaults.allView && action === 'view') return true;
   if (defaults.allView) return false;
@@ -47,28 +47,19 @@ const hasPermission = (req, moduleName, action) => {
   return allowed.includes(action);
 };
 
-// التحقق من تسجيل الدخول
 exports.protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'غير مصرح - يرجى تسجيل الدخول' });
-    }
-
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ message: 'غير مصرح - يرجى تسجيل الدخول' });
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const user = await User.findById(decoded.id);
-    if (!user || !user.isActive) {
-      return res.status(401).json({ message: 'المستخدم غير موجود أو غير نشط' });
-    }
-
+    if (!user || !user.isActive) return res.status(401).json({ message: 'المستخدم غير موجود أو غير نشط' });
     req.user = user;
     if (user.role === 'staff') {
       req.staff = await StaffMember.findOne({ email: user.email, isActive: true }).lean();
       if (!req.staff) return res.status(403).json({ message: 'حساب الموظف غير مفعّل أو غير مسجل ضمن الفريق' });
     }
-
     if (user.role === 'merchant') req.merchant = await Merchant.findOne({ user: user._id });
     next();
   } catch (err) {
@@ -81,26 +72,19 @@ exports.adminOnly = (req, res, next) => {
   if (req.user?.role !== 'staff' || !req.staff) return res.status(403).json({ message: 'هذا الإجراء متاح للمشرفين وفريق الإدارة فقط' });
   const moduleName = routePermission(req);
   const action = methodAction(req.method);
-  if (!hasPermission(req, moduleName, action)) {
-    return res.status(403).json({ message: 'لا تملك صلاحية تنفيذ هذا الإجراء' });
-  }
+  if (!hasPermission(req, moduleName, action)) return res.status(403).json({ message: 'لا تملك صلاحية تنفيذ هذا الإجراء' });
   next();
 };
 
 exports.merchantOnly = (req, res, next) => {
-  if (!req.user || req.user.role !== 'merchant' || !req.merchant) {
-    return res.status(403).json({ message: 'هذا الإجراء متاح للتجار فقط' });
-  }
+  if (!req.user || req.user.role !== 'merchant' || !req.merchant) return res.status(403).json({ message: 'هذا الإجراء متاح للتجار فقط' });
   next();
 };
 
 exports.approvedMerchantOnly = (req, res, next) => {
   if (!req.merchant || req.merchant.status !== 'approved') {
     return res.status(403).json({
-      message:
-        req.merchant?.status === 'pending'
-          ? 'حسابك كتاجر قيد المراجعة حاليًا، سيتم إعلامك عند الموافقة'
-          : 'حسابك كتاجر موقوف حاليًا، تواصل مع الدعم',
+      message: req.merchant?.status === 'pending' ? 'حسابك كتاجر قيد المراجعة حاليًا، سيتم إعلامك عند الموافقة' : 'حسابك كتاجر موقوف حاليًا، تواصل مع الدعم',
     });
   }
   next();
