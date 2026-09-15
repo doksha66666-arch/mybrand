@@ -3,7 +3,6 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import './MerchantLayout.css';
 import './MerchantPages.css';
-import '../pages/MerchantOrdersMobile.css';
 
 const paths = {
   home: 'M4 10.5 12 4l8 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z M9 20v-5.2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V20',
