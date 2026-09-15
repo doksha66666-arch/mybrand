@@ -8,6 +8,10 @@ export function StoreLayoutProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-mybrand-store-layout', 'true');
+    style.textContent = '.home-layout-sections{display:flex;flex-direction:column;width:100%}.home-layout-sections>[data-store-layout]{width:100%}';
+    document.head.appendChild(style);
     let active = true;
     api.get('/config')
       .then(({ data }) => {
@@ -17,7 +21,10 @@ export function StoreLayoutProvider({ children }) {
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
-    return () => { active = false; };
+    return () => {
+      active = false;
+      style.remove();
+    };
   }, []);
 
   const value = useMemo(() => ({ layouts, loading }), [layouts, loading]);
@@ -33,10 +40,7 @@ export function useStoreLayout(pageId) {
     getStyle(id) {
       const item = map.get(id);
       if (!item) return { order: 0 };
-      return {
-        order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0,
-        display: item.enabled === false ? 'none' : undefined,
-      };
+      return { order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0, display: item.enabled === false ? 'none' : undefined };
     },
     isEnabled(id) {
       return !map.has(id) || map.get(id)?.enabled !== false;
