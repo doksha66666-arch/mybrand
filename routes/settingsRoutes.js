@@ -14,6 +14,7 @@ const DEFAULTS = {
   newOrder: true,
   lowStock: true,
   customerMessage: true,
+  pageLayouts: {},
 };
 
 router.get('/', protect, adminOnly, async (req, res, next) => {
@@ -43,6 +44,9 @@ router.put('/', protect, adminOnly, async (req, res, next) => {
       lowStock: Boolean(body.lowStock),
       customerMessage: Boolean(body.customerMessage),
     };
+    if (body.pageLayouts && typeof body.pageLayouts === 'object' && !Array.isArray(body.pageLayouts)) {
+      payload.pageLayouts = body.pageLayouts;
+    }
 
     const settings = await StoreSettings.findOneAndUpdate(
       { key: 'global' },
