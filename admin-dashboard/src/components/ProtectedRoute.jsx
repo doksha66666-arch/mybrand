@@ -1,9 +1,11 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import { canAccess } from '../utils/permissions';
 
 export default function ProtectedRoute({ children }) {
   const { user, loading } = useAdminAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -19,6 +21,10 @@ export default function ProtectedRoute({ children }) {
 
   if (!user || !['admin', 'staff'].includes(user.role)) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!canAccess(user, location.pathname)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
