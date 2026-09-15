@@ -11,6 +11,7 @@ exports.getPublicConfig = async (req, res, next) => {
         timezone: settings?.timezone || 'Africa/Cairo',
         maintenance: Boolean(settings?.maintenance),
       },
+      pageLayouts: settings?.pageLayouts && typeof settings.pageLayouts === 'object' && !Array.isArray(settings.pageLayouts) ? settings.pageLayouts : {},
       vodafoneCashNumber: process.env.MERCHANT_VODAFONE_CASH_NUMBER || '',
       paymentMethods: {
         cod: true,
