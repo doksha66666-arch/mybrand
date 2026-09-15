@@ -1,345 +1,51 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import ImageUploader from '../components/ImageUploader';
+import { useAdminAuth } from '../context/AdminAuthContext';
+import { canAccess } from '../utils/permissions';
 
 const emptyPost = { type: 'post', author: 'MYBRAND', text: '', image: '', videoUrl: '', productId: '', isPublished: true };
 const emptyEvent = { title: '', description: '', image: '', startsAt: '', endsAt: '', isPublished: true };
-
 const statusLabels = { approved: 'معتمد', out_of_stock: 'نفد المخزون' };
 
 export default function TrendPage() {
+  const { user } = useAdminAuth();
+  const canCreate = canAccess(user, '/trend', 'create');
+  const canEdit = canAccess(user, '/trend', 'edit');
+  const canDelete = canAccess(user, '/trend', 'delete');
+  const canManage = canCreate || canEdit || canDelete;
   const [section, setSection] = useState('content');
-  const [posts, setPosts] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [postForm, setPostForm] = useState(emptyPost);
-  const [eventForm, setEventForm] = useState(emptyEvent);
-  const [editingPost, setEditingPost] = useState(null);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [productSearch, setProductSearch] = useState('');
+  const [posts, setPosts] = useState([]); const [events, setEvents] = useState([]); const [products, setProducts] = useState([]);
+  const [postForm, setPostForm] = useState(emptyPost); const [eventForm, setEventForm] = useState(emptyEvent);
+  const [editingPost, setEditingPost] = useState(null); const [editingEvent, setEditingEvent] = useState(null);
+  const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [message, setMessage] = useState(''); const [error, setError] = useState(''); const [productSearch, setProductSearch] = useState('');
 
-  const load = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [p, e, pr] = await Promise.all([
-        api.get('/trend/admin/posts'),
-        api.get('/trend/events/admin'),
-        api.get('/products/admin/all', { params: { limit: 300 } }),
-      ]);
-      setPosts(Array.isArray(p.data?.posts) ? p.data.posts : []);
-      setEvents(Array.isArray(e.data?.events) ? e.data.events : []);
-      setProducts(Array.isArray(pr.data?.products) ? pr.data.products : []);
-    } catch (err) {
-      setError(err?.response?.data?.message || 'تعذر تحميل استديو الترند');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const stats = useMemo(() => ({
-    reels: posts.filter(p => p.type === 'reel').length,
-    posts: posts.filter(p => p.type !== 'reel').length,
-    events: events.length,
-    published: posts.filter(p => p.isPublished).length + events.filter(e => e.isPublished).length,
-  }), [posts, events]);
-
-  const availableProducts = useMemo(() => {
-    const q = productSearch.trim().toLowerCase();
-    return products
-      .filter(p => ['approved', 'out_of_stock'].includes(p.status) && p.isActive !== false)
-      .filter(p => !q || `${p.nameAr || ''} ${p.nameEn || ''} ${p.sku || ''}`.toLowerCase().includes(q));
-  }, [products, productSearch]);
-
-  const selectedProduct = useMemo(
-    () => products.find(p => String(p._id) === String(postForm.productId)),
-    [products, postForm.productId]
-  );
-
-  const setPostImage = images => setPostForm(v => ({ ...v, image: images[0] || '' }));
-  const setEventImage = images => setEventForm(v => ({ ...v, image: images[0] || '' }));
-  const resetPost = () => { setPostForm(emptyPost); setEditingPost(null); setProductSearch(''); };
-  const resetEvent = () => { setEventForm(emptyEvent); setEditingEvent(null); };
-
-  const uploadVideo = async e => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
-      setError('صيغة الفيديو غير مدعومة. استخدم MP4 أو WebM أو MOV.');
-      return;
-    }
-    if (file.size > 100 * 1024 * 1024) {
-      setError('حجم الفيديو أكبر من 100MB.');
-      return;
-    }
-    setUploadingVideo(true);
-    setError('');
-    try {
-      const body = new FormData();
-      body.append('video', file);
-      const { data } = await api.post('/trend/video-upload', body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 180000,
-      });
-      if (!data?.url) throw new Error('لم يرجع السيرفر رابط الفيديو');
-      setPostForm(v => ({ ...v, videoUrl: data.url }));
-      setMessage('تم رفع فيديو الريلز بنجاح.');
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'تعذر رفع الفيديو');
-    } finally {
-      setUploadingVideo(false);
-    }
-  };
-
-  const savePost = async e => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    setMessage('');
-    try {
-      if (!postForm.author.trim() || !postForm.text.trim()) throw new Error('اسم الناشر والنص مطلوبان');
-      if (!postForm.image) throw new Error('صورة الغلاف مطلوبة');
-      if (postForm.type === 'reel' && !postForm.videoUrl) throw new Error('فيديو الريلز مطلوب');
-      const payload = { ...postForm, productId: postForm.productId || null };
-      if (editingPost) await api.patch(`/trend/admin/posts/${editingPost}`, payload);
-      else await api.post('/trend/admin/posts', payload);
-      setMessage(editingPost ? 'تم تحديث المحتوى.' : 'تم نشر المحتوى.');
-      resetPost();
-      await load();
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'تعذر حفظ المحتوى');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveEvent = async e => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    setMessage('');
-    try {
-      if (!eventForm.title.trim() || !eventForm.image || !eventForm.startsAt) {
-        throw new Error('اسم الفعالية والصورة وموعد البداية مطلوبة');
-      }
-      if (editingEvent) await api.patch(`/trend/events/admin/${editingEvent}`, eventForm);
-      else await api.post('/trend/events/admin', eventForm);
-      setMessage(editingEvent ? 'تم تحديث الفعالية.' : 'تم إنشاء الفعالية.');
-      resetEvent();
-      await load();
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'تعذر حفظ الفعالية');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const editPost = p => {
-    setEditingPost(p.id);
-    setPostForm({
-      type: p.type,
-      author: p.author || 'MYBRAND',
-      text: p.text || '',
-      image: p.image || '',
-      videoUrl: p.videoUrl || '',
-      productId: p.productId || p.product?._id || '',
-      isPublished: p.isPublished !== false,
-    });
-    setProductSearch('');
-    setSection('content');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const editEvent = ev => {
-    setEditingEvent(ev.id);
-    setEventForm({
-      title: ev.title || '',
-      description: ev.description || '',
-      image: ev.image || '',
-      startsAt: ev.startsAt ? new Date(ev.startsAt).toISOString().slice(0, 16) : '',
-      endsAt: ev.endsAt ? new Date(ev.endsAt).toISOString().slice(0, 16) : '',
-      isPublished: ev.isPublished !== false,
-    });
-    setSection('events');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const togglePost = async p => {
-    try {
-      await api.patch(`/trend/admin/posts/${p.id}/publish`, { isPublished: !p.isPublished });
-      await load();
-    } catch (err) { setError(err?.response?.data?.message || 'تعذر تغيير حالة النشر'); }
-  };
-
-  const toggleEvent = async ev => {
-    try {
-      await api.patch(`/trend/events/admin/${ev.id}/publish`, { isPublished: !ev.isPublished });
-      await load();
-    } catch (err) { setError(err?.response?.data?.message || 'تعذر تغيير حالة النشر'); }
-  };
-
-  const deletePost = async p => {
-    if (!window.confirm(`حذف «${p.author || 'المحتوى'}» نهائيًا؟`)) return;
-    try {
-      await api.delete(`/trend/admin/posts/${p.id}`);
-      setMessage('تم حذف المحتوى نهائيًا.');
-      await load();
-    } catch (err) { setError(err?.response?.data?.message || 'تعذر الحذف'); }
-  };
-
-  const deleteEvent = async ev => {
-    if (!window.confirm(`حذف الفعالية «${ev.title}» نهائيًا؟`)) return;
-    try {
-      await api.delete(`/trend/events/admin/${ev.id}`);
-      setMessage('تم حذف الفعالية نهائيًا.');
-      await load();
-    } catch (err) { setError(err?.response?.data?.message || 'تعذر الحذف'); }
-  };
-
-  const deleteComment = async c => {
-    if (!window.confirm('حذف التعليق نهائيًا؟')) return;
-    try {
-      await api.delete(`/trend/admin/comments/${c.id}`);
-      setMessage('تم حذف التعليق.');
-      await load();
-    } catch (err) { setError(err?.response?.data?.message || 'تعذر حذف التعليق'); }
-  };
-
-  const Button = ({ children, secondary, danger, ...props }) => (
-    <button {...props} className={`trend-btn ${danger ? 'danger' : secondary ? 'secondary' : 'primary'}`}>{children}</button>
-  );
-
-  return <div className="trend-admin" dir="rtl">
-    <style>{`
-      .trend-admin{padding:28px;max-width:1500px;margin:auto;color:#101828}
-      .trend-head{display:flex;justify-content:space-between;gap:20px;margin-bottom:18px}
-      .trend-head h1{margin:0;font-size:30px}.trend-head p{margin:8px 0;color:#667085}
-      .trend-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-      .trend-stat,.trend-card{background:#fff;border:1px solid #eaecf0;border-radius:18px;box-shadow:0 6px 22px rgba(16,24,40,.05)}
-      .trend-stat{padding:18px}.trend-stat span{color:#667085}.trend-stat b{display:block;font-size:27px;margin-top:6px}
-      .trend-tabs{display:flex;gap:8px;margin-bottom:18px}.trend-tab{border:1px solid #D0D5DD;background:#fff;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer}.trend-tab.active{background:#111827;color:#fff}
-      .trend-layout{display:grid;grid-template-columns:410px 1fr;gap:20px;align-items:start}.trend-card{padding:20px}.trend-card h2{margin:0 0 16px;font-size:19px}
-      .trend-form{display:grid;gap:12px}.trend-form label{font-size:13px;font-weight:700;color:#344054}.trend-form input,.trend-form textarea,.trend-form select{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:11px;padding:12px;font:inherit;outline:none;background:#fff}.trend-form textarea{min-height:120px;resize:vertical}
-      .trend-check{display:flex!important;align-items:center;gap:8px}.trend-check input{width:auto}.trend-actions,.trend-post-actions{display:flex;gap:8px;flex-wrap:wrap}
-      .trend-btn{border:0;border-radius:11px;padding:10px 14px;font-weight:800;cursor:pointer}.trend-btn:disabled{opacity:.55;cursor:not-allowed}.trend-btn.primary{background:#E60023;color:#fff}.trend-btn.secondary{background:#f2f4f7;color:#344054}.trend-btn.danger{background:#fff1f3;color:#c01048}
-      .trend-list{display:grid;gap:14px}.trend-post,.trend-event{display:grid;grid-template-columns:150px 1fr;gap:15px;padding:14px;border:1px solid #eaecf0;border-radius:15px}
-      .trend-post img,.trend-event img{width:150px;height:130px;object-fit:cover;border-radius:12px;background:#f2f4f7}.trend-post video{width:150px;height:130px;object-fit:cover;border-radius:12px;background:#111}
-      .trend-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:#667085;font-size:13px}.trend-badge{padding:5px 9px;border-radius:999px;background:#ecfdf3;color:#027a48;font-weight:700}.trend-badge.hidden{background:#f2f4f7;color:#667085}
-      .trend-post h3,.trend-event h3{margin:7px 0}.trend-post p,.trend-event p{margin:8px 0;color:#475467;line-height:1.65}
-      .trend-comments{margin-top:10px;padding-top:10px;border-top:1px solid #f2f4f7}.trend-comment{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f2f4f7}.trend-comment span{color:#667085;display:block}
-      .trend-notice{padding:11px 14px;border-radius:11px;margin-bottom:14px}.trend-success{background:#ecfdf3;color:#027a48}.trend-error{background:#fff1f3;color:#b42318}.trend-empty,.trend-loading{text-align:center;color:#667085;padding:40px}
-      .trend-upload-note{font-size:12px;color:#667085;line-height:1.6}.trend-video-box{display:grid;gap:8px;padding:12px;border:1px dashed #D0D5DD;border-radius:14px;background:#F8FAFC}.trend-video-picker{display:inline-flex;justify-content:center;padding:11px;border-radius:11px;background:#111827;color:#fff;font-weight:800;cursor:pointer}.trend-video-picker input{display:none}.trend-video-preview{width:100%;max-height:260px;border-radius:12px;background:#111;object-fit:contain}
-      .trend-product-box{display:grid;gap:9px;padding:12px;border:1px solid #E2E8F0;border-radius:14px;background:#F8FAFC}.trend-product-search{background:#fff!important}.trend-product-list{max-height:220px;overflow:auto;display:grid;gap:6px}.trend-product-option{display:flex;align-items:center;gap:9px;padding:8px;border:1px solid transparent;border-radius:10px;background:#fff;cursor:pointer;text-align:right}.trend-product-option:hover,.trend-product-option.selected{border-color:#E60023;background:#FFF7F8}.trend-product-option img{width:42px;height:42px;object-fit:cover;border-radius:8px;background:#F1F5F9}.trend-product-option small{display:block;color:#667085;margin-top:2px}.trend-product-selected{display:flex;align-items:center;gap:9px;padding:9px;border-radius:10px;background:#fff;border:1px solid #D0D5DD}.trend-product-selected img{width:48px;height:48px;object-fit:cover;border-radius:8px}
-      @media(max-width:1050px){.trend-layout{grid-template-columns:1fr}.trend-stats{grid-template-columns:repeat(2,1fr)}}
-      @media(max-width:650px){.trend-admin{padding:16px}.trend-head{display:block}.trend-post,.trend-event{grid-template-columns:1fr}.trend-post img,.trend-event img,.trend-post video{width:100%;height:190px}}
-    `}</style>
-
-    <div className="trend-head">
-      <div><h1>🔥 استديو الترند</h1><p>المحتوى الحقيقي فقط: ريلز، منشورات وفعاليات — مع ربط مباشر بمنتجات MYBRAND.</p></div>
-      <Button secondary onClick={load} disabled={loading}>↻ تحديث</Button>
-    </div>
-
-    {message && <div className="trend-notice trend-success">{message}</div>}
-    {error && <div className="trend-notice trend-error">{error}</div>}
-
-    <div className="trend-stats">
-      <div className="trend-stat"><span>الريلز</span><b>{stats.reels}</b></div>
-      <div className="trend-stat"><span>المنشورات</span><b>{stats.posts}</b></div>
-      <div className="trend-stat"><span>الفعاليات</span><b>{stats.events}</b></div>
-      <div className="trend-stat"><span>المنشور حاليًا</span><b>{stats.published}</b></div>
-    </div>
-
-    <div className="trend-tabs">
-      <button className={`trend-tab ${section === 'content' ? 'active' : ''}`} onClick={() => setSection('content')}>📝 منشورات + ريلز</button>
-      <button className={`trend-tab ${section === 'events' ? 'active' : ''}`} onClick={() => setSection('events')}>📅 فعاليات</button>
-    </div>
-
-    {section === 'content' ? <div className="trend-layout">
-      <section className="trend-card">
-        <h2>{editingPost ? '✏️ تعديل المحتوى' : '➕ نشر محتوى'}</h2>
-        <form className="trend-form" onSubmit={savePost}>
-          <div><label>النوع</label><select value={postForm.type} onChange={e => setPostForm(v => ({ ...v, type: e.target.value, videoUrl: e.target.value === 'post' ? '' : v.videoUrl }))}><option value="post">منشور</option><option value="reel">ريلز</option></select></div>
-          <div><label>اسم الناشر</label><input value={postForm.author} onChange={e => setPostForm(v => ({ ...v, author: e.target.value }))} required /></div>
-          <div><label>صورة الغلاف</label><ImageUploader images={postForm.image ? [postForm.image] : []} onChange={setPostImage} /></div>
-
-          {postForm.type === 'reel' && <div><label>فيديو الريلز</label><div className="trend-video-box">
-            <label className="trend-video-picker">{uploadingVideo ? 'جارٍ الرفع...' : '🎬 اختيار فيديو'}<input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={uploadVideo} disabled={uploadingVideo || saving} /></label>
-            {postForm.videoUrl && <><span className="trend-upload-note">✓ الفيديو جاهز للنشر</span><video className="trend-video-preview" src={postForm.videoUrl} controls playsInline /></>}
-          </div></div>}
-
-          <div>
-            <label>ربط منتج حقيقي <span style={{color:'#98A2B3',fontWeight:500}}>— اختياري</span></label>
-            <div className="trend-product-box">
-              {selectedProduct && <div className="trend-product-selected">
-                {selectedProduct.images?.[0] && <img src={selectedProduct.images[0]} alt="" />}
-                <div style={{flex:1}}><b>{selectedProduct.nameAr || selectedProduct.nameEn}</b><small>{Number(selectedProduct.price || 0).toLocaleString('ar-EG')} ج.م · {statusLabels[selectedProduct.status] || selectedProduct.status}</small></div>
-                <button type="button" className="trend-btn secondary" onClick={() => setPostForm(v => ({ ...v, productId: '' }))}>إلغاء الربط</button>
-              </div>}
-              <input className="trend-product-search" placeholder="ابحث باسم المنتج أو SKU" value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-              <div className="trend-product-list">
-                {availableProducts.slice(0, 80).map(p => <button type="button" key={p._id} className={`trend-product-option ${String(postForm.productId) === String(p._id) ? 'selected' : ''}`} onClick={() => setPostForm(v => ({ ...v, productId: p._id }))}>
-                  {p.images?.[0] && <img src={p.images[0]} alt="" />}
-                  <span style={{flex:1}}><b>{p.nameAr || p.nameEn}</b><small>{Number(p.price || 0).toLocaleString('ar-EG')} ج.م · {p.sku || 'بدون SKU'}</small></span>
-                </button>)}
-                {!availableProducts.length && <div className="trend-empty" style={{padding:18}}>لا توجد منتجات حقيقية متاحة للربط.</div>}
-              </div>
-              <div className="trend-upload-note">لا يتم إنشاء منتج أو سعر وهمي هنا. القائمة تأتي مباشرة من منتجات المنصة المعتمدة.</div>
-            </div>
-          </div>
-
-          <div><label>النص</label><textarea value={postForm.text} onChange={e => setPostForm(v => ({ ...v, text: e.target.value }))} maxLength={5000} required /></div>
-          <label className="trend-check"><input type="checkbox" checked={postForm.isPublished} onChange={e => setPostForm(v => ({ ...v, isPublished: e.target.checked }))} /> نشر فورًا</label>
-          <div className="trend-actions"><Button disabled={saving || uploadingVideo}>{saving ? 'جارٍ الحفظ...' : editingPost ? 'حفظ التعديلات' : 'نشر المحتوى'}</Button>{editingPost && <Button type="button" secondary onClick={resetPost}>إلغاء التعديل</Button>}</div>
-        </form>
-      </section>
-
-      <section className="trend-card">
-        <h2>المحتوى المنشور</h2>
-        {loading ? <div className="trend-loading">جارٍ التحميل...</div> : !posts.length ? <div className="trend-empty">لا يوجد محتوى منشور في قاعدة البيانات حاليًا.</div> : <div className="trend-list">
-          {posts.map(p => <article className="trend-post" key={p.id}>
-            <div>{p.videoUrl ? <video src={p.videoUrl} poster={p.image || undefined} controls muted playsInline /> : p.image ? <img src={p.image} alt="" /> : <div className="trend-empty" style={{padding:20}}>بدون صورة</div>}</div>
-            <div>
-              <div className="trend-meta"><span className="trend-badge">{p.type === 'reel' ? 'ريلز' : 'منشور'}</span><span className={`trend-badge ${p.isPublished ? '' : 'hidden'}`}>{p.isPublished ? 'منشور' : 'مخفي'}</span><span>{p.author || 'MYBRAND'}</span></div>
-              <h3>{p.text}</h3>
-              {p.productName && <p><b>🛍 المنتج:</b> {p.productName} · {Number(p.productPrice || 0).toLocaleString('ar-EG')} ج.م</p>}
-              <div className="trend-meta"><span>❤️ {p.likes || 0}</span><span>👁️ {p.views || 0}</span><span>💬 {(p.comments || []).length}</span></div>
-              <div className="trend-post-actions" style={{marginTop:10}}><Button secondary onClick={() => editPost(p)}>تعديل</Button><Button secondary onClick={() => togglePost(p)}>{p.isPublished ? 'إخفاء' : 'نشر'}</Button><Button danger onClick={() => deletePost(p)}>حذف</Button></div>
-              {!!p.comments?.length && <div className="trend-comments"><b>التعليقات</b>{p.comments.map(c => <div className="trend-comment" key={c.id}><div><strong>{c.name}</strong><span>{c.text}</span></div><button className="trend-btn danger" onClick={() => deleteComment(c)}>حذف</button></div>)}</div>}
-            </div>
-          </article>)}
-        </div>}
-      </section>
-    </div> : <div className="trend-layout">
-      <section className="trend-card">
-        <h2>{editingEvent ? '✏️ تعديل الفعالية' : '➕ إنشاء فعالية'}</h2>
-        <form className="trend-form" onSubmit={saveEvent}>
-          <div><label>اسم الفعالية</label><input value={eventForm.title} onChange={e => setEventForm(v => ({ ...v, title: e.target.value }))} required /></div>
-          <div><label>الوصف</label><textarea value={eventForm.description} onChange={e => setEventForm(v => ({ ...v, description: e.target.value }))} /></div>
-          <div><label>صورة الفعالية</label><ImageUploader images={eventForm.image ? [eventForm.image] : []} onChange={setEventImage} /></div>
-          <div><label>تبدأ في</label><input type="datetime-local" value={eventForm.startsAt} onChange={e => setEventForm(v => ({ ...v, startsAt: e.target.value }))} required /></div>
-          <div><label>تنتهي في</label><input type="datetime-local" value={eventForm.endsAt} onChange={e => setEventForm(v => ({ ...v, endsAt: e.target.value }))} /></div>
-          <label className="trend-check"><input type="checkbox" checked={eventForm.isPublished} onChange={e => setEventForm(v => ({ ...v, isPublished: e.target.checked }))} /> نشر فورًا</label>
-          <div className="trend-actions"><Button disabled={saving}>{saving ? 'جارٍ الحفظ...' : editingEvent ? 'حفظ التعديلات' : 'إنشاء الفعالية'}</Button>{editingEvent && <Button type="button" secondary onClick={resetEvent}>إلغاء التعديل</Button>}</div>
-        </form>
-      </section>
-
-      <section className="trend-card">
-        <h2>الفعاليات</h2>
-        {loading ? <div className="trend-loading">جارٍ التحميل...</div> : !events.length ? <div className="trend-empty">لا توجد فعاليات حقيقية حاليًا.</div> : <div className="trend-list">
-          {events.map(ev => <article className="trend-event" key={ev.id}>
-            {ev.image ? <img src={ev.image} alt="" /> : <div className="trend-empty">بدون صورة</div>}
-            <div><div className="trend-meta"><span className={`trend-badge ${ev.isPublished ? '' : 'hidden'}`}>{ev.isPublished ? 'منشورة' : 'مخفية'}</span><span>{ev.startsAt ? new Date(ev.startsAt).toLocaleString('ar-EG') : 'بدون موعد'}</span></div><h3>{ev.title}</h3><p>{ev.description}</p><div className="trend-post-actions"><Button secondary onClick={() => editEvent(ev)}>تعديل</Button><Button secondary onClick={() => toggleEvent(ev)}>{ev.isPublished ? 'إخفاء' : 'نشر'}</Button><Button danger onClick={() => deleteEvent(ev)}>حذف</Button></div></div>
-          </article>)}
-        </div>}
-      </section>
-    </div>}
+  const load = async () => { setLoading(true); setError(''); try { const [p,e,pr] = await Promise.all([api.get('/trend/admin/posts'),api.get('/trend/events/admin'),api.get('/products/admin/all',{params:{limit:300}})]); setPosts(Array.isArray(p.data?.posts)?p.data.posts:[]); setEvents(Array.isArray(e.data?.events)?e.data.events:[]); setProducts(Array.isArray(pr.data?.products)?pr.data.products:[]); } catch(err){ setError(err?.response?.data?.message||'تعذر تحميل استديو الترند'); } finally { setLoading(false); } };
+  useEffect(()=>{load();},[]);
+  const stats=useMemo(()=>({reels:posts.filter(p=>p.type==='reel').length,posts:posts.filter(p=>p.type!=='reel').length,events:events.length,published:posts.filter(p=>p.isPublished).length+events.filter(e=>e.isPublished).length}),[posts,events]);
+  const availableProducts=useMemo(()=>{const q=productSearch.trim().toLowerCase(); return products.filter(p=>['approved','out_of_stock'].includes(p.status)&&p.isActive!==false).filter(p=>!q||`${p.nameAr||''} ${p.nameEn||''} ${p.sku||''}`.toLowerCase().includes(q));},[products,productSearch]);
+  const selectedProduct=useMemo(()=>products.find(p=>String(p._id)===String(postForm.productId)),[products,postForm.productId]);
+  const setPostImage=images=>setPostForm(v=>({...v,image:images[0]||''})); const setEventImage=images=>setEventForm(v=>({...v,image:images[0]||''}));
+  const resetPost=()=>{setPostForm(emptyPost);setEditingPost(null);setProductSearch('')}; const resetEvent=()=>{setEventForm(emptyEvent);setEditingEvent(null)};
+  const uploadVideo=async e=>{if(!canCreate)return; const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!['video/mp4','video/webm','video/quicktime'].includes(file.type)){setError('صيغة الفيديو غير مدعومة. استخدم MP4 أو WebM أو MOV.');return}if(file.size>100*1024*1024){setError('حجم الفيديو أكبر من 100MB.');return}setUploadingVideo(true);setError('');try{const body=new FormData();body.append('video',file);const{data}=await api.post('/trend/video-upload',body,{headers:{'Content-Type':'multipart/form-data'},timeout:180000});if(!data?.url)throw new Error('لم يرجع السيرفر رابط الفيديو');setPostForm(v=>({...v,videoUrl:data.url}));setMessage('تم رفع فيديو الريلز بنجاح.')}catch(err){setError(err?.response?.data?.message||err?.message||'تعذر رفع الفيديو')}finally{setUploadingVideo(false)}};
+  const savePost=async e=>{e.preventDefault();if(!canCreate&&!canEdit)return;setSaving(true);setError('');setMessage('');try{if(!postForm.author.trim()||!postForm.text.trim())throw new Error('اسم الناشر والنص مطلوبان');if(!postForm.image)throw new Error('صورة الغلاف مطلوبة');if(postForm.type==='reel'&&!postForm.videoUrl)throw new Error('فيديو الريلز مطلوب');const payload={...postForm,productId:postForm.productId||null};if(editingPost){if(!canEdit)return;await api.patch(`/trend/admin/posts/${editingPost}`,payload)}else{if(!canCreate)return;await api.post('/trend/admin/posts',payload)}setMessage(editingPost?'تم تحديث المحتوى.':'تم نشر المحتوى.');resetPost();await load()}catch(err){setError(err?.response?.data?.message||err?.message||'تعذر حفظ المحتوى')}finally{setSaving(false)}};
+  const saveEvent=async e=>{e.preventDefault();if(!canCreate&&!canEdit)return;setSaving(true);setError('');setMessage('');try{if(!eventForm.title.trim()||!eventForm.image||!eventForm.startsAt)throw new Error('اسم الفعالية والصورة وموعد البداية مطلوبة');if(editingEvent){if(!canEdit)return;await api.patch(`/trend/events/admin/${editingEvent}`,eventForm)}else{if(!canCreate)return;await api.post('/trend/events/admin',eventForm)}setMessage(editingEvent?'تم تحديث الفعالية.':'تم إنشاء الفعالية.');resetEvent();await load()}catch(err){setError(err?.response?.data?.message||err?.message||'تعذر حفظ الفعالية')}finally{setSaving(false)}};
+  const editPost=p=>{if(!canEdit)return;setEditingPost(p.id);setPostForm({type:p.type,author:p.author||'MYBRAND',text:p.text||'',image:p.image||'',videoUrl:p.videoUrl||'',productId:p.productId||p.product?._id||'',isPublished:p.isPublished!==false});setProductSearch('');setSection('content');window.scrollTo({top:0,behavior:'smooth'})};
+  const editEvent=ev=>{if(!canEdit)return;setEditingEvent(ev.id);setEventForm({title:ev.title||'',description:ev.description||'',image:ev.image||'',startsAt:ev.startsAt?new Date(ev.startsAt).toISOString().slice(0,16):'',endsAt:ev.endsAt?new Date(ev.endsAt).toISOString().slice(0,16):'',isPublished:ev.isPublished!==false});setSection('events');window.scrollTo({top:0,behavior:'smooth'})};
+  const togglePost=async p=>{if(!canEdit)return;try{await api.patch(`/trend/admin/posts/${p.id}/publish`,{isPublished:!p.isPublished});await load()}catch(err){setError(err?.response?.data?.message||'تعذر تغيير حالة النشر')}};
+  const toggleEvent=async ev=>{if(!canEdit)return;try{await api.patch(`/trend/events/admin/${ev.id}/publish`,{isPublished:!ev.isPublished});await load()}catch(err){setError(err?.response?.data?.message||'تعذر تغيير حالة النشر')}};
+  const deletePost=async p=>{if(!canDelete)return;if(!window.confirm(`حذف «${p.author||'المحتوى'}» نهائيًا؟`))return;try{await api.delete(`/trend/admin/posts/${p.id}`);setMessage('تم حذف المحتوى نهائيًا.');await load()}catch(err){setError(err?.response?.data?.message||'تعذر الحذف')}};
+  const deleteEvent=async ev=>{if(!canDelete)return;if(!window.confirm(`حذف الفعالية «${ev.title}» نهائيًا؟`))return;try{await api.delete(`/trend/events/admin/${ev.id}`);setMessage('تم حذف الفعالية نهائيًا.');await load()}catch(err){setError(err?.response?.data?.message||'تعذر الحذف')}};
+  const deleteComment=async c=>{if(!canDelete)return;if(!window.confirm('حذف التعليق نهائيًا؟'))return;try{await api.delete(`/trend/admin/comments/${c.id}`);setMessage('تم حذف التعليق.');await load()}catch(err){setError(err?.response?.data?.message||'تعذر حذف التعليق')}};
+  const Button=({children,secondary,danger,...props})=><button {...props} className={`trend-btn ${danger?'danger':secondary?'secondary':'primary'}`}>{children}</button>;
+  return <div className="trend-admin" dir="rtl"><style>{`.trend-admin{padding:28px;max-width:1500px;margin:auto;color:#101828}.trend-head{display:flex;justify-content:space-between;gap:20px;margin-bottom:18px}.trend-head h1{margin:0;font-size:30px}.trend-head p{margin:8px 0;color:#667085}.trend-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.trend-stat,.trend-card{background:#fff;border:1px solid #eaecf0;border-radius:18px;box-shadow:0 6px 22px rgba(16,24,40,.05)}.trend-stat{padding:18px}.trend-stat span{color:#667085}.trend-stat b{display:block;font-size:27px;margin-top:6px}.trend-tabs{display:flex;gap:8px;margin-bottom:18px}.trend-tab{border:1px solid #D0D5DD;background:#fff;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer}.trend-tab.active{background:#111827;color:#fff}.trend-layout{display:grid;grid-template-columns:410px 1fr;gap:20px;align-items:start}.trend-card{padding:20px}.trend-card h2{margin:0 0 16px;font-size:19px}.trend-form{display:grid;gap:12px}.trend-form label{font-size:13px;font-weight:700;color:#344054}.trend-form input,.trend-form textarea,.trend-form select{width:100%;box-sizing:border-box;border:1px solid #d0d5dd;border-radius:11px;padding:12px;font:inherit;outline:none;background:#fff}.trend-form textarea{min-height:120px;resize:vertical}.trend-check{display:flex!important;align-items:center;gap:8px}.trend-check input{width:auto}.trend-actions,.trend-post-actions{display:flex;gap:8px;flex-wrap:wrap}.trend-btn{border:0;border-radius:11px;padding:10px 14px;font-weight:800;cursor:pointer}.trend-btn:disabled{opacity:.55;cursor:not-allowed}.trend-btn.primary{background:#E60023;color:#fff}.trend-btn.secondary{background:#f2f4f7;color:#344054}.trend-btn.danger{background:#fff1f3;color:#c01048}.trend-list{display:grid;gap:14px}.trend-post,.trend-event{display:grid;grid-template-columns:150px 1fr;gap:15px;padding:14px;border:1px solid #eaecf0;border-radius:15px}.trend-post img,.trend-event img{width:150px;height:130px;object-fit:cover;border-radius:12px;background:#f2f4f7}.trend-post video{width:150px;height:130px;object-fit:cover;border-radius:12px;background:#111}.trend-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:#667085;font-size:13px}.trend-badge{padding:5px 9px;border-radius:999px;background:#ecfdf3;color:#027a48;font-weight:700}.trend-badge.hidden{background:#f2f4f7;color:#667085}.trend-post h3,.trend-event h3{margin:7px 0}.trend-post p,.trend-event p{margin:8px 0;color:#475467;line-height:1.65}.trend-comments{margin-top:10px;padding-top:10px;border-top:1px solid #f2f4f7}.trend-comment{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f2f4f7}.trend-comment span{color:#667085;display:block}.trend-notice{padding:11px 14px;border-radius:11px;margin-bottom:14px}.trend-success{background:#ecfdf3;color:#027a48}.trend-error{background:#fff1f3;color:#b42318}.trend-empty,.trend-loading{text-align:center;color:#667085;padding:40px}.trend-upload-note{font-size:12px;color:#667085;line-height:1.6}.trend-video-box{display:grid;gap:8px;padding:12px;border:1px dashed #D0D5DD;border-radius:14px;background:#F8FAFC}.trend-video-picker{display:inline-flex;justify-content:center;padding:11px;border-radius:11px;background:#111827;color:#fff;font-weight:800;cursor:pointer}.trend-video-picker input{display:none}.trend-video-preview{width:100%;max-height:260px;border-radius:12px;background:#111;object-fit:contain}.trend-product-box{display:grid;gap:9px;padding:12px;border:1px solid #E2E8F0;border-radius:14px;background:#F8FAFC}.trend-product-search{background:#fff!important}.trend-product-list{max-height:220px;overflow:auto;display:grid;gap:6px}.trend-product-option{display:flex;align-items:center;gap:9px;padding:8px;border:1px solid transparent;border-radius:10px;background:#fff;cursor:pointer;text-align:right}.trend-product-option:hover,.trend-product-option.selected{border-color:#E60023;background:#FFF7F8}.trend-product-option img{width:42px;height:42px;object-fit:cover;border-radius:8px;background:#F1F5F9}.trend-product-option small{display:block;color:#667085;margin-top:2px}.trend-product-selected{display:flex;align-items:center;gap:9px;padding:9px;border-radius:10px;background:#fff;border:1px solid #D0D5DD}.trend-product-selected img{width:48px;height:48px;object-fit:cover;border-radius:8px}@media(max-width:1050px){.trend-layout{grid-template-columns:1fr}.trend-stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.trend-admin{padding:16px}.trend-head{display:block}.trend-post,.trend-event{grid-template-columns:1fr}.trend-post img,.trend-event img,.trend-post video{width:100%;height:190px}}`}</style>
+    <div className="trend-head"><div><h1>🔥 استديو الترند</h1><p>المحتوى الحقيقي فقط: ريلز، منشورات وفعاليات — مع ربط مباشر بمنتجات MYBRAND.</p></div><Button secondary onClick={load} disabled={loading}>↻ تحديث</Button></div>
+    {message&&<div className="trend-notice trend-success">{message}</div>}{error&&<div className="trend-notice trend-error">{error}</div>}
+    {!canManage&&<div className="trend-notice" style={{background:'#F2F4F7',color:'#475467'}}>لديك صلاحية مشاهدة فقط. أدوات إدارة المحتوى غير متاحة لحسابك.</div>}
+    <div className="trend-stats"><div className="trend-stat"><span>الريلز</span><b>{stats.reels}</b></div><div className="trend-stat"><span>المنشورات</span><b>{stats.posts}</b></div><div className="trend-stat"><span>الفعاليات</span><b>{stats.events}</b></div><div className="trend-stat"><span>المنشور حاليًا</span><b>{stats.published}</b></div></div>
+    <div className="trend-tabs"><button className={`trend-tab ${section==='content'?'active':''}`} onClick={()=>setSection('content')}>📝 منشورات + ريلز</button><button className={`trend-tab ${section==='events'?'active':''}`} onClick={()=>setSection('events')}>📅 فعاليات</button></div>
+    {section==='content'?<div className="trend-layout"><section className="trend-card">{canManage&&<><h2>{editingPost?'✏️ تعديل المحتوى':'➕ نشر محتوى'}</h2><form className="trend-form" onSubmit={savePost}><div><label>النوع</label><select disabled={!canCreate&&!!editingPost} value={postForm.type} onChange={e=>setPostForm(v=>({...v,type:e.target.value,videoUrl:e.target.value==='post'?'':v.videoUrl}))}><option value="post">منشور</option><option value="reel">ريلز</option></select></div><div><label>اسم الناشر</label><input disabled={!canCreate&&!!editingPost} value={postForm.author} onChange={e=>setPostForm(v=>({...v,author:e.target.value}))} required/></div><div><label>صورة الغلاف</label><ImageUploader images={postForm.image?[postForm.image]:[]} onChange={setPostImage}/></div>{postForm.type==='reel'&&<div><label>فيديو الريلز</label><div className="trend-video-box">{canCreate?<label className="trend-video-picker">{uploadingVideo?'جارٍ الرفع...':'🎬 اختيار فيديو'}<input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={uploadVideo} disabled={uploadingVideo||saving}/></label>:<span className="trend-upload-note">رفع الفيديو يحتاج صلاحية إنشاء.</span>}{postForm.videoUrl&&<><span className="trend-upload-note">✓ الفيديو جاهز للنشر</span><video className="trend-video-preview" src={postForm.videoUrl} controls playsInline/></>}</div></div>}<div><label>ربط منتج حقيقي <span style={{color:'#98A2B3',fontWeight:500}}>— اختياري</span></label><div className="trend-product-box">{selectedProduct&&<div className="trend-product-selected">{selectedProduct.images?.[0]&&<img src={selectedProduct.images[0]} alt=""/>}<div style={{flex:1}}><b>{selectedProduct.nameAr||selectedProduct.nameEn}</b><small>{Number(selectedProduct.price||0).toLocaleString('ar-EG')} ج.م · {statusLabels[selectedProduct.status]||selectedProduct.status}</small></div><button type="button" className="trend-btn secondary" onClick={()=>setPostForm(v=>({...v,productId:''}))}>إلغاء الربط</button></div>}<input className="trend-product-search" placeholder="ابحث باسم المنتج أو SKU" value={productSearch} onChange={e=>setProductSearch(e.target.value)}/><div className="trend-product-list">{availableProducts.slice(0,80).map(p=><button type="button" key={p._id} className={`trend-product-option ${String(postForm.productId)===String(p._id)?'selected':''}`} onClick={()=>setPostForm(v=>({...v,productId:p._id}))}>{p.images?.[0]&&<img src={p.images[0]} alt=""/>}<span style={{flex:1}}><b>{p.nameAr||p.nameEn}</b><small>{Number(p.price||0).toLocaleString('ar-EG')} ج.م · {p.sku||'بدون SKU'}</small></span></button>)}{!availableProducts.length&&<div className="trend-empty" style={{padding:18}}>لا توجد منتجات حقيقية متاحة للربط.</div>}</div><div className="trend-upload-note">لا يتم إنشاء منتج أو سعر وهمي هنا. القائمة تأتي مباشرة من منتجات المنصة المعتمدة.</div></div></div><div><label>النص</label><textarea disabled={!canCreate&&!!editingPost} value={postForm.text} onChange={e=>setPostForm(v=>({...v,text:e.target.value}))} maxLength={5000} required/></div><label className="trend-check"><input type="checkbox" checked={postForm.isPublished} disabled={!canCreate&&!!editingPost} onChange={e=>setPostForm(v=>({...v,isPublished:e.target.checked}))}/> نشر فورًا</label><div className="trend-actions">{(editingPost?canEdit:canCreate)&&<Button disabled={saving||uploadingVideo}>{saving?'جارٍ الحفظ...':editingPost?'حفظ التعديلات':'نشر المحتوى'}</Button>}{editingPost&&<Button type="button" secondary onClick={resetPost}>إلغاء التعديل</Button>}</div></form></>}</section>
+    <section className="trend-card"><h2>المحتوى المنشور</h2>{loading?<div className="trend-loading">جارٍ التحميل...</div>:!posts.length?<div className="trend-empty">لا يوجد محتوى منشور في قاعدة البيانات حاليًا.</div>:<div className="trend-list">{posts.map(p=><article className="trend-post" key={p.id}><div>{p.videoUrl?<video src={p.videoUrl} poster={p.image||undefined} controls muted playsInline/>:p.image?<img src={p.image} alt=""/>:<div className="trend-empty" style={{padding:20}}>بدون صورة</div>}</div><div><div className="trend-meta"><span className="trend-badge">{p.type==='reel'?'ريلز':'منشور'}</span><span className={`trend-badge ${p.isPublished?'':'hidden'}`}>{p.isPublished?'منشور':'مخفي'}</span><span>{p.author||'MYBRAND'}</span></div><h3>{p.text}</h3>{p.productName&&<p><b>🛍 المنتج:</b> {p.productName} · {Number(p.productPrice||0).toLocaleString('ar-EG')} ج.م</p>}<div className="trend-meta"><span>❤️ {p.likes||0}</span><span>👁️ {p.views||0}</span><span>💬 {(p.comments||[]).length}</span></div><div className="trend-post-actions" style={{marginTop:10}}>{canEdit&&<><Button secondary onClick={()=>editPost(p)}>تعديل</Button><Button secondary onClick={()=>togglePost(p)}>{p.isPublished?'إخفاء':'نشر'}</Button></>}{canDelete&&<Button danger onClick={()=>deletePost(p)}>حذف</Button>}</div>{!!p.comments?.length&&<div className="trend-comments"><b>التعليقات</b>{p.comments.map(c=><div className="trend-comment" key={c.id}><div><strong>{c.name}</strong><span>{c.text}</span></div>{canDelete&&<button className="trend-btn danger" onClick={()=>deleteComment(c)}>حذف</button>}</div>)}</div>}</div></article>)}</div>}</section></div>:<div className="trend-layout"><section className="trend-card">{canManage&&<><h2>{editingEvent?'✏️ تعديل الفعالية':'➕ إنشاء فعالية'}</h2><form className="trend-form" onSubmit={saveEvent}><div><label>اسم الفعالية</label><input disabled={!canCreate&&!!editingEvent} value={eventForm.title} onChange={e=>setEventForm(v=>({...v,title:e.target.value}))} required/></div><div><label>الوصف</label><textarea disabled={!canCreate&&!!editingEvent} value={eventForm.description} onChange={e=>setEventForm(v=>({...v,description:e.target.value}))}/></div><div><label>صورة الفعالية</label><ImageUploader images={eventForm.image?[eventForm.image]:[]} onChange={setEventImage}/></div><div><label>تبدأ في</label><input type="datetime-local" disabled={!canCreate&&!!editingEvent} value={eventForm.startsAt} onChange={e=>setEventForm(v=>({...v,startsAt:e.target.value}))} required/></div><div><label>تنتهي في</label><input type="datetime-local" disabled={!canCreate&&!!editingEvent} value={eventForm.endsAt} onChange={e=>setEventForm(v=>({...v,endsAt:e.target.value}))}/></div><label className="trend-check"><input type="checkbox" checked={eventForm.isPublished} disabled={!canCreate&&!!editingEvent} onChange={e=>setEventForm(v=>({...v,isPublished:e.target.checked}))}/> نشر فورًا</label><div className="trend-actions">{(editingEvent?canEdit:canCreate)&&<Button disabled={saving}>{saving?'جارٍ الحفظ...':editingEvent?'حفظ التعديلات':'إنشاء الفعالية'}</Button>}{editingEvent&&<Button type="button" secondary onClick={resetEvent}>إلغاء التعديل</Button>}</div></form></>}</section><section className="trend-card"><h2>الفعاليات</h2>{loading?<div className="trend-loading">جارٍ التحميل...</div>:!events.length?<div className="trend-empty">لا توجد فعاليات حقيقية حاليًا.</div>:<div className="trend-list">{events.map(ev=><article className="trend-event" key={ev.id}>{ev.image?<img src={ev.image} alt=""/>:<div className="trend-empty">بدون صورة</div>}<div><div className="trend-meta"><span className={`trend-badge ${ev.isPublished?'':'hidden'}`}>{ev.isPublished?'منشورة':'مخفية'}</span><span>{ev.startsAt?new Date(ev.startsAt).toLocaleString('ar-EG'):'بدون موعد'}</span></div><h3>{ev.title}</h3><p>{ev.description}</p><div className="trend-post-actions">{canEdit&&<><Button secondary onClick={()=>editEvent(ev)}>تعديل</Button><Button secondary onClick={()=>toggleEvent(ev)}>{ev.isPublished?'إخفاء':'نشر'}</Button></>}{canDelete&&<Button danger onClick={()=>deleteEvent(ev)}>حذف</Button>}</div></div></article>)}</div>}</section></div>}
   </div>;
 }
