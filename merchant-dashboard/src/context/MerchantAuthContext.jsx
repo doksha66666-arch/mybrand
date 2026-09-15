@@ -64,16 +64,32 @@ export function MerchantAuthProvider({ children }) {
   };
 
   const register = async (payload) => {
+    const { data } = await api.post('/merchants/register', payload);
+    // Merchant registration intentionally does not create a session.
+    // The backend requires email verification first and returns no auth token.
+    return data;
+  };
+
+  const verifyEmail = async (email, code) => {
     try {
-      const { data } = await api.post('/merchants/register', payload);
+      const { data } = await api.post('/auth/verify-email', { email, code });
+      if (data.user?.role !== 'merchant' || !data.token) {
+        throw new Error('تعذر تفعيل حساب التاجر');
+      }
+
       localStorage.setItem('mybrand_merchant_token', data.token);
       setUser(data.user);
-      setMerchant(data.merchant);
       await loadProfile();
+      return data;
     } catch (error) {
       clearSession();
       throw error;
     }
+  };
+
+  const resendVerificationCode = async (email) => {
+    const { data } = await api.post('/auth/resend-verification', { email });
+    return data;
   };
 
   const logout = () => {
@@ -81,7 +97,18 @@ export function MerchantAuthProvider({ children }) {
   };
 
   return (
-    <MerchantAuthContext.Provider value={{ user, merchant, stats, loading, login, register, logout, refresh: loadProfile }}>
+    <MerchantAuthContext.Provider value={{
+      user,
+      merchant,
+      stats,
+      loading,
+      login,
+      register,
+      verifyEmail,
+      resendVerificationCode,
+      logout,
+      refresh: loadProfile,
+    }}>
       {children}
     </MerchantAuthContext.Provider>
   );
