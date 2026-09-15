@@ -31,7 +31,8 @@ const routePermission = (req) => {
   if (base === 'settings') return 'settings';
   if (base === 'models') return 'merchants';
   if (['merchants'].includes(base)) return 'merchants';
-  if (['homepage','trend','stories','live','live-obs','ai'].includes(base)) return 'marketing';
+  if (['homepage','trend','stories','live','live-obs'].includes(base)) return 'marketing';
+  if (base === 'ai') return 'ai';
   if (base === 'upload') return 'products';
   return path.includes('stats') || base === 'reports' ? 'reports' : 'dashboard';
 };
