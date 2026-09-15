@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../api/client';
 import './StoreCustomizerPage.css';
 
 const PAGE_DEFS = [
-  { id: 'home', title: 'الرئيسية', path: '/', icon: '🏠', sections: [
-    ['hero','البانر الرئيسي','العروض والصور الرئيسية','🖼️'],['categories','الأقسام','أقسام المتجر','🏷️'],['offers','العروض والخصومات','العروض الحالية','🔥'],['featured','منتجات مميزة','منتجات تختارها','⭐'],['best','الأكثر مبيعًا','منتجات رائجة','🏆'],['new','وصل حديثًا','أحدث المنتجات','🆕'],['why','لماذا MYBRAND','مزايا وثقة العملاء','💎'],['services','خدمات المتجر','الدفع والشحن والدعم','🚚']] },
+  { id: 'home', title: 'الرئيسية', path: '/', icon: '🏠', sections: [['hero','البانر الرئيسي','العروض والصور الرئيسية','🖼️'],['categories','الأقسام','أقسام المتجر','🏷️'],['offers','العروض والخصومات','العروض الحالية','🔥'],['featured','منتجات مميزة','منتجات تختارها','⭐'],['best','الأكثر مبيعًا','منتجات رائجة','🏆'],['new','وصل حديثًا','أحدث المنتجات','🆕'],['why','لماذا MYBRAND','مزايا وثقة العملاء','💎'],['services','خدمات المتجر','الدفع والشحن والدعم','🚚']] },
   { id: 'categories', title: 'الأقسام', path: '/categories', icon: '🏷️', sections: [['header','رأس الصفحة','عنوان ووصف الأقسام','🧭'],['categoryGrid','شبكة الأقسام','بطاقات الأقسام والصور','🗂️'],['featured','أقسام مميزة','اختيارات المتجر','⭐']] },
   { id: 'search', title: 'البحث', path: '/search', icon: '🔎', sections: [['searchBox','شريط البحث','البحث والفلاتر','🔎'],['filters','الفلاتر','الفرز والتصفية','⚙️'],['results','نتائج البحث','شبكة المنتجات','🛍️'],['empty','الحالة الفارغة','رسالة عدم وجود نتائج','📭']] },
   { id: 'product', title: 'تفاصيل المنتج', path: '/products/:slug', icon: '🛍️', sections: [['gallery','صور المنتج','المعرض والصور المصغرة','🖼️'],['info','معلومات المنتج','العنوان والسعر والتقييم','ℹ️'],['options','اختيارات المنتج','الألوان والمقاسات والكمية','🎨'],['buy','أزرار الشراء','اشترِ الآن وأضف للسلة','🛒'],['details','التفاصيل','الوصف والمواصفات','📋'],['related','منتجات مشابهة','اقتراحات للعميل','✨']] },
@@ -29,15 +29,29 @@ export default function StoreCustomizerPage() {
   const [dragged, setDragged] = useState(null);
   const [saved, setSaved] = useState(false);
   const [preview, setPreview] = useState('mobile');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const page = PAGE_DEFS.find((item) => item.id === pageId) || PAGE_DEFS[0];
   const sections = layouts[pageId] || makeDefaults(page);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('mybrand_store_page_layouts') || '{}');
-      if (stored && typeof stored === 'object') setLayouts(stored);
-    } catch {}
+    let alive = true;
+    api.get('/settings')
+      .then(({ data }) => {
+        if (!alive) return;
+        const remote = data?.settings?.pageLayouts;
+        if (remote && typeof remote === 'object' && !Array.isArray(remote)) setLayouts(remote);
+      })
+      .catch(() => {
+        try {
+          const stored = JSON.parse(localStorage.getItem('mybrand_store_page_layouts') || '{}');
+          if (alive && stored && typeof stored === 'object') setLayouts(stored);
+        } catch {}
+      })
+      .finally(() => alive && setLoading(false));
+    return () => { alive = false; };
   }, []);
 
   const updateSections = (next) => setLayouts((current) => ({ ...current, [pageId]: next }));
@@ -52,19 +66,39 @@ export default function StoreCustomizerPage() {
 
   const toggle = (id) => updateSections(sections.map((item) => item.id === id ? { ...item, enabled: !item.enabled } : item));
 
-  const save = () => {
+  const save = async () => {
+    setSaving(true);
+    setError('');
     const next = { ...layouts, [pageId]: sections };
-    localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next));
-    setLayouts(next);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
+    try {
+      const { data } = await api.put('/settings', { pageLayouts: next });
+      const remote = data?.settings?.pageLayouts;
+      const confirmed = remote && typeof remote === 'object' && !Array.isArray(remote) ? remote : next;
+      setLayouts(confirmed);
+      try { localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(confirmed)); } catch {}
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2200);
+    } catch (err) {
+      try { localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next)); } catch {}
+      setLayouts(next);
+      setError(err?.response?.data?.message || 'تعذر الحفظ المركزي. تم الاحتفاظ بنسخة محلية.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const reset = () => {
+  const reset = async () => {
     if (!confirm(`إرجاع تخصيص صفحة ${page.title} للوضع الافتراضي؟`)) return;
     const next = { ...layouts, [pageId]: makeDefaults(page) };
     setLayouts(next);
-    localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next));
+    try {
+      await api.put('/settings', { pageLayouts: next });
+      localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next));
+      setError('');
+    } catch {
+      try { localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next)); } catch {}
+      setError('تعذر الحفظ المركزي، لكن تم حفظ الإعداد محليًا.');
+    }
   };
 
   const enabledCount = useMemo(() => sections.filter((item) => item.enabled).length, [sections]);
@@ -72,9 +106,10 @@ export default function StoreCustomizerPage() {
   return (
     <div className="store-customizer" dir="rtl">
       <header className="customizer-head">
-        <div><span className="customizer-kicker">MYBRAND STORE BUILDER</span><h1>تخصيص كل صفحات المتجر</h1><p>اختر أي صفحة، ثم اسحب عناصرها ورتبها أو أخفِ ما لا تريد ظهوره.</p></div>
-        <div className="customizer-actions"><button className="secondary-btn" onClick={reset}>إعادة ضبط الصفحة</button><button className="primary-btn" onClick={save}>{saved ? '✓ تم الحفظ' : 'حفظ التخصيص'}</button></div>
+        <div><span className="customizer-kicker">MYBRAND STORE BUILDER</span><h1>تخصيص كل صفحات المتجر</h1><p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'اختر أي صفحة، ثم اسحب عناصرها ورتبها أو أخفِ ما لا تريد ظهوره.'}</p></div>
+        <div className="customizer-actions"><button className="secondary-btn" onClick={reset}>إعادة ضبط الصفحة</button><button className="primary-btn" onClick={save} disabled={saving}>{saving ? 'جارٍ الحفظ…' : saved ? '✓ تم الحفظ مركزيًا' : 'حفظ التخصيص'}</button></div>
       </header>
+      {error && <div className="customizer-error">{error}</div>}
 
       <section className="page-selector">
         <div className="page-selector-title"><span>STORE PAGES</span><strong>{PAGE_DEFS.length} صفحة قابلة للتخصيص</strong></div>
@@ -85,7 +120,7 @@ export default function StoreCustomizerPage() {
         <section className="builder-panel">
           <div className="panel-title"><div><span>{page.path}</span><h2>{page.icon} {page.title}</h2></div><strong>{enabledCount} مفعّل</strong></div>
           <div className="section-list">{sections.map((section, index) => <div key={section.id} draggable onDragStart={() => setDragged(index)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragged !== null) move(dragged,index); setDragged(null); }} className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''}`}><span className="drag-handle">⠿</span><span className="section-number">{index + 1}</span><span className="section-icon">{section.icon}</span><div className="section-copy"><strong>{section.title}</strong><small>{section.desc}</small></div><button className={`switch ${section.enabled ? 'on' : ''}`} onClick={() => toggle(section.id)} aria-label="تفعيل القسم"><span /></button></div>)}</div>
-          <div className="tip"><span>✦</span><div><strong>اسحب من علامة ⠿</strong><small>التخصيص محفوظ لكل صفحة بشكل مستقل.</small></div></div>
+          <div className="tip"><span>✦</span><div><strong>اسحب من علامة ⠿</strong><small>التخصيص محفوظ مركزيًا لحساب المشرف.</small></div></div>
         </section>
 
         <section className="preview-panel"><div className="preview-head"><div><span>LIVE PREVIEW</span><h2>معاينة {page.title}</h2></div><div className="preview-switch"><button className={preview === 'mobile' ? 'active' : ''} onClick={() => setPreview('mobile')}>📱 موبايل</button><button className={preview === 'desktop' ? 'active' : ''} onClick={() => setPreview('desktop')}>🖥️ كمبيوتر</button></div></div><div className={`store-preview ${preview}`}><div className="fake-header"><b>MYBRAND</b><span>⌕　♡　🛒</span></div>{sections.filter((s) => s.enabled).map((section) => <div key={section.id} className={`fake-section fake-${section.id}`}><span>{section.icon}</span><strong>{section.title}</strong><small>{section.desc}</small></div>)}</div></section>
