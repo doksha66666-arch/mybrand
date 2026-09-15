@@ -58,7 +58,7 @@ export default function App() {
               <Route path="loyalty" element={<PermissionRoute path="/loyalty"><LoyaltyPage /></PermissionRoute>} />
               <Route path="gift-cards" element={<PermissionRoute path="/gift-cards"><GiftCardsPage /></PermissionRoute>} />
               <Route path="reports" element={<PermissionRoute path="/reports"><ReportsPage /></PermissionRoute>} />
-              <Route path="settings" element={<PermissionRoute path="/settings"><SettingsPage /></PermissionRoute>} />
+              <Route path="settings" element={<PermissionRoute path="/settings" action="edit"><SettingsPage /></PermissionRoute>} />
               <Route path="products" element={<PermissionRoute path="/products"><ProductsPage /></PermissionRoute>} />
               <Route path="products/add" element={<PermissionRoute path="/products/add"><AddProductPage /></PermissionRoute>} />
               <Route path="products/edit/:id" element={<PermissionRoute path="/products/edit/:id"><AddProductPage /></PermissionRoute>} />
