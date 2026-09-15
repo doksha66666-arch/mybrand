@@ -11,6 +11,7 @@ const storeSettingsSchema = new mongoose.Schema({
   newOrder: { type: Boolean, default: true },
   lowStock: { type: Boolean, default: true },
   customerMessage: { type: Boolean, default: true },
+  pageLayouts: { type: mongoose.Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
 
 module.exports = mongoose.model('StoreSettings', storeSettingsSchema);
