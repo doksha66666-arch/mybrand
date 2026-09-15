@@ -3,6 +3,8 @@ import api from '../api/client';
 
 const AdminAuthContext = createContext(null);
 
+const isAdmin = (user) => user?.role === 'admin';
+
 export function AdminAuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,14 +17,24 @@ export function AdminAuthProvider({ children }) {
     }
     api
       .get('/auth/me')
-      .then(({ data }) => setUser(data.user))
-      .catch(() => localStorage.removeItem('mybrand_admin_token'))
+      .then(({ data }) => {
+        if (!isAdmin(data.user)) {
+          localStorage.removeItem('mybrand_admin_token');
+          setUser(null);
+          return;
+        }
+        setUser(data.user);
+      })
+      .catch(() => {
+        localStorage.removeItem('mybrand_admin_token');
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
-    if (data.user.role !== 'admin') {
+    if (!isAdmin(data.user)) {
       throw new Error('هذا الحساب لا يملك صلاحيات المشرف');
     }
     localStorage.setItem('mybrand_admin_token', data.token);
