@@ -14,9 +14,7 @@ const moduleForPath = (path) => {
   if (!clean || clean === '/') return 'dashboard';
   const first = clean.split('/')[0];
   if (first === 'products' || first === 'categories') return 'products';
-  if (['orders','customers','payment-methods','merchants','models','staff','reports','settings'].includes(first)) {
-    return first === 'payment-methods' ? 'payments' : first;
-  }
+  if (['orders','customers','payment-methods','merchants','models','staff','reports','settings'].includes(first)) return first === 'payment-methods' ? 'payments' : first;
   if (['banners','campaigns','offers','coupons','gift-cards','loyalty'].includes(first)) return 'marketing';
   if (['customer-service','support-tickets'].includes(first)) return 'support';
   if (['studio','trend','live'].includes(first)) return 'marketing';
@@ -27,6 +25,7 @@ const moduleForPath = (path) => {
 const actionForPath = (path) => {
   const clean = String(path || '/').replace(/^\//, '');
   if (clean === 'products/add') return 'create';
+  if (clean.startsWith('products/edit/')) return 'edit';
   return 'view';
 };
 
@@ -44,4 +43,4 @@ export const canAccess = (user, path, action = actionForPath(path)) => {
   return Array.isArray(defaults[moduleName]) && defaults[moduleName].includes(action);
 };
 
-export { moduleForPath };
+export { moduleForPath, actionForPath };
