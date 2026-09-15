@@ -1,18 +1,22 @@
 const Order = require('../models/Order');
+const User = require('../models/User');
 const { adminOnly } = require('../middleware/auth');
 
 const baseMatch = { isArchived: { $ne: true }, status: { $ne: 'cancelled' } };
 
 exports.getDashboardStats = [adminOnly, async (req, res, next) => {
   try {
-    const [summary] = await Order.aggregate([
-      { $match: baseMatch },
-      { $group: {
-        _id: null,
-        totalSales: { $sum: '$total' },
-        ordersCount: { $sum: 1 },
-        averageOrder: { $avg: '$total' },
-      } },
+    const [summary, customersCount] = await Promise.all([
+      Order.aggregate([
+        { $match: baseMatch },
+        { $group: {
+          _id: null,
+          totalSales: { $sum: '$total' },
+          ordersCount: { $sum: 1 },
+          averageOrder: { $avg: '$total' },
+        } },
+      ]),
+      User.countDocuments({ role: 'customer' }),
     ]);
 
     const since = new Date();
@@ -56,9 +60,10 @@ exports.getDashboardStats = [adminOnly, async (req, res, next) => {
     ]);
 
     res.json({
-      totalSales: Number(summary?.totalSales || 0),
-      ordersCount: Number(summary?.ordersCount || 0),
-      averageOrder: Number(summary?.averageOrder || 0),
+      totalSales: Number(summary?.[0]?.totalSales || 0),
+      ordersCount: Number(summary?.[0]?.ordersCount || 0),
+      averageOrder: Number(summary?.[0]?.averageOrder || 0),
+      customersCount: Number(customersCount || 0),
       salesByDay,
       categorySales: categoryRows.map((row) => ({ name: row.name, sales: Number(row.sales || 0) })),
       topProducts: topProductRows.map((row) => ({ name: row.name || 'منتج', units: Number(row.units || 0), sales: Number(row.sales || 0) })),
