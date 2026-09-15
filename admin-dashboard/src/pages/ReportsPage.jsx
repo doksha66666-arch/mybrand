@@ -21,7 +21,7 @@ export default function ReportsPage() {
     setError('');
     try {
       const [summary, dailyResult] = await Promise.all([
-        api.get('/orders/stats/summary'),
+        api.get('/orders/reports/summary'),
         api.get('/orders/reports/daily'),
       ]);
       setStats(summary.data || {});
