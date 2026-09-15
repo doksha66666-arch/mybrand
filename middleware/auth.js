@@ -45,6 +45,12 @@ const hasPermission = (req, moduleName, action) => {
   if (req.staff.role === 'super_admin') return true;
   const custom = req.staff.permissions?.[moduleName];
   if (custom && typeof custom === 'object' && Object.prototype.hasOwnProperty.call(custom, action)) return custom[action] === true;
+  if (moduleName === 'dashboard' && action === 'view' && String(req.baseUrl || '').endsWith('/orders') && String(req.path || '').startsWith('/stats')) {
+    const reportPermissions = req.staff.permissions?.reports;
+    if (reportPermissions && typeof reportPermissions === 'object' && reportPermissions.view === true) return true;
+    const reportDefaults = roleDefaults[req.staff.role]?.reports || [];
+    if (reportDefaults.includes('view')) return true;
+  }
   const defaults = roleDefaults[req.staff.role] || {};
   if (defaults.allView && action === 'view') return true;
   if (defaults.allView) return false;
