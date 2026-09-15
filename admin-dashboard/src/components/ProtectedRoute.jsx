@@ -5,8 +5,21 @@ import { useAdminAuth } from '../context/AdminAuthContext';
 export default function ProtectedRoute({ children }) {
   const { user, loading } = useAdminAuth();
 
-  if (loading) return <div style={{ padding: 40 }}>...جارٍ التحميل</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (loading) {
+    return (
+      <div className="admin-loading-screen" dir="rtl">
+        <div className="admin-loading-card">
+          <span className="admin-loading-mark">M</span>
+          <strong>MYBRAND</strong>
+          <span>جارٍ تجهيز مركز الإدارة...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/login" replace />;
+  }
 
   return children;
 }
