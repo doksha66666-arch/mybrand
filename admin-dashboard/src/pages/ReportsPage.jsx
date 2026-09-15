@@ -11,7 +11,6 @@ const dateLabel = (value) => {
 
 export default function ReportsPage() {
   const [stats, setStats] = useState(null);
-  const [customers, setCustomers] = useState(null);
   const [dailyReports, setDailyReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -21,13 +20,11 @@ export default function ReportsPage() {
     if (silent) setRefreshing(true); else setLoading(true);
     setError('');
     try {
-      const [summary, customerResult, dailyResult] = await Promise.all([
+      const [summary, dailyResult] = await Promise.all([
         api.get('/orders/stats/summary'),
-        api.get('/customers', { params: { page: 1, limit: 1 } }),
         api.get('/orders/reports/daily'),
       ]);
       setStats(summary.data || {});
-      setCustomers(customerResult.data || {});
       setDailyReports(dailyResult.data?.reports || []);
     } catch (err) {
       setError(err?.response?.data?.message || 'تعذر تحميل التقارير من البيانات الفعلية.');
@@ -65,7 +62,7 @@ export default function ReportsPage() {
         <div><b>إجمالي المبيعات</b><strong>{loading ? '—' : money(stats?.totalSales)}</strong><span>الطلبات غير الملغاة</span></div>
         <div><b>إجمالي الطلبات</b><strong>{loading ? '—' : number(stats?.ordersCount)}</strong><span>من سجل الطلبات الفعلي</span></div>
         <div><b>متوسط قيمة الطلب</b><strong>{loading ? '—' : money(stats?.averageOrder)}</strong><span>متوسط الطلبات غير الملغاة</span></div>
-        <div><b>العملاء</b><strong>{loading ? '—' : number(customers?.total)}</strong><span>إجمالي حسابات العملاء</span></div>
+        <div><b>العملاء</b><strong>{loading ? '—' : number(stats?.customersCount)}</strong><span>إجمالي حسابات العملاء</span></div>
       </div>
 
       <div className="grid two">
