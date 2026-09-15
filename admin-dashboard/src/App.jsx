@@ -1,8 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
-import { AdminAuthProvider } from './context/AdminAuthContext';
+import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminErrorBoundary from './components/AdminErrorBoundary';
+import { canAccess } from './utils/permissions';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -31,6 +32,12 @@ import LoyaltyPage from './pages/LoyaltyPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 
+function PermissionRoute({ path, action = 'view', children }) {
+  const { user } = useAdminAuth();
+  if (!canAccess(user, path, action)) return <Navigate to="/" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <AdminAuthProvider>
@@ -40,32 +47,32 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/admin" element={<Navigate to="/" replace />} />
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<DashboardPage />} />
-              <Route path="studio" element={<StudioPage />} />
-              <Route path="trend" element={<TrendHubPage />} />
-              <Route path="merchants" element={<MerchantsPage />} />
-              <Route path="merchants/:id" element={<MerchantDetailPage />} />
-              <Route path="staff" element={<StaffPage />} />
-              <Route path="models" element={<ModelsPage />} />
-              <Route path="payment-methods" element={<PaymentMethodsPage />} />
-              <Route path="loyalty" element={<LoyaltyPage />} />
-              <Route path="gift-cards" element={<GiftCardsPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="products" element={<ProductsPage />} />
-              <Route path="products/add" element={<AddProductPage />} />
-              <Route path="products/edit/:id" element={<AddProductPage />} />
-              <Route path="categories" element={<CategoriesPage />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="customers" element={<CustomersPage />} />
-              <Route path="banners" element={<BannersPage />} />
-              <Route path="campaigns" element={<CampaignsPage />} />
-              <Route path="offers" element={<OffersPage />} />
-              <Route path="coupons" element={<CouponsPage />} />
-              <Route path="store-customizer" element={<StoreCustomizerPage />} />
-              <Route path="customer-service" element={<CustomerServicePage />} />
-              <Route path="support-tickets" element={<SupportTicketsPage />} />
-              <Route path="live" element={<LiveOBSPage />} />
+              <Route index element={<PermissionRoute path="/"><DashboardPage /></PermissionRoute>} />
+              <Route path="studio" element={<PermissionRoute path="/studio"><StudioPage /></PermissionRoute>} />
+              <Route path="trend" element={<PermissionRoute path="/trend"><TrendHubPage /></PermissionRoute>} />
+              <Route path="merchants" element={<PermissionRoute path="/merchants"><MerchantsPage /></PermissionRoute>} />
+              <Route path="merchants/:id" element={<PermissionRoute path="/merchants"><MerchantDetailPage /></PermissionRoute>} />
+              <Route path="staff" element={<PermissionRoute path="/staff"><StaffPage /></PermissionRoute>} />
+              <Route path="models" element={<PermissionRoute path="/models"><ModelsPage /></PermissionRoute>} />
+              <Route path="payment-methods" element={<PermissionRoute path="/payment-methods"><PaymentMethodsPage /></PermissionRoute>} />
+              <Route path="loyalty" element={<PermissionRoute path="/loyalty"><LoyaltyPage /></PermissionRoute>} />
+              <Route path="gift-cards" element={<PermissionRoute path="/gift-cards"><GiftCardsPage /></PermissionRoute>} />
+              <Route path="reports" element={<PermissionRoute path="/reports"><ReportsPage /></PermissionRoute>} />
+              <Route path="settings" element={<PermissionRoute path="/settings"><SettingsPage /></PermissionRoute>} />
+              <Route path="products" element={<PermissionRoute path="/products"><ProductsPage /></PermissionRoute>} />
+              <Route path="products/add" element={<PermissionRoute path="/products/add"><AddProductPage /></PermissionRoute>} />
+              <Route path="products/edit/:id" element={<PermissionRoute path="/products/edit/:id"><AddProductPage /></PermissionRoute>} />
+              <Route path="categories" element={<PermissionRoute path="/categories"><CategoriesPage /></PermissionRoute>} />
+              <Route path="orders" element={<PermissionRoute path="/orders"><OrdersPage /></PermissionRoute>} />
+              <Route path="customers" element={<PermissionRoute path="/customers"><CustomersPage /></PermissionRoute>} />
+              <Route path="banners" element={<PermissionRoute path="/banners"><BannersPage /></PermissionRoute>} />
+              <Route path="campaigns" element={<PermissionRoute path="/campaigns"><CampaignsPage /></PermissionRoute>} />
+              <Route path="offers" element={<PermissionRoute path="/offers"><OffersPage /></PermissionRoute>} />
+              <Route path="coupons" element={<PermissionRoute path="/coupons"><CouponsPage /></PermissionRoute>} />
+              <Route path="store-customizer" element={<PermissionRoute path="/store-customizer"><StoreCustomizerPage /></PermissionRoute>} />
+              <Route path="customer-service" element={<PermissionRoute path="/customer-service"><CustomerServicePage /></PermissionRoute>} />
+              <Route path="support-tickets" element={<PermissionRoute path="/support-tickets"><SupportTicketsPage /></PermissionRoute>} />
+              <Route path="live" element={<PermissionRoute path="/live"><LiveOBSPage /></PermissionRoute>} />
             </Route>
           </Routes>
         </AdminErrorBoundary>
