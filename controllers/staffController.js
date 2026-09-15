@@ -22,7 +22,7 @@ exports.createStaff = async (req, res, next) => {
     const role = String(req.body.role || 'viewer');
     const permissions = safePermissions(req.body.permissions);
     if (!name || !email || !password) return res.status(400).json({ message: 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
+    if (!/^([^\s@]+)@([^\s@]+)\.([^\s@]+)$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
     if (password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ message: `كلمة مرور الموظف يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفًا على الأقل` });
     if (!allowedRoles.has(role)) return res.status(400).json({ message: 'الدور المحدد غير صالح' });
     const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email }).select('_id'), User.findOne({ email }).select('_id')]);
@@ -54,7 +54,7 @@ exports.updateStaff = async (req, res, next) => {
     const phone = String(req.body.phone ?? staff.phone ?? '').trim();
     const role = String(req.body.role ?? staff.role);
     if (!name || !email) return res.status(400).json({ message: 'الاسم والبريد الإلكتروني مطلوبان' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
+    if (!/^([^\s@]+)@([^\s@]+)\.([^\s@]+)$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' });
     if (!allowedRoles.has(role)) return res.status(400).json({ message: 'الدور المحدد غير صالح' });
     if (email !== staff.email) {
       const [staffExists, userExists] = await Promise.all([StaffMember.findOne({ email, _id: { $ne: staff._id } }).select('_id'), User.findOne({ email }).select('_id')]);
@@ -80,6 +80,7 @@ exports.removeStaff = async (req, res, next) => {
     const staff = await StaffMember.findById(req.params.id);
     if (!staff) return res.status(404).json({ message: 'عضو الفريق غير موجود' });
     if (String(staff.email) === String(req.user?.email)) return res.status(400).json({ message: 'لا يمكن حذف حسابك الإداري من هنا' });
+    if (staff.role === 'super_admin') return res.status(400).json({ message: 'لا يمكن حذف حساب super_admin من لوحة الفريق' });
     const account = await User.findOne({ email: staff.email, role: 'staff' }).select('_id');
     await StaffMember.deleteOne({ _id: staff._id });
     if (account) await User.deleteOne({ _id: account._id });
