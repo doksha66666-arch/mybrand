@@ -19,7 +19,7 @@ const routePermission = (req) => {
   const path = String(req.path || '');
   if (base === 'orders') return path.startsWith('/stats') ? 'dashboard' : 'orders';
   if (base === 'products') return 'products';
-  if (base === 'categories') return 'products';
+  if (base === 'categories') return 'categories';
   if (['banners','campaigns','offers','coupons','gift-cards','loyalty'].includes(base)) return 'marketing';
   if (['customers','support','chat'].includes(base)) return base === 'customers' ? 'customers' : 'support';
   if (base === 'payment-methods') return 'payments';
@@ -83,9 +83,7 @@ exports.merchantOnly = (req, res, next) => {
 
 exports.approvedMerchantOnly = (req, res, next) => {
   if (!req.merchant || req.merchant.status !== 'approved') {
-    return res.status(403).json({
-      message: req.merchant?.status === 'pending' ? 'حسابك كتاجر قيد المراجعة حاليًا، سيتم إعلامك عند الموافقة' : 'حسابك كتاجر موقوف حاليًا، تواصل مع الدعم',
-    });
+    return res.status(403).json({ message: req.merchant?.status === 'pending' ? 'حسابك كتاجر قيد المراجعة حاليًا، سيتم إعلامك عند الموافقة' : 'حسابك كتاجر موقوف حاليًا، تواصل مع الدعم' });
   }
   next();
 };
