@@ -1,16 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAdminAuth } from '../context/AdminAuthContext';
+import { canAccess } from '../utils/permissions';
 import api from '../api/client';
 
 const labels = { draft: 'مسودة', pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض', hidden: 'مخفي', out_of_stock: 'نفد المخزون' };
 
 export default function ProductsPage() {
   const navigate = useNavigate();
+  const { user } = useAdminAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+
+  const allowCreate = canAccess(user, '/products/add', 'create');
+  const allowEdit = canAccess(user, '/products', 'edit');
+  const allowDelete = canAccess(user, '/products', 'delete');
 
   const load = async () => {
     setLoading(true);
@@ -28,12 +35,14 @@ export default function ProductsPage() {
   useEffect(() => { load(); }, []);
 
   const remove = async (id) => {
+    if (!allowDelete) return;
     if (!window.confirm('هل تريد حذف هذا المنتج نهائيًا؟')) return;
     try { await api.delete(`/products/${id}`); await load(); }
     catch (err) { setError(err?.response?.data?.message || 'تعذر حذف المنتج'); }
   };
 
   const approve = async (id, action) => {
+    if (!allowEdit) return;
     try { await api.put(`/products/${id}/review`, { action }); await load(); }
     catch (err) { setError(err?.response?.data?.message || 'تعذر تحديث مراجعة المنتج'); }
   };
@@ -47,7 +56,7 @@ export default function ProductsPage() {
     <header style={styles.header}>
       <div><h1 style={styles.h1}>المنتجات</h1><p style={styles.muted}>إدارة المنتجات ومراجعتها من مكان واحد. إنشاء المنتج أصبح في صفحة مستقلة لتجنب التكرار.</p></div>
       <div style={styles.headerActions}>
-        <button type="button" style={styles.primary} onClick={() => navigate('/products/add')}>+ إضافة منتج</button>
+        {allowCreate && <button type="button" style={styles.primary} onClick={() => navigate('/products/add')}>+ إضافة منتج</button>}
       </div>
     </header>
     {error && <div style={styles.error}>{error}</div>}
@@ -58,11 +67,11 @@ export default function ProductsPage() {
       </select>
       <span style={styles.count}>{filtered.length} منتج</span>
     </section>
-    {loading ? <div style={styles.empty}>جارٍ تحميل المنتجات...</div> : !filtered.length ? <div style={styles.empty}><strong>لا توجد منتجات مطابقة.</strong><button type="button" style={styles.secondary} onClick={() => navigate('/products/add')}>إضافة أول منتج</button></div> :
+    {loading ? <div style={styles.empty}>جارٍ تحميل المنتجات...</div> : !filtered.length ? <div style={styles.empty}><strong>لا توجد منتجات مطابقة.</strong>{allowCreate && <button type="button" style={styles.secondary} onClick={() => navigate('/products/add')}>إضافة أول منتج</button>}</div> :
       <div style={styles.grid}>{filtered.map(product => <article key={product._id} style={styles.card}>
         <div style={styles.cardTop}>{product.images?.[0] ? <img src={product.images[0]} alt="" style={styles.thumb} /> : <div style={styles.noimg}>بدون صورة</div>}<div style={{ flex: 1, minWidth: 0 }}><b style={styles.name}>{product.nameAr || product.nameEn || 'منتج بدون اسم'}</b><div style={styles.small}>{product.nameEn || '—'}</div><div style={styles.small}>SKU: {product.sku || '—'}</div></div><span style={styles.badge}>{labels[product.status] || product.status || 'غير محدد'}</span></div>
         <div style={styles.stats}><span>السعر <b>{Number(product.price || 0).toLocaleString('ar-EG')} ج.م</b></span><span>المخزون <b>{Number(product.stock || 0)}</b></span><span>الألوان <b>{product.variants?.filter(v => v.name === 'color').length || 0}</b></span><span>المقاسات <b>{product.variants?.filter(v => v.name === 'size').length || 0}</b></span></div>
-        <div style={styles.cardActions}><button type="button" style={styles.secondary} onClick={() => navigate(`/products/edit/${product._id}`)}>تعديل</button>{product.status === 'pending' && <><button type="button" style={styles.approve} onClick={() => approve(product._id, 'approve')}>اعتماد</button><button type="button" style={styles.reject} onClick={() => approve(product._id, 'reject')}>رفض</button></>}<button type="button" style={styles.danger} onClick={() => remove(product._id)}>حذف</button></div>
+        <div style={styles.cardActions}>{allowEdit && <button type="button" style={styles.secondary} onClick={() => navigate(`/products/edit/${product._id}`)}>تعديل</button>}{allowEdit && product.status === 'pending' && <><button type="button" style={styles.approve} onClick={() => approve(product._id, 'approve')}>اعتماد</button><button type="button" style={styles.reject} onClick={() => approve(product._id, 'reject')}>رفض</button></>}{allowDelete && <button type="button" style={styles.danger} onClick={() => remove(product._id)}>حذف</button>}</div>
       </article>)}</div>}
   </div>;
 }
