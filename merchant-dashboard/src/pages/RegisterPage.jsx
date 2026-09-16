@@ -10,6 +10,7 @@ export default function RegisterPage() {
     email: '',
     phone: '',
     password: '',
+    country: 'مصر',
     governorate: '',
     center: '',
     businessName: '',
@@ -25,6 +26,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setError('');
     setSubmitting(true);
     try {
@@ -33,6 +35,7 @@ export default function RegisterPage() {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
+        country: form.country.trim(),
         governorate: form.governorate.trim(),
         center: form.center.trim(),
         businessName: form.businessName.trim(),
@@ -51,7 +54,7 @@ export default function RegisterPage() {
 
   return (
     <div dir="rtl" style={styles.wrapper}>
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={handleSubmit} style={styles.form} noValidate>
         <h1 style={styles.title}>انضم كتاجر في MYBRAND</h1>
         <p style={styles.subtitle}>بعد التسجيل، سيتم إرسال كود إلى بريدك الإلكتروني لتأكيد الحساب قبل الدخول.</p>
         {error && <p role="alert" style={styles.error}>{error}</p>}
@@ -63,6 +66,7 @@ export default function RegisterPage() {
         <input autoComplete="new-password" style={styles.input} type="password" minLength={12} placeholder="كلمة المرور (12 حرفًا على الأقل)" value={form.password} onChange={handleChange('password')} required />
 
         <p style={styles.sectionLabel}>الموقع</p>
+        <input autoComplete="country-name" style={styles.input} placeholder="الدولة" value={form.country} onChange={handleChange('country')} required />
         <input style={styles.input} placeholder="المحافظة" value={form.governorate} onChange={handleChange('governorate')} required />
         <input style={styles.input} placeholder="المركز" value={form.center} onChange={handleChange('center')} required />
 
