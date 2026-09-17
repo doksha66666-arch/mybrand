@@ -46,6 +46,10 @@ const orderSchema = new mongoose.Schema({
 
 // Main admin list: filter active orders and return newest first without a collection scan.
 orderSchema.index({ isArchived: 1, createdAt: -1 });
+// Admin status filters/counts: keep the archive flag and status lookup indexed.
+orderSchema.index({ isArchived: 1, status: 1, createdAt: -1 });
+// Vodafone Cash attention queue: narrow payment checks before sorting by newest.
+orderSchema.index({ isArchived: 1, paymentMethod: 1, paymentStatus: 1, createdAt: -1 });
 // Merchant fulfillment: narrow by merchant/status and keep newest orders first.
 orderSchema.index({ 'items.merchant': 1, status: 1, createdAt: -1 });
 
@@ -66,7 +70,7 @@ orderSchema.pre('save', async function snapshotSellerData() {
 });
 
 orderSchema.pre('save', async function loyaltyBeforeSave() {
-  if (!this.isNew) return; const ctx = storage.getStore(); const requestedPoints = Math.max(0, Math.floor(Number(ctx?.requestedPoints || 0))); if (!requestedPoints) return;
+  if (!this.isNew || !this.items?.length) return; const ctx = storage.getStore(); const requestedPoints = Math.max(0, Math.floor(Number(ctx?.requestedPoints || 0))); if (!requestedPoints) return;
   const merchandiseAmount = Math.max(0, Number(this.subtotal || 0) - Number(this.discount || 0)); const reserved = await reserveRedemption({ userId: this.user, requestedPoints, merchandiseAmount });
   this.loyaltyPointsRedeemed = reserved.points; this.loyaltyDiscount = reserved.discount; this.total = Math.max(0, Math.round((Number(this.total || 0) - reserved.discount) * 100) / 100); this.$locals.loyaltyReservationId = reserved.reservationId;
 });
