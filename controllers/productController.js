@@ -10,9 +10,11 @@ const { notifyCustomersAboutNewProduct } = require('../services/notificationServ
 const PUBLIC_MERCHANT_PRODUCT_STATUSES = ['approved', 'pending', 'out_of_stock'];
 const PUBLIC_LEGACY_PRODUCT_STATUS = { $or: [{ status: 'approved' }, { status: { $exists: false } }] };
 const MAX_PAGE_SIZE = 100;
+const ADMIN_PRODUCT_FIELDS = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn', 'slug', 'category', 'price', 'compareAtPrice', 'images', 'videoUrl', 'videoPoster', 'variants', 'stock', 'sku', 'isActive', 'isFeatured', 'tags', 'status', 'rejectionReason', 'commissionRateOverride', 'merchant'];
 const PUBLIC_PRODUCT_FIELDS = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn', 'slug', 'category', 'price', 'compareAtPrice', 'images', 'videoUrl', 'videoPoster', 'variants', 'stock', 'sku', 'isActive', 'isFeatured', 'tags'];
-const ADMIN_PRODUCT_FIELDS = [...PUBLIC_PRODUCT_FIELDS, 'status', 'rejectionReason', 'commissionRateOverride', 'merchant'];
 const MERCHANT_PRODUCT_FIELDS = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn', 'slug', 'category', 'price', 'compareAtPrice', 'images', 'videoUrl', 'videoPoster', 'variants', 'stock', 'sku', 'isActive', 'isFeatured', 'tags'];
+const ADMIN_PRODUCT_LIST_FIELDS = 'nameAr nameEn slug sku images price stock variants.name status createdAt';
+const PRODUCT_STATUSES = new Set(['draft', 'pending', 'approved', 'rejected', 'hidden', 'out_of_stock']);
 
 function pickAllowed(source, fields) {
   return fields.reduce((out, key) => {
@@ -89,14 +91,33 @@ exports.getProductBySlug = async (req, res, next) => {
 
 exports.getAllProductsAdmin = async (req, res, next) => {
   try {
-    const { page, limit } = parsePagination(req.query.page, req.query.limit, 100);
-    const products = await Product.find({})
-      .populate('category', 'nameAr nameEn slug')
-      .populate({ path: 'merchant', populate: { path: 'user', select: 'name email' } })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort('-createdAt');
-    const total = await Product.countDocuments({});
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 25);
+    const search = String(req.query?.search || '').trim();
+    const status = String(req.query?.status || '').trim().toLowerCase();
+    const filter = {};
+
+    if (PRODUCT_STATUSES.has(status)) filter.status = status;
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(escaped, 'i');
+      filter.$or = [
+        { nameAr: pattern },
+        { nameEn: pattern },
+        { slug: pattern },
+        { sku: pattern },
+      ];
+    }
+
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .select(ADMIN_PRODUCT_LIST_FIELDS)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1, _id: -1 })
+        .lean(),
+      Product.countDocuments(filter),
+    ]);
+
     res.json({ products, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
