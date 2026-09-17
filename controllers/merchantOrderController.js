@@ -4,9 +4,12 @@ const Product = require('../models/Product');
 const MerchantOrderStatus = require('../models/MerchantOrderStatus');
 
 const allowed = ['confirmed', 'packed', 'ready'];
+const MAX_PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 20;
 
 const normalizeOptionName = (name) => String(name || '').trim().toLowerCase();
 const getOption = (options, names) => Object.entries(options || {}).find(([name]) => names.includes(normalizeOptionName(name)))?.[1] || '';
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const fulfillmentItem = (item, productById) => {
   const productId = item?.product?._id || item?.product;
@@ -46,63 +49,118 @@ const merchantItems = (order, merchantId, productById) => (order.items || [])
   .filter((item) => String(item.merchant) === String(merchantId))
   .map((item) => fulfillmentItem(item, productById));
 
+const parsePagination = (req) => {
+  const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
+  const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, Number.parseInt(req.query?.limit, 10) || DEFAULT_PAGE_SIZE));
+  return { page, limit };
+};
+
 exports.getMerchantFulfillmentOrders = async (req, res, next) => {
   try {
-    const orders = await Order.find({
+    const merchantId = req.merchant._id;
+    const { page, limit } = parsePagination(req);
+    const stage = String(req.query?.stage || '').trim().toLowerCase();
+    const search = String(req.query?.search || '').trim();
+    const baseFilter = {
       status: { $in: ['confirmed', 'processing', 'shipped', 'delivered'] },
-      'items.merchant': req.merchant._id,
-    })
-      .select('orderNumber items createdAt')
-      .sort({ createdAt: -1 })
-      .lean();
+      'items.merchant': merchantId,
+    };
 
-    const ids = orders.map((o) => o._id);
+    const filter = { ...baseFilter };
+
+    if (allowed.includes(stage) && stage !== 'confirmed') {
+      const stageOrderIds = await MerchantOrderStatus.find({ merchant: merchantId, status: stage }).distinct('order');
+      filter._id = { $in: stageOrderIds };
+    } else if (stage === 'confirmed') {
+      const advancedOrderIds = await MerchantOrderStatus.find({ merchant: merchantId, status: { $in: ['packed', 'ready'] } }).distinct('order');
+      if (advancedOrderIds.length) filter._id = { $nin: advancedOrderIds };
+    }
+
+    if (search) {
+      const pattern = new RegExp(escapeRegex(search), 'i');
+      filter.$or = [
+        { orderNumber: pattern },
+        { items: { $elemMatch: { merchant: merchantId, nameSnapshot: pattern } } },
+        { items: { $elemMatch: { merchant: merchantId, productCodeSnapshot: pattern } } },
+      ];
+    }
+
+    const statusCountPipeline = [
+      { $match: baseFilter },
+      { $project: { _id: 1 } },
+      {
+        $lookup: {
+          from: 'merchantorderstatuses',
+          let: { orderId: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $and: [{ $eq: ['$order', '$$orderId'] }, { $eq: ['$merchant', merchantId] }] } } },
+            { $project: { _id: 0, status: 1 } },
+          ],
+          as: 'merchantStatus',
+        },
+      },
+      { $addFields: { merchantStatus: { $ifNull: [{ $arrayElemAt: ['$merchantStatus.status', 0] }, 'confirmed'] } } },
+      { $group: { _id: '$merchantStatus', count: { $sum: 1 } } },
+    ];
+
+    const fulfillmentFields = [
+      'orderNumber',
+      'createdAt',
+      'items.product',
+      'items.nameSnapshot',
+      'items.variantId',
+      'items.selectedOptions',
+      'items.quantity',
+      'items.merchant',
+      'items.imageSnapshot',
+      'items.productCodeSnapshot',
+      'items.notesSnapshot',
+    ].join(' ');
+
+    const [orders, total, statusRows] = await Promise.all([
+      Order.find(filter)
+        .select(fulfillmentFields)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(filter),
+      MerchantOrderStatus.aggregate(statusCountPipeline),
+    ]);
+
+    const orderIds = orders.map((o) => o._id);
     const merchantProductIds = new Set();
     const variantProductIds = new Set();
 
     for (const order of orders) {
       for (const item of order.items || []) {
-        if (String(item.merchant) !== String(req.merchant._id)) continue;
+        if (String(item.merchant) !== String(merchantId)) continue;
         const productId = item.product?._id || item.product;
         if (!productId) continue;
         const key = String(productId);
 
-        // Modern orders already contain fulfillment snapshots. Only fall back to the
-        // product document when a legacy order is missing the corresponding snapshot.
-        if (!item.nameSnapshot || !item.imageSnapshot || !item.productCodeSnapshot) {
-          merchantProductIds.add(key);
-        }
+        if (!item.nameSnapshot || !item.imageSnapshot || !item.productCodeSnapshot) merchantProductIds.add(key);
 
-        // variantId is needed only when the response must reconstruct legacy variant
-        // details (color/size/variant image/SKU).
         if (item.variantId) {
           const options = item.selectedOptions && typeof item.selectedOptions === 'object' && !Array.isArray(item.selectedOptions)
             ? item.selectedOptions
             : {};
           const hasColor = Boolean(getOption(options, ['color', 'colour', 'اللون', 'لون']));
           const hasSize = Boolean(getOption(options, ['size', 'المقاس', 'مقاس']));
-          if (!hasColor || !hasSize || !item.imageSnapshot || !item.productCodeSnapshot) {
-            variantProductIds.add(key);
-          }
+          if (!hasColor || !hasSize || !item.imageSnapshot || !item.productCodeSnapshot) variantProductIds.add(key);
         }
       }
     }
 
     const [statuses, baseProducts, variantProducts] = await Promise.all([
-      ids.length
-        ? MerchantOrderStatus.find({ merchant: req.merchant._id, order: { $in: ids } })
-            .select('order status')
-            .lean()
+      orderIds.length
+        ? MerchantOrderStatus.find({ merchant: merchantId, order: { $in: orderIds } }).select('order status').lean()
         : [],
       merchantProductIds.size
-        ? Product.find({ _id: { $in: Array.from(merchantProductIds) } })
-            .select('nameAr images sku')
-            .lean()
+        ? Product.find({ _id: { $in: Array.from(merchantProductIds) } }).select('nameAr images sku').lean()
         : [],
       variantProductIds.size
-        ? Product.find({ _id: { $in: Array.from(variantProductIds) } })
-            .select('variants.name variants.value variants.label variants.sku variants.image')
-            .lean()
+        ? Product.find({ _id: { $in: Array.from(variantProductIds) } }).select('variants.name variants.value variants.label variants.sku variants.image').lean()
         : [],
     ]);
 
@@ -119,10 +177,29 @@ exports.getMerchantFulfillmentOrders = async (req, res, next) => {
       orderNumber: order.orderNumber,
       merchantStatus: byOrder.get(String(order._id)) || 'confirmed',
       createdAt: order.createdAt,
-      items: merchantItems(order, req.merchant._id, productById),
+      items: merchantItems(order, merchantId, productById),
     }));
 
-    res.json({ orders: result });
+    const rawStatusCounts = Object.fromEntries(statusRows.map((row) => [row._id, Number(row.count || 0)]));
+    const statusCounts = {
+      confirmed: rawStatusCounts.confirmed || 0,
+      packed: rawStatusCounts.packed || 0,
+      ready: rawStatusCounts.ready || 0,
+    };
+
+    const totalPages = Math.ceil(total / limit);
+    res.json({
+      orders: result,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      counts: statusCounts,
+    });
   } catch (error) {
     next(error);
   }
