@@ -5,13 +5,14 @@ const {
   getMyOrders,
   getMerchantOrders,
   getOrderById,
+  getMerchantSales,
 } = require('../controllers/orderController');
 const { cancelOrder } = require('../controllers/orderCancellationController');
 const { getAllOrders, updatePaymentStatus } = require('../controllers/adminOrderController');
 const { getDashboardStats } = require('../controllers/dashboardStatsController');
 const { getDailyReports, getDailyReport, archiveDailyReport } = require('../controllers/dailyOrderReportController');
 const { updateOrderStatus } = require('../controllers/orderStatusController');
-const { getMerchantFulfillmentOrders, updateMerchantFulfillmentStatus, getMerchantSales } = require('../controllers/merchantOrderController');
+const { getMerchantFulfillmentOrders, updateMerchantFulfillmentStatus } = require('../controllers/merchantOrderController');
 const { protect, adminOnly, merchantOnly, approvedMerchantOnly } = require('../middleware/auth');
 const merchantOrderAccess = require('../middleware/merchantOrderAccess');
 const merchantOrderDataSanitizer = require('../middleware/merchantOrderDataSanitizer');
