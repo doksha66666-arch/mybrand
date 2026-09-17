@@ -45,20 +45,45 @@ const allowedPaymentTransitions = {
   refunded: new Set(['refunded']),
 };
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 exports.getAllOrders = async (req, res, next) => {
   try {
     const includeArchived = String(req.query?.includeArchived || '').toLowerCase() === 'true';
-    const filter = includeArchived ? {} : { isArchived: { $ne: true } };
+    const status = String(req.query?.status || '').trim().toLowerCase();
+    const search = String(req.query?.search || '').trim();
+    const sort = String(req.query?.sort || 'newest').toLowerCase() === 'oldest' ? 1 : -1;
+    const hasPagination = req.query?.page != null || req.query?.limit != null;
+    const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query?.limit, 10) || 50));
 
-    const orders = await Order.find(filter)
+    const filter = includeArchived ? {} : { isArchived: { $ne: true } };
+    if (status) filter.status = status;
+    if (search) {
+      const pattern = new RegExp(escapeRegex(search), 'i');
+      filter.$or = [
+        { orderNumber: pattern },
+        { 'customer.name': pattern },
+        { 'customer.phone': pattern },
+        { 'customer.email': pattern },
+      ];
+    }
+
+    const baseQuery = Order.find(filter)
       .select(
         'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport'
       )
       .populate('user', 'name email phone')
       .populate('items.product', 'nameAr nameEn images sku')
       .populate('items.merchant', 'name storeName businessName')
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: sort });
+
+    if (hasPagination) baseQuery.skip((page - 1) * limit).limit(limit);
+
+    const [orders, total] = await Promise.all([
+      baseQuery.lean(),
+      hasPagination ? Order.countDocuments(filter) : Promise.resolve(null),
+    ]);
 
     const orderIds = orders.map((order) => order._id);
     const statuses = orderIds.length
@@ -73,14 +98,26 @@ exports.getAllOrders = async (req, res, next) => {
       statusMap.get(orderKey).set(String(row.merchant), row);
     }
 
+    const payload = orders.map((order) => ({
+      ...order,
+      merchantFulfillment: buildMerchantFulfillment(
+        order,
+        statusMap.get(String(order._id)) || new Map()
+      ),
+    }));
+
+    if (!hasPagination) return res.json({ orders: payload });
+
     res.json({
-      orders: orders.map((order) => ({
-        ...order,
-        merchantFulfillment: buildMerchantFulfillment(
-          order,
-          statusMap.get(String(order._id)) || new Map()
-        ),
-      })),
+      orders: payload,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
     });
   } catch (error) {
     next(error);
