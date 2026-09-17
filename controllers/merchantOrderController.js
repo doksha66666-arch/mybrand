@@ -15,7 +15,6 @@ const fulfillmentItem = (item) => {
   let color = getOption(options, ['color', 'colour', 'اللون', 'لون']);
   let size = getOption(options, ['size', 'المقاس', 'مقاس']);
 
-  // Older orders may contain only variantId without selectedOptions.
   if (variant) {
     const variantName = normalizeOptionName(variant.name || variant.optionName);
     const variantValue = variant.value ?? variant.label ?? '';
@@ -51,12 +50,20 @@ exports.getMerchantFulfillmentOrders = async (req, res, next) => {
       status: { $in: ['confirmed', 'processing', 'shipped', 'delivered'] },
       'items.merchant': req.merchant._id,
     })
-      .populate({ path: 'items.product', select: 'nameAr images sku variants' })
-      .sort('-createdAt')
+      .select('orderNumber items createdAt')
+      .populate({
+        path: 'items.product',
+        select: 'nameAr images sku variants.name variants.value variants.label variants.sku variants.image',
+      })
+      .sort({ createdAt: -1 })
       .lean();
 
     const ids = orders.map((o) => o._id);
-    const statuses = await MerchantOrderStatus.find({ merchant: req.merchant._id, order: { $in: ids } }).lean();
+    const statuses = ids.length
+      ? await MerchantOrderStatus.find({ merchant: req.merchant._id, order: { $in: ids } })
+          .select('order status')
+          .lean()
+      : [];
     const byOrder = new Map(statuses.map((s) => [String(s.order), s.status]));
 
     const result = orders.map((order) => ({
@@ -68,7 +75,9 @@ exports.getMerchantFulfillmentOrders = async (req, res, next) => {
     }));
 
     res.json({ orders: result });
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.updateMerchantFulfillmentStatus = async (req, res, next) => {
