@@ -36,6 +36,7 @@ exports.getAllOrders = async (req, res, next) => {
     const includeArchived = String(req.query?.includeArchived || '').toLowerCase() === 'true';
     const status = String(req.query?.status || '').trim().toLowerCase();
     const search = String(req.query?.search || '').trim();
+    const paymentAttentionOnly = String(req.query?.paymentAttentionOnly || '').toLowerCase() === 'true';
     const sort = String(req.query?.sort || 'newest').toLowerCase() === 'oldest' ? 1 : -1;
     const hasPagination = req.query?.page != null || req.query?.limit != null;
     const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
@@ -44,6 +45,10 @@ exports.getAllOrders = async (req, res, next) => {
     const baseFilter = includeArchived ? {} : { isArchived: { $ne: true } };
     const filter = { ...baseFilter };
     if (status) filter.status = status;
+    if (paymentAttentionOnly) {
+      filter.paymentMethod = 'vodafone_cash';
+      filter.paymentStatus = { $ne: 'paid' };
+    }
     if (search) {
       const pattern = new RegExp(escapeRegex(search), 'i');
       filter.$or = [{ orderNumber: pattern }, { 'customer.name': pattern }, { 'customer.phone': pattern }, { 'customer.email': pattern }];
