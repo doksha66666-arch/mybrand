@@ -239,7 +239,7 @@ exports.getMerchantSales = async (req, res, next) => {
             $filter: {
               input: '$items',
               as: 'item',
-              cond: { $eq: ['$item.merchant', merchantId] },
+              cond: { $eq: ['$$item.merchant', merchantId] },
             },
           },
         },
