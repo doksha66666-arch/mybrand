@@ -79,8 +79,8 @@ exports.createPost = async (req, res, next) => {
       product: product?._id || null,
       merchant: req.merchant._id,
       timeLabel: 'الآن', likes: 0, views: 0,
-      // A merchant publishing from the merchant dashboard is immediately public.
-      isPublished: true,
+      // Respect the merchant dashboard's explicit publish choice; default to public.
+      isPublished: req.body.isPublished !== false,
     });
     const populated = await TrendPost.findById(post._id).populate('product', productSelect).lean();
     res.status(201).json({ post: serializePost(populated) });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import api from '../api/client';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -7,6 +7,7 @@ const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export default function ImageUploader({ images, onChange }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const inputRef = useRef(null);
 
   const handleFiles = async (fileList) => {
     setError('');
@@ -34,6 +35,7 @@ export default function ImageUploader({ images, onChange }) {
       setError(err?.response?.data?.message || 'تعذر رفع الصورة، حاول مرة أخرى');
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -44,6 +46,7 @@ export default function ImageUploader({ images, onChange }) {
       <label style={styles.dropzone}>
         {uploading ? 'جارٍ رفع الصور...' : '+ أضف صورة (JPG, PNG, WEBP — حتى 5MB)'}
         <input
+          ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
