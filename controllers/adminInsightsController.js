@@ -13,13 +13,53 @@ const pickIntent = (message = '') => {
 };
 
 const buildData = async (intent) => {
-  const [productCount, activeProducts, orderStats, customerCount] = await Promise.all([
-    Product.countDocuments(),
-    Product.countDocuments({ isActive: true }),
-    Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 }, revenue: { $sum: '$total' } } }]),
-    User.countDocuments({ role: 'customer', isActive: true }),
+  const detailPromise = intent === 'top_products' || intent === 'slow_products'
+    ? Order.aggregate([
+        { $match: { status: { $nin: ['cancelled'] } } },
+        { $unwind: '$items' },
+        {
+          $group: {
+            _id: '$items.product',
+            name: { $first: '$items.nameSnapshot' },
+            quantity: { $sum: '$items.quantity' },
+            revenue: { $sum: '$items.lineTotal' },
+          },
+        },
+        { $sort: intent === 'top_products' ? { quantity: -1 } : { quantity: 1 } },
+        { $limit: 10 },
+      ])
+    : intent === 'customers'
+      ? Order.aggregate([
+          { $match: { status: { $nin: ['cancelled'] } } },
+          {
+            $group: {
+              _id: '$user',
+              orders: { $sum: 1 },
+              spent: { $sum: '$total' },
+              lastOrder: { $max: '$placedAt' },
+            },
+          },
+          { $sort: { spent: -1 } },
+          { $limit: 10 },
+        ])
+      : intent === 'orders'
+        ? Order.find({ status: { $in: ['pending', 'confirmed', 'processing'] } })
+            .sort({ placedAt: 1 })
+            .limit(10)
+            .select('orderNumber status total placedAt customer.name customer.email')
+        : Promise.resolve(null);
+
+  const [baseResult, detailResult] = await Promise.all([
+    Promise.all([
+      Product.countDocuments(),
+      Product.countDocuments({ isActive: true }),
+      Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 }, revenue: { $sum: '$total' } } }]),
+      User.countDocuments({ role: 'customer', isActive: true }),
+    ]),
+    detailPromise,
   ]);
 
+  const [productCount, activeProducts, orderStats, customerCount] = baseResult;
   const base = {
     intent,
     generatedAt: new Date().toISOString(),
@@ -32,29 +72,15 @@ const buildData = async (intent) => {
   };
 
   if (intent === 'top_products' || intent === 'slow_products') {
-    const rows = await Order.aggregate([
-      { $match: { status: { $nin: ['cancelled'] } } },
-      { $unwind: '$items' },
-      { $group: { _id: '$items.product', name: { $first: '$items.nameSnapshot' }, quantity: { $sum: '$items.quantity' }, revenue: { $sum: '$items.lineTotal' } } },
-      { $sort: intent === 'top_products' ? { quantity: -1 } : { quantity: 1 } },
-      { $limit: 10 },
-    ]);
-    base.products.ranking = rows;
+    base.products.ranking = detailResult || [];
   }
 
   if (intent === 'customers') {
-    const rows = await Order.aggregate([
-      { $match: { status: { $nin: ['cancelled'] } } },
-      { $group: { _id: '$user', orders: { $sum: 1 }, spent: { $sum: '$total' }, lastOrder: { $max: '$placedAt' } } },
-      { $sort: { spent: -1 } },
-      { $limit: 10 },
-    ]);
-    base.customers.ranking = rows;
+    base.customers.ranking = detailResult || [];
   }
 
   if (intent === 'orders') {
-    base.orders.attention = await Order.find({ status: { $in: ['pending', 'confirmed', 'processing'] } })
-      .sort({ placedAt: 1 }).limit(10).select('orderNumber status total placedAt customer.name customer.email');
+    base.orders.attention = detailResult || [];
   }
 
   return base;
