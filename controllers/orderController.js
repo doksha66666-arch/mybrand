@@ -222,4 +222,91 @@ exports.createOrder = async (req, res, next) => {
 
 exports.getMyOrders = async (req, res, next) => { try { const orders = await Order.find({ user: req.user._id }).sort('-createdAt'); res.json({ orders: orders.map(sanitizeCustomerOrder) }); } catch (err) { next(err); } };
 exports.getMerchantOrders = async (req, res, next) => { try { const orders = await Order.find({ 'items.merchant': req.merchant._id }).populate('user', 'name email phone').sort('-createdAt'); const scoped = orders.map((order) => { const myItems = order.items.filter((i) => i.merchant && i.merchant.toString() === req.merchant._id.toString()); return { _id: order._id, orderNumber: order.orderNumber, customer: order.customer, status: order.status, paymentStatus: order.paymentStatus, createdAt: order.createdAt, items: myItems, myTotal: myItems.reduce((s,i)=>s+i.lineTotal,0), myCommission: myItems.reduce((s,i)=>s+i.commissionAmount,0), myNet: myItems.reduce((s,i)=>s+i.merchantAmount,0) }; }); res.json({ orders: scoped }); } catch (err) { next(err); } };
+
+exports.getMerchantSales = async (req, res, next) => {
+  try {
+    const requestedPage = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const merchantId = new mongoose.Types.ObjectId(req.merchant._id);
+
+    const [result] = await Order.aggregate([
+      { $match: { 'items.merchant': merchantId } },
+      {
+        $project: {
+          orderNumber: 1,
+          createdAt: 1,
+          items: {
+            $filter: {
+              input: '$items',
+              as: 'item',
+              cond: { $eq: ['$item.merchant', merchantId] },
+            },
+          },
+        },
+      },
+      {
+        $set: {
+          myTotal: { $sum: '$items.lineTotal' },
+          myCommission: { $sum: '$items.commissionAmount' },
+          myNet: { $sum: '$items.merchantAmount' },
+        },
+      },
+      {
+        $facet: {
+          orders: [
+            { $sort: { createdAt: -1, _id: -1 } },
+            { $skip: (requestedPage - 1) * limit },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 1,
+                orderNumber: 1,
+                createdAt: 1,
+                myTotal: 1,
+                myCommission: 1,
+                myNet: 1,
+              },
+            },
+          ],
+          summary: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                myTotal: { $sum: '$myTotal' },
+                myCommission: { $sum: '$myCommission' },
+                myNet: { $sum: '$myNet' },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const summary = result?.summary?.[0] || {
+      total: 0,
+      myTotal: 0,
+      myCommission: 0,
+      myNet: 0,
+    };
+    const total = Number(summary.total || 0);
+    const pages = Math.ceil(total / limit);
+
+    res.json({
+      orders: result?.orders || [],
+      total,
+      page: requestedPage,
+      limit,
+      pages,
+      totals: {
+        myTotal: Number(summary.myTotal || 0),
+        myCommission: Number(summary.myCommission || 0),
+        myNet: Number(summary.myNet || 0),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getOrderById = async (req, res, next) => { try { const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ message: 'الطلب غير موجود' }); const isOwner = order.user.toString() === req.user._id.toString(); const isAdmin = req.user.role === 'admin'; const isMerchant = req.user.role === 'merchant' && order.items.some((i) => i.merchant && i.merchant.toString() === req.merchant?._id?.toString()); if (!isOwner && !isAdmin && !isMerchant) return res.status(403).json({ message: 'غير مصرح' }); res.json({ order: isOwner ? sanitizeCustomerOrder(order) : order }); } catch (err) { next(err); } };
