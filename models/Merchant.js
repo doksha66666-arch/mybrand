@@ -19,4 +19,7 @@ const merchantSchema = new mongoose.Schema({
   suspendedAt: { type: Date, default: null },
 }, { timestamps: true });
 
+merchantSchema.index({ createdAt: -1 });
+merchantSchema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Merchant', merchantSchema);
