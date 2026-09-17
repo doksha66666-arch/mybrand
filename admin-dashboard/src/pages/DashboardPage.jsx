@@ -18,7 +18,7 @@ export default function DashboardPage(){
  const [stats,setStats]=useState({sales:0,orders:0,customers:0,avg:0,salesByDay:[],categorySales:[],topProducts:[]});
  const [orders,setOrders]=useState([]); const[loading,setLoading]=useState(true); const[error,setError]=useState(false);
  useEffect(()=>{let live=true;(async()=>{try{
-   const requests=[api.get('/orders/stats/summary'),canCustomers?api.get('/customers'):null,canOrders?api.get('/orders'):null].filter(Boolean);
+   const requests=[api.get('/orders/stats/summary'),canCustomers?api.get('/customers',{params:{limit:1}}):null,canOrders?api.get('/orders',{params:{page:1,limit:5,sort:'newest'}}):null].filter(Boolean);
    const results=await Promise.allSettled(requests); if(!live)return;
    const summary=results[0]; let idx=1;
    const customersResult=canCustomers?results[idx++]:null; const orderList=canOrders?results[idx++]:null;
