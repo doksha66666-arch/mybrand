@@ -20,7 +20,6 @@ const orderItemSchema = new mongoose.Schema({
   commissionRate: { type: Number, default: 0 },
   commissionAmount: { type: Number, default: 0 },
   merchantAmount: { type: Number, default: 0 },
-  // Fulfillment-only snapshots; safe to expose to the merchant.
   imageSnapshot: { type: String, default: '' },
   productCodeSnapshot: { type: String, default: '' },
   notesSnapshot: { type: String, default: '' },
@@ -44,6 +43,11 @@ const orderSchema = new mongoose.Schema({
   isArchived: { type: Boolean, default: false, index: true }, archivedAt: { type: Date, default: null },
   dailyReport: { type: mongoose.Schema.Types.ObjectId, ref: 'DailyOrderReport', default: null },
 }, { timestamps: true });
+
+// Main admin list: filter active orders and return newest first without a collection scan.
+orderSchema.index({ isArchived: 1, createdAt: -1 });
+// Merchant fulfillment: narrow by merchant/status and keep newest orders first.
+orderSchema.index({ 'items.merchant': 1, status: 1, createdAt: -1 });
 
 orderSchema.pre('save', async function snapshotSellerData() {
   if (!this.isNew || !this.items?.length) return;
