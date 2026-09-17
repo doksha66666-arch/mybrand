@@ -13,6 +13,7 @@ const MAX_PAGE_SIZE = 100;
 const PUBLIC_PRODUCT_FIELDS = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn', 'slug', 'category', 'price', 'compareAtPrice', 'images', 'videoUrl', 'videoPoster', 'variants', 'stock', 'sku', 'isActive', 'isFeatured', 'tags'];
 const ADMIN_PRODUCT_FIELDS = [...PUBLIC_PRODUCT_FIELDS, 'status', 'rejectionReason', 'commissionRateOverride', 'merchant'];
 const MERCHANT_PRODUCT_FIELDS = ['nameAr', 'nameEn', 'descriptionAr', 'descriptionEn', 'slug', 'category', 'price', 'compareAtPrice', 'images', 'videoUrl', 'videoPoster', 'variants', 'stock', 'sku', 'isActive', 'isFeatured', 'tags'];
+const MERCHANT_PRODUCT_LIST_FIELDS = ['nameAr', 'nameEn', 'slug', 'category', 'price', 'compareAtPrice', 'images', 'variants', 'stock', 'sku', 'status', 'createdAt'];
 
 function pickAllowed(source, fields) {
   return fields.reduce((out, key) => {
@@ -105,10 +106,38 @@ exports.getAllProductsAdmin = async (req, res, next) => {
 
 exports.getMyProducts = async (req, res, next) => {
   try {
-    const products = await Product.find({ merchant: req.merchant._id })
-      .populate('category', 'nameAr nameEn slug')
-      .sort('-createdAt');
-    res.json({ products });
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 20);
+    const search = String(req.query.search || '').trim();
+    const filter = { merchant: req.merchant._id };
+    if (search) {
+      const pattern = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [{ nameAr: pattern }, { nameEn: pattern }, { slug: pattern }];
+    }
+
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .select(MERCHANT_PRODUCT_LIST_FIELDS.join(' '))
+        .populate('category', 'nameAr nameEn slug')
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Product.countDocuments(filter),
+    ]);
+
+    res.json({ products, total, page, limit, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getMyProductById = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'المنتج غير موجود' });
+    const product = await Product.findOne({ _id: req.params.id, merchant: req.merchant._id })
+      .populate('category', 'nameAr nameEn slug');
+    if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
+    res.json({ product });
   } catch (err) {
     next(err);
   }
