@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, sparse: true, select: false },
   facebookId: { type: String, unique: true, sparse: true, select: false },
 }, { timestamps: true });
+userSchema.index({ role: 1, createdAt: -1 });
 userSchema.index({ passwordResetTokenHash: 1 }, { sparse: true });
 userSchema.pre('save', async function (next) { if (!this.isModified('password')) return next(); this.password = await bcrypt.hash(this.password, 12); next(); });
 userSchema.methods.comparePassword = function (candidate) { return bcrypt.compare(candidate, this.password); };
