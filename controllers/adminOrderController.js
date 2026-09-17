@@ -52,7 +52,7 @@ exports.getAllOrders = async (req, res, next) => {
 
     const orders = await Order.find(filter)
       .select(
-        'orderNumber user items customer shippingAddress subtotal discount loyaltyDiscount shippingFee total paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt isArchived archivedAt'
+        'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport'
       )
       .populate('user', 'name email phone')
       .populate('items.product', 'nameAr nameEn images sku')
