@@ -11,7 +11,7 @@ const { getAllOrders, updatePaymentStatus } = require('../controllers/adminOrder
 const { getDashboardStats } = require('../controllers/dashboardStatsController');
 const { getDailyReports, getDailyReport, archiveDailyReport } = require('../controllers/dailyOrderReportController');
 const { updateOrderStatus } = require('../controllers/orderStatusController');
-const { getMerchantFulfillmentOrders, updateMerchantFulfillmentStatus } = require('../controllers/merchantOrderController');
+const { getMerchantFulfillmentOrders, updateMerchantFulfillmentStatus, getMerchantSales } = require('../controllers/merchantOrderController');
 const { protect, adminOnly, merchantOnly, approvedMerchantOnly } = require('../middleware/auth');
 const merchantOrderAccess = require('../middleware/merchantOrderAccess');
 const merchantOrderDataSanitizer = require('../middleware/merchantOrderDataSanitizer');
@@ -25,6 +25,7 @@ router.use(protect);
 router.post('/', lockCustomerIdentity, customerOrderDataSanitizer, validatePaymentMethod, couponPerUserLimit, loyaltyOrderContext, createOrder);
 router.get('/my', customerOrderDataSanitizer, getMyOrders);
 router.get('/merchant/mine', merchantOnly, approvedMerchantOnly, merchantOrderDataSanitizer, getMerchantOrders);
+router.get('/merchant/sales', merchantOnly, approvedMerchantOnly, getMerchantSales);
 router.get('/merchant/fulfillment', merchantOnly, approvedMerchantOnly, getMerchantFulfillmentOrders);
 router.put('/merchant/fulfillment/:id', merchantOnly, approvedMerchantOnly, updateMerchantFulfillmentStatus);
 router.post('/:id/cancel', cancelOrder);
