@@ -11,30 +11,15 @@ const buildMerchantFulfillment = (order, statusByMerchant) => {
       const saved = statusByMerchant.get(merchantId);
       merchants.set(merchantId, {
         merchantId,
-        merchantName:
-          item.merchant?.storeName ||
-          item.merchant?.businessName ||
-          item.merchant?.name ||
-          item.merchantNameSnapshot ||
-          'تاجر',
+        merchantName: item.merchant?.storeName || item.merchant?.businessName || item.merchant?.name || item.merchantNameSnapshot || 'تاجر',
         status: saved?.status || 'confirmed',
         items: [],
       });
     }
-    merchants.get(merchantId).items.push({
-      nameSnapshot: item.nameSnapshot,
-      quantity: item.quantity,
-      selectedOptions: item.selectedOptions || {},
-      variantId: item.variantId || null,
-    });
+    merchants.get(merchantId).items.push({ nameSnapshot: item.nameSnapshot, quantity: item.quantity, selectedOptions: item.selectedOptions || {}, variantId: item.variantId || null });
   }
   const result = Array.from(merchants.values());
-  return {
-    merchants: result,
-    readyMerchants: result.filter((m) => m.status === 'ready').length,
-    totalMerchants: result.length,
-    allReady: result.length > 0 && result.every((m) => m.status === 'ready'),
-  };
+  return { merchants: result, readyMerchants: result.filter((m) => m.status === 'ready').length, totalMerchants: result.length, allReady: result.length > 0 && result.every((m) => m.status === 'ready') };
 };
 
 const allowedPaymentStatuses = new Set(['pending', 'paid', 'failed', 'refunded']);
@@ -44,7 +29,6 @@ const allowedPaymentTransitions = {
   failed: new Set(['failed', 'pending', 'paid']),
   refunded: new Set(['refunded']),
 };
-
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 exports.getAllOrders = async (req, res, next) => {
@@ -57,40 +41,31 @@ exports.getAllOrders = async (req, res, next) => {
     const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, Number.parseInt(req.query?.limit, 10) || 50));
 
-    const filter = includeArchived ? {} : { isArchived: { $ne: true } };
+    const baseFilter = includeArchived ? {} : { isArchived: { $ne: true } };
+    const filter = { ...baseFilter };
     if (status) filter.status = status;
     if (search) {
       const pattern = new RegExp(escapeRegex(search), 'i');
-      filter.$or = [
-        { orderNumber: pattern },
-        { 'customer.name': pattern },
-        { 'customer.phone': pattern },
-        { 'customer.email': pattern },
-      ];
+      filter.$or = [{ orderNumber: pattern }, { 'customer.name': pattern }, { 'customer.phone': pattern }, { 'customer.email': pattern }];
     }
 
     const baseQuery = Order.find(filter)
-      .select(
-        'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport'
-      )
+      .select('orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport')
       .populate('user', 'name email phone')
       .populate('items.product', 'nameAr nameEn images sku')
       .populate('items.merchant', 'name storeName businessName')
       .sort({ createdAt: sort });
-
     if (hasPagination) baseQuery.skip((page - 1) * limit).limit(limit);
 
-    const [orders, total] = await Promise.all([
+    const [orders, total, statusRows, paymentAttention] = await Promise.all([
       baseQuery.lean(),
       hasPagination ? Order.countDocuments(filter) : Promise.resolve(null),
+      hasPagination ? Order.aggregate([{ $match: baseFilter }, { $group: { _id: '$status', count: { $sum: 1 } } }]) : Promise.resolve([]),
+      hasPagination ? Order.countDocuments({ ...baseFilter, paymentMethod: 'vodafone_cash', paymentStatus: { $ne: 'paid' } }) : Promise.resolve(null),
     ]);
 
     const orderIds = orders.map((order) => order._id);
-    const statuses = orderIds.length
-      ? await MerchantOrderStatus.find({ order: { $in: orderIds } })
-          .select('order merchant status')
-          .lean()
-      : [];
+    const statuses = orderIds.length ? await MerchantOrderStatus.find({ order: { $in: orderIds } }).select('order merchant status').lean() : [];
     const statusMap = new Map();
     for (const row of statuses) {
       const orderKey = String(row.order);
@@ -98,27 +73,11 @@ exports.getAllOrders = async (req, res, next) => {
       statusMap.get(orderKey).set(String(row.merchant), row);
     }
 
-    const payload = orders.map((order) => ({
-      ...order,
-      merchantFulfillment: buildMerchantFulfillment(
-        order,
-        statusMap.get(String(order._id)) || new Map()
-      ),
-    }));
-
+    const payload = orders.map((order) => ({ ...order, merchantFulfillment: buildMerchantFulfillment(order, statusMap.get(String(order._id)) || new Map()) }));
     if (!hasPagination) return res.json({ orders: payload });
 
-    res.json({
-      orders: payload,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNextPage: page * limit < total,
-        hasPreviousPage: page > 1,
-      },
-    });
+    const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
+    res.json({ orders: payload, pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasNextPage: page * limit < total, hasPreviousPage: page > 1 }, stats: { statusCounts, paymentAttention } });
   } catch (error) {
     next(error);
   }
@@ -126,27 +85,15 @@ exports.getAllOrders = async (req, res, next) => {
 
 exports.updatePaymentStatus = async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params?.id)) {
-      return res.status(400).json({ message: 'معرف الطلب غير صالح' });
-    }
-
+    if (!mongoose.isValidObjectId(req.params?.id)) return res.status(400).json({ message: 'معرف الطلب غير صالح' });
     const paymentStatus = String(req.body?.paymentStatus || '').trim().toLowerCase();
-    if (!allowedPaymentStatuses.has(paymentStatus)) {
-      return res.status(400).json({ message: 'حالة الدفع غير صالحة' });
-    }
-
+    if (!allowedPaymentStatuses.has(paymentStatus)) return res.status(400).json({ message: 'حالة الدفع غير صالحة' });
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
-
     const currentStatus = String(order.paymentStatus || 'pending');
-    if (!allowedPaymentTransitions[currentStatus]?.has(paymentStatus)) {
-      return res.status(409).json({ message: `لا يمكن تغيير حالة الدفع من ${currentStatus} إلى ${paymentStatus}` });
-    }
-
+    if (!allowedPaymentTransitions[currentStatus]?.has(paymentStatus)) return res.status(409).json({ message: `لا يمكن تغيير حالة الدفع من ${currentStatus} إلى ${paymentStatus}` });
     order.paymentStatus = paymentStatus;
     await order.save();
     res.json({ order });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
