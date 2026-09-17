@@ -98,21 +98,15 @@ exports.getAllProductsAdmin = async (req, res, next) => {
       filter.status = status;
     }
     if (search) {
-      const pattern = new RegExp(search.replace(/[.*+?^$()|[\]\\]/g, '\\exports.getAllProductsAdmin = async (req, res, next) => {
-  try {
-    const { page, limit } = parsePagination(req.query.page, req.query.limit, 100);
-    const products = await Product.find({})
-      .populate('category', 'nameAr nameEn slug')
-      .populate({ path: 'merchant', populate: { path: 'user', select: 'name email' } })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort('-createdAt');
-    const total = await Product.countDocuments({});
-    res.json({ products, total, page, pages: Math.ceil(total / limit) });
-  } catch (err) {
-    next(err);
-  }
-};'), 'i');
+      const escaped = search
+        .replaceAll('\\', '\\\\')
+        .replaceAll('.', '\\.').replaceAll('*', '\\*').replaceAll('+', '\\+')
+        .replaceAll('?', '\\?').replaceAll('^', '\\^').replaceAll('$', '\\$')
+        .replaceAll('(', '\\(').replaceAll(')', '\\)')
+        .replaceAll('[', '\\[').replaceAll(']', '\\]')
+        .replaceAll('{', '\\{').replaceAll('}', '\\}')
+        .replaceAll('|', '\\|');
+      const pattern = new RegExp(escaped, 'i');
       filter.$or = [{ nameAr: pattern }, { nameEn: pattern }, { slug: pattern }, { sku: pattern }];
     }
     const [products, total] = await Promise.all([
@@ -129,7 +123,6 @@ exports.getAllProductsAdmin = async (req, res, next) => {
     next(err);
   }
 };
-
 exports.getMyProducts = async (req, res, next) => {
   try {
     const { page, limit } = parsePagination(req.query.page, req.query.limit, 20);
