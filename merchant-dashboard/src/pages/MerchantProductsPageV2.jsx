@@ -49,16 +49,16 @@ export default function MerchantProductsPageV2() {
     }
   };
 
-  const loadProducts = async () => {
+  const loadProducts = async (requestedPage = page) => {
     setLoading(true);
     try {
       const response = await api.get('/products/mine', {
-        params: { page, limit: PAGE_SIZE, ...(search ? { search } : {}) },
+        params: { page: requestedPage, limit: PAGE_SIZE, ...(search ? { search } : {}) },
       });
       const data = response.data || {};
       setProducts(Array.isArray(data.products) ? data.products : []);
       setPagination({
-        page: Number(data.page || page),
+        page: Number(data.page || requestedPage),
         pages: Number(data.pages || 0),
         total: Number(data.total || 0),
       });
@@ -71,7 +71,7 @@ export default function MerchantProductsPageV2() {
   };
 
   useEffect(() => { loadCategories(); }, []);
-  useEffect(() => { loadProducts(); }, [page, search]);
+  useEffect(() => { loadProducts(page); }, [page, search]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const value = searchInput.trim();
@@ -119,7 +119,9 @@ export default function MerchantProductsPageV2() {
     if (!window.confirm('هل تريد حذف هذا المنتج؟')) return;
     try {
       await api.delete(`/products/${id}`);
-      await loadProducts();
+      const nextPage = page > 1 && products.length === 1 ? page - 1 : page;
+      if (nextPage !== page) setPage(nextPage);
+      else await loadProducts(page);
     } catch (e) {
       setError(e?.response?.data?.message || 'تعذر حذف المنتج');
     }
@@ -160,8 +162,8 @@ export default function MerchantProductsPageV2() {
       else await api.post('/products', payload);
       resetForm();
       setShowForm(false);
-      setPage(1);
-      await loadProducts();
+      if (page === 1) await loadProducts(1);
+      else setPage(1);
     } catch (e) {
       setError(e?.response?.data?.message || 'حدث خطأ أثناء حفظ المنتج');
     } finally {
