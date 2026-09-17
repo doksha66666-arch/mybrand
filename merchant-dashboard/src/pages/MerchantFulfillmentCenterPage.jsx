@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../api/client';
 import './MerchantFulfillmentCenterPage.css';
 
+const PAGE_SIZE = 20;
 const STAGES = ['confirmed', 'packed', 'ready'];
 const LABELS = { confirmed: 'تم تأكيد الطلب', packed: 'تم التعبئة', ready: 'جاهز للتسليم' };
 const META = {
@@ -9,6 +10,7 @@ const META = {
   packed: { icon: '📦', color: '#7c3aed', bg: '#f5f3ff' },
   ready: { icon: '🚚', color: '#15803d', bg: '#f0fdf4' },
 };
+
 const key = (v) => String(v ?? '').trim().toLowerCase(); 
 const normalizeOptions = (item) => {
   const source = item?.options || item?.selectedOptions || {};
@@ -30,7 +32,9 @@ const nextStage = (stage) => { const i = STAGES.indexOf(stage); return i >= 0 &&
 const formatDate = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }).format(d) : ''; };
 const escapeHtml = (v) => String(v ?? '').replace(/[&<>\'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 
-async function copyText(value) { try { await navigator.clipboard.writeText(String(value)); return true; } catch { return false; } }
+async function copyText(value) {
+  try { await navigator.clipboard.writeText(String(value)); return true; } catch { return false; }
+}
 
 function printOrders(orders, title = 'ورقة تجهيز MYBRAND') {
   if (!orders?.length) return;
@@ -42,23 +46,126 @@ function printOrders(orders, title = 'ورقة تجهيز MYBRAND') {
 }
 
 export default function MerchantFulfillmentCenterPage() {
-  const [orders, setOrders] = useState([]); const [filter, setFilter] = useState('all'); const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState({}); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
-  const [busy, setBusy] = useState(''); const [copied, setCopied] = useState('');
-  const load = async () => { setLoading(true); setError(''); try { const { data } = await api.get('/orders/merchant/fulfillment'); setOrders(Array.isArray(data?.orders) ? data.orders : []); } catch (err) { setError(err?.response?.data?.message || 'تعذر تحميل طلبات التجهيز'); } finally { setLoading(false); } };
-  useEffect(() => { load(); const timer = setInterval(load, 30000); return () => clearInterval(timer); }, []);
-  const counts = useMemo(() => Object.fromEntries(STAGES.map((s) => [s, orders.filter((o) => stageOf(o) === s).length])), [orders]);
-  const visible = useMemo(() => { const q = search.trim().toLowerCase(); return orders.filter((order) => { if (filter !== 'all' && stageOf(order) !== filter) return false; if (!q) return true; return String(order.orderNumber || '').toLowerCase().includes(q) || (order.items || []).some((item) => nameOf(item).toLowerCase().includes(q) || skuOf(item).toLowerCase().includes(q)); }); }, [orders, filter, search]);
-  const advance = async (order) => { const next = nextStage(stageOf(order)); if (!next) return; setBusy(order._id); setError(''); try { const { data } = await api.put(`/orders/merchant/fulfillment/${order._id}`, { merchantStatus: next }); setOrders((current) => current.map((o) => o._id === order._id ? { ...o, merchantStatus: data?.merchantStatus || next } : o)); } catch (err) { setError(err?.response?.data?.message || 'تعذر تحديث حالة التجهيز'); } finally { setBusy(''); } };
-  const doCopy = async (value, token) => { if (await copyText(value)) { setCopied(token); window.setTimeout(() => setCopied(''), 1200); } };
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false });
+  const [counts, setCounts] = useState({ confirmed: 0, packed: 0, ready: 0 });
+  const [expanded, setExpanded] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState('');
+  const [copied, setCopied] = useState('');
+  const [page, setPage] = useState(1);
+
+  const load = async (options = {}) => {
+    const targetPage = options.page ?? page;
+    const targetFilter = options.filter ?? filter;
+    const targetSearch = options.search ?? search;
+    setLoading(true);
+    setError('');
+    try {
+      const params = { page: targetPage, limit: PAGE_SIZE };
+      if (targetFilter !== 'all') params.stage = targetFilter;
+      if (targetSearch.trim()) params.search = targetSearch.trim();
+      const { data } = await api.get('/orders/merchant/fulfillment', { params });
+      setOrders(Array.isArray(data?.orders) ? data.orders : []);
+      setPagination(data?.pagination || { page: targetPage, limit: PAGE_SIZE, total: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: targetPage > 1 });
+      setCounts({ confirmed: Number(data?.counts?.confirmed || 0), packed: Number(data?.counts?.packed || 0), ready: Number(data?.counts?.ready || 0) });
+    } catch (err) {
+      setError(err?.response?.data?.message || 'تعذر تحميل طلبات التجهيز');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(() => load(), 30000);
+    return () => clearInterval(timer);
+  }, [page, filter, search]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextSearch = searchInput.trim();
+      if (nextSearch !== search) {
+        setPage(1);
+        setSearch(nextSearch);
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, search]);
+
+  useEffect(() => {
+    if (!loading && pagination.totalPages > 0 && page > pagination.totalPages) setPage(pagination.totalPages);
+    if (!loading && pagination.totalPages === 0 && page !== 1) setPage(1);
+  }, [loading, page, pagination.totalPages]);
+
+  const clearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+  };
+
+  const advance = async (order) => {
+    const next = nextStage(stageOf(order));
+    if (!next) return;
+    setBusy(order._id);
+    setError('');
+    try {
+      const { data } = await api.put(`/orders/merchant/fulfillment/${order._id}`, { merchantStatus: next });
+      setOrders((current) => current.map((o) => o._id === order._id ? { ...o, merchantStatus: data?.merchantStatus || next } : o));
+    } catch (err) {
+      setError(err?.response?.data?.message || 'تعذر تحديث حالة التجهيز');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const doCopy = async (value, token) => {
+    if (await copyText(value)) {
+      setCopied(token);
+      window.setTimeout(() => setCopied(''), 1200);
+    }
+  };
+
+  const pageCount = Math.max(1, pagination.totalPages || 0);
+  const hasPrevious = Boolean(pagination.hasPreviousPage || page > 1);
+  const hasNext = Boolean(pagination.hasNextPage || (pagination.totalPages > 0 && page < pagination.totalPages));
 
   return <div className="fulfillment-page" dir="rtl">
-    <header className="fulfillment-header"><div className="fulfillment-heading"><span className="fulfillment-kicker">MYBRAND · مركز تنفيذ التاجر</span><h1>طلبات التجهيز</h1><p>نفّذ منتجات متجرك فقط. بيانات العميل والشحن والدفع غير معروضة للتاجر.</p></div><div className="fulfillment-header-actions"><button className="fulfillment-btn secondary" onClick={() => printOrders(visible, 'طلبات التجهيز الظاهرة')} disabled={!visible.length}>🖨 طباعة النتائج</button><button className="fulfillment-btn primary" onClick={load} disabled={loading}>{loading ? 'جاري…' : '↻ تحديث'}</button></div></header>
-    <section className="fulfillment-stats"><Stat label="إجمالي الطلبات" value={orders.length} /><Stat label="قيد التجهيز" value={counts.confirmed + counts.packed} /><Stat label="جاهز للتسليم" value={counts.ready} /><Stat label="عرض حالي" value={visible.length} /></section>
+    <header className="fulfillment-header">
+      <div className="fulfillment-heading"><span className="fulfillment-kicker">MYBRAND · مركز تنفيذ التاجر</span><h1>طلبات التجهيز</h1><p>نفّذ منتجات متجرك فقط. بيانات العميل والشحن والدفع غير معروضة للتاجر.</p></div>
+      <div className="fulfillment-header-actions"><button className="fulfillment-btn secondary" onClick={() => printOrders(orders, 'طلبات التجهيز الظاهرة')} disabled={!orders.length}>🖨 طباعة النتائج</button><button className="fulfillment-btn primary" onClick={() => load()} disabled={loading}>{loading ? 'جاري…' : '↻ تحديث'}</button></div>
+    </header>
+
+    <section className="fulfillment-stats">
+      <Stat label="إجمالي الطلبات" value={pagination.total} />
+      <Stat label="قيد التجهيز" value={counts.confirmed + counts.packed} />
+      <Stat label="جاهز للتسليم" value={counts.ready} />
+      <Stat label="في الصفحة" value={orders.length} />
+    </section>
+
     <section className="fulfillment-privacy"><div><b>🔒 الخصوصية مفعّلة</b><span> اسم العميل · الهاتف · العنوان · التواصل · الدفع</span></div><strong>بيانات تنفيذ فقط</strong></section>
-    <section className="fulfillment-toolbar"><div className="fulfillment-tabs"><Filter label="الكل" count={orders.length} active={filter === 'all'} onClick={() => setFilter('all')} />{STAGES.map((s) => <Filter key={s} label={LABELS[s]} count={counts[s] || 0} active={filter === s} onClick={() => setFilter(s)} />)}</div><label className="fulfillment-search"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="رقم الطلب أو اسم المنتج أو SKU" /></label></section>
+
+    <section className="fulfillment-toolbar">
+      <div className="fulfillment-tabs">
+        <Filter label="الكل" count={pagination.total} active={filter === 'all'} onClick={() => { setFilter('all'); setPage(1); }} />
+        {STAGES.map((s) => <Filter key={s} label={LABELS[s]} count={counts[s] || 0} active={filter === s} onClick={() => { setFilter(s); setPage(1); }} />)}
+      </div>
+      <label className="fulfillment-search"><span>⌕</span><input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="رقم الطلب أو اسم المنتج أو SKU" />{searchInput && <button type="button" onClick={clearSearch} aria-label="مسح البحث">×</button>}</label>
+    </section>
+
     {error && <div className="fulfillment-error">{error}</div>}
-    {loading ? <div className="fulfillment-empty">جارٍ تحميل مركز التنفيذ…</div> : !visible.length ? <div className="fulfillment-empty">{search ? 'لا توجد نتائج مطابقة.' : 'لا توجد طلبات تجهيز متاحة.'}</div> : <div className="fulfillment-grid">{visible.map((order) => <OrderCard key={order._id} order={order} expanded={Boolean(expanded[order._id])} setExpanded={setExpanded} advance={advance} busy={busy} copied={copied} doCopy={doCopy} />)}</div>}
+    {loading ? <div className="fulfillment-empty">جارٍ تحميل مركز التنفيذ…</div> : !orders.length ? <div className="fulfillment-empty">{search ? 'لا توجد نتائج مطابقة.' : 'لا توجد طلبات تجهيز متاحة.'}</div> :
+      <div className="fulfillment-grid">{orders.map((order) => <OrderCard key={order._id} order={order} expanded={Boolean(expanded[order._id])} setExpanded={setExpanded} advance={advance} busy={busy} copied={copied} doCopy={doCopy} />)}</div>}
+
+    {pagination.total > 0 && <footer className="fulfillment-pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 14 }}>
+      <button className={`fulfillment-btn secondary ${!hasPrevious ? 'disabled' : ''}`} disabled={!hasPrevious || loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>السابق</button>
+      <span style={{ fontSize: 11, color: '#64748b', fontWeight: 800 }}>صفحة {Math.min(page, pageCount)} من {pageCount}</span>
+      <button className={`fulfillment-btn secondary ${!hasNext ? 'disabled' : ''}`} disabled={!hasNext || loading} onClick={() => setPage((value) => value + 1)}>التالي</button>
+    </footer>}
   </div>;
 }
 
@@ -80,5 +187,5 @@ function FulfillmentItem({ item, onCopy, copied, token }) {
   return <div className="fulfillment-item"><div className="item-main"><div className="item-image">{imageOf(item) ? <img src={imageOf(item)} alt="" loading="lazy" /> : <span>📦</span>}</div><div className="item-content"><div className="item-title-row"><div className="item-name"><span>اسم المنتج</span><b>{nameOf(item)}</b></div><div className="item-qty"><small>الكمية</small><strong>{Number(item?.quantity || 0)}</strong></div></div><div className="item-details">{details.map(([label, value]) => <div className="item-detail" key={label}><span>{label}</span><b>{value}</b>{label === 'الكود / SKU' && skuOf(item) ? <button onClick={() => onCopy(skuOf(item), `sku-${token}`)}>{copied === `sku-${token}` ? '✓' : 'نسخ'}</button> : null}</div>)}{extras.map(([label, value]) => <div className="item-detail" key={`extra-${label}`}><span>{label}</span><b>{String(value)}</b></div>)}</div>{notesOf(item) ? <div className="item-notes"><span>ملاحظات التنفيذ</span><b>{notesOf(item)}</b></div> : null}</div></div></div>;
 }
 
-function Stat({ label, value }) { return <div className="fulfillment-stat"><span>{label}</span><strong>{value}</strong></div>; }
-function Filter({ label, count, active, onClick }) { return <button className={`filter-chip ${active ? 'active' : ''}`} onClick={onClick}><span>{label}</span><b>{count}</b></button>; }
+function Stat({ label, value }) { return <div className="fulfillment-stat"><span>{label}</span><strong>{Number(value || 0).toLocaleString('ar-EG')}</strong></div>; }
+function Filter({ label, count, active, onClick }) { return <button className={`filter-chip ${active ? 'active' : ''}`} onClick={onClick}><span>{label}</span><b>{Number(count || 0).toLocaleString('ar-EG')}</b></button>; }
