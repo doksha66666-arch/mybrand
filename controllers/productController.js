@@ -90,20 +90,39 @@ exports.getProductBySlug = async (req, res, next) => {
 
 exports.getAllProductsAdmin = async (req, res, next) => {
   try {
-    const { page, limit } = parsePagination(req.query.page, req.query.limit, 100);
-    const products = await Product.find({})
-      .populate('category', 'nameAr nameEn slug')
-      .populate({ path: 'merchant', populate: { path: 'user', select: 'name email' } })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort('-createdAt');
-    const total = await Product.countDocuments({});
-    res.json({ products, total, page, pages: Math.ceil(total / limit) });
+    const { page, limit } = parsePagination(req.query.page, req.query.limit, 20);
+    const status = String(req.query.status || '').trim();
+    const search = String(req.query.search || '').trim();
+    const filter = {};
+    if (['draft', 'pending', 'approved', 'rejected', 'hidden', 'out_of_stock'].includes(status)) {
+      filter.status = status;
+    }
+    if (search) {
+      const escaped = search
+        .replaceAll('\\', '\\\\')
+        .replaceAll('.', '\\.').replaceAll('*', '\\*').replaceAll('+', '\\+')
+        .replaceAll('?', '\\?').replaceAll('^', '\\^').replaceAll('$', '\\$')
+        .replaceAll('(', '\\(').replaceAll(')', '\\)')
+        .replaceAll('[', '\\[').replaceAll(']', '\\]')
+        .replaceAll('{', '\\{').replaceAll('}', '\\}')
+        .replaceAll('|', '\\|');
+      const pattern = new RegExp(escaped, 'i');
+      filter.$or = [{ nameAr: pattern }, { nameEn: pattern }, { slug: pattern }, { sku: pattern }];
+    }
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .populate('category', 'nameAr nameEn slug')
+        .populate({ path: 'merchant', populate: { path: 'user', select: 'name email' } })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1, _id: -1 }),
+      Product.countDocuments(filter),
+    ]);
+    res.json({ products, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
   }
 };
-
 exports.getMyProducts = async (req, res, next) => {
   try {
     const { page, limit } = parsePagination(req.query.page, req.query.limit, 20);
