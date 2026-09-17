@@ -77,7 +77,25 @@ exports.getAllOrders = async (req, res, next) => {
     if (!hasPagination) return res.json({ orders: payload });
 
     const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
-    res.json({ orders: payload, pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasNextPage: page * limit < total, hasPreviousPage: page > 1 }, stats: { statusCounts, paymentAttention } });
+    const actionCounts = {
+      pending: Number(statusCounts.pending || 0),
+      processing: Number(statusCounts.processing || 0),
+      shipped: Number(statusCounts.shipped || 0),
+    };
+    const attention = actionCounts.pending + actionCounts.processing + actionCounts.shipped + Number(paymentAttention || 0);
+
+    res.json({
+      orders: payload,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
+      stats: { statusCounts, paymentAttention, actionCounts, attention },
+    });
   } catch (error) {
     next(error);
   }
