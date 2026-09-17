@@ -5,6 +5,7 @@ const {
   getProductBySlug,
   getAllProductsAdmin,
   getMyProducts,
+  getMyProductById,
   getPendingProducts,
   createProduct,
   updateProduct,
@@ -15,6 +16,7 @@ const { protect, adminOnly, merchantOnly, approvedMerchantOnly } = require('../m
 
 // عام - يجب أن يسبق ':slug' حتى لا يفسَّر كـ slug
 router.get('/mine', protect, merchantOnly, getMyProducts);
+router.get('/mine/:id', protect, merchantOnly, getMyProductById);
 router.get('/pending', protect, adminOnly, getPendingProducts);
 router.get('/admin/all', protect, adminOnly, getAllProductsAdmin);
 

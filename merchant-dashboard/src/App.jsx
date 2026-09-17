@@ -7,7 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
-import ProductsPage from './pages/ProductsPage';
+import MerchantProductsPageV2 from './pages/MerchantProductsPageV2';
 import MerchantFulfillmentCenterPage from './pages/MerchantFulfillmentCenterPage';
 import SalesPage from './pages/SalesPage';
 import CommissionPage from './pages/CommissionPage';
@@ -30,7 +30,7 @@ export default function App() {
             <Route path="studio" element={<StudioPage />} />
             <Route path="studio/live" element={<MerchantLiveStudioPage />} />
             <Route path="studio/trend" element={<MerchantTrendStudio />} />
-            <Route path="products" element={<ProductsPage />} />
+            <Route path="products" element={<MerchantProductsPageV2 />} />
             <Route path="orders" element={<MerchantFulfillmentCenterPage />} />
             <Route path="sales" element={<SalesPage />} />
             <Route path="commission" element={<CommissionPage />} />

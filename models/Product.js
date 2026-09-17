@@ -100,5 +100,7 @@ productSchema.index({ nameAr: 'text', nameEn: 'text', tags: 'text' });
 // Fast public category browsing: active + approval + category + newest first.
 productSchema.index({ category: 1, isActive: 1, status: 1, createdAt: -1 });
 productSchema.index({ category: 1, isActive: 1, createdAt: -1 });
+// Merchant product list: scope by merchant and keep newest products first.
+productSchema.index({ merchant: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Product', productSchema);
