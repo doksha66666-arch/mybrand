@@ -70,7 +70,7 @@ orderSchema.pre('save', async function snapshotSellerData() {
 });
 
 orderSchema.pre('save', async function loyaltyBeforeSave() {
-  if (!this.isNew || !this.items?.length) return; const ctx = storage.getStore(); const requestedPoints = Math.max(0, Math.floor(Number(ctx?.requestedPoints || 0))); if (!requestedPoints) return;
+  if (!this.isNew) return; const ctx = storage.getStore(); const requestedPoints = Math.max(0, Math.floor(Number(ctx?.requestedPoints || 0))); if (!requestedPoints) return;
   const merchandiseAmount = Math.max(0, Number(this.subtotal || 0) - Number(this.discount || 0)); const reserved = await reserveRedemption({ userId: this.user, requestedPoints, merchandiseAmount });
   this.loyaltyPointsRedeemed = reserved.points; this.loyaltyDiscount = reserved.discount; this.total = Math.max(0, Math.round((Number(this.total || 0) - reserved.discount) * 100) / 100); this.$locals.loyaltyReservationId = reserved.reservationId;
 });
