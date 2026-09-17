@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const Product = require('../models/Product');
 const MerchantOrderStatus = require('../models/MerchantOrderStatus');
 
 const allowed = ['confirmed', 'packed', 'ready'];
@@ -7,8 +8,9 @@ const allowed = ['confirmed', 'packed', 'ready'];
 const normalizeOptionName = (name) => String(name || '').trim().toLowerCase();
 const getOption = (options, names) => Object.entries(options || {}).find(([name]) => names.includes(normalizeOptionName(name)))?.[1] || '';
 
-const fulfillmentItem = (item) => {
-  const product = item?.product && typeof item.product === 'object' ? item.product : null;
+const fulfillmentItem = (item, productById) => {
+  const productId = item?.product?._id || item?.product;
+  const product = productById.get(String(productId)) || null;
   const variant = product?.variants?.find((v) => String(v?._id) === String(item?.variantId)) || null;
   const options = item?.selectedOptions && typeof item.selectedOptions === 'object' && !Array.isArray(item.selectedOptions) ? item.selectedOptions : {};
 
@@ -40,9 +42,9 @@ const fulfillmentItem = (item) => {
   };
 };
 
-const merchantItems = (order, merchantId) => (order.items || [])
+const merchantItems = (order, merchantId, productById) => (order.items || [])
   .filter((item) => String(item.merchant) === String(merchantId))
-  .map(fulfillmentItem);
+  .map((item) => fulfillmentItem(item, productById));
 
 exports.getMerchantFulfillmentOrders = async (req, res, next) => {
   try {
@@ -51,27 +53,56 @@ exports.getMerchantFulfillmentOrders = async (req, res, next) => {
       'items.merchant': req.merchant._id,
     })
       .select('orderNumber items createdAt')
-      .populate({
-        path: 'items.product',
-        select: 'nameAr images sku variants.name variants.value variants.label variants.sku variants.image',
-      })
       .sort({ createdAt: -1 })
       .lean();
 
     const ids = orders.map((o) => o._id);
-    const statuses = ids.length
-      ? await MerchantOrderStatus.find({ merchant: req.merchant._id, order: { $in: ids } })
-          .select('order status')
-          .lean()
-      : [];
+    const merchantProductIds = new Set();
+    const variantProductIds = new Set();
+
+    for (const order of orders) {
+      for (const item of order.items || []) {
+        if (String(item.merchant) !== String(req.merchant._id)) continue;
+        const productId = item.product?._id || item.product;
+        if (!productId) continue;
+        const key = String(productId);
+        merchantProductIds.add(key);
+        if (item.variantId) variantProductIds.add(key);
+      }
+    }
+
+    const [statuses, baseProducts, variantProducts] = await Promise.all([
+      ids.length
+        ? MerchantOrderStatus.find({ merchant: req.merchant._id, order: { $in: ids } })
+            .select('order status')
+            .lean()
+        : [],
+      merchantProductIds.size
+        ? Product.find({ _id: { $in: Array.from(merchantProductIds) } })
+            .select('nameAr images sku')
+            .lean()
+        : [],
+      variantProductIds.size
+        ? Product.find({ _id: { $in: Array.from(variantProductIds) } })
+            .select('variants.name variants.value variants.label variants.sku variants.image')
+            .lean()
+        : [],
+    ]);
+
     const byOrder = new Map(statuses.map((s) => [String(s.order), s.status]));
+    const productById = new Map(baseProducts.map((product) => [String(product._id), product]));
+    for (const product of variantProducts) {
+      const existing = productById.get(String(product._id));
+      if (existing) existing.variants = product.variants || [];
+      else productById.set(String(product._id), product);
+    }
 
     const result = orders.map((order) => ({
       _id: order._id,
       orderNumber: order.orderNumber,
       merchantStatus: byOrder.get(String(order._id)) || 'confirmed',
       createdAt: order.createdAt,
-      items: merchantItems(order, req.merchant._id),
+      items: merchantItems(order, req.merchant._id, productById),
     }));
 
     res.json({ orders: result });
