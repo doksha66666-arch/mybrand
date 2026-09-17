@@ -38,7 +38,22 @@ else{
 await convo.save();return res.json({conversation:convo,status:convo.status,serviceDraft:convo.serviceDraft});}catch(e){console.error(e);return res.status(500).json({message:'تعذر إرسال الرسالة.'})}};
 
 exports.requestAgent=async(req,res)=>{try{const visitorId=normalizeVisitorId(req.body?.visitorId);if(!visitorId)return res.status(400).json({message:'visitorId مطلوب'});const convo=await getOrCreate(visitorId,req.user?._id);mergeService(convo,req.body?.serviceDraft||{});convo.status='waiting_agent';convo.messages.push({role:'system',text:'العميل طلب موظف خدمة العملاء.'});convo.messages.push({role:'assistant',text:'تم طلب موظف خدمة العملاء 👨‍💼 وسنكمل المحادثة هنا.'});convo.lastMessageAt=new Date();await convo.save();return res.json({conversation:convo,serviceDraft:convo.serviceDraft})}catch(e){console.error(e);return res.status(500).json({message:'تعذر تحويل المحادثة.'})}};
-exports.listAdminConversations=async(req,res)=>{try{const status=text(req.query.status,30);const query=status?{status}:{status:{$in:['waiting_agent','agent']}};const conversations=await ChatConversation.find(query).sort({lastMessageAt:-1,updatedAt:-1}).limit(100).populate('user','name email phone').lean();return res.json({conversations})}catch(e){console.error(e);return res.status(500).json({message:'تعذر تحميل محادثات العملاء.'})}};
+exports.listAdminConversations=async(req,res)=>{
+ try{
+  const status=text(req.query.status,30);
+  const query=status?{status}:{status:{$in:['waiting_agent','agent']}};
+  const conversations=await ChatConversation.aggregate([
+   {$match:query},
+   {$sort:{lastMessageAt:-1,updatedAt:-1}},
+   {$limit:100},
+   {$project:{_id:1,visitorId:1,user:1,status:1,customerName:1,customerPhone:1,lastMessageAt:1,lastMessage:{$arrayElemAt:[{$filter:{input:'$messages',as:'message',cond:{$ne:['$$message.role','system']}}},-1]}}},
+   {$lookup:{from:'users',localField:'user',foreignField:'_id',as:'user'}},
+   {$unwind:{path:'$user',preserveNullAndEmptyArrays:true}},
+   {$project:{_id:1,visitorId:1,status:1,customerName:1,customerPhone:1,lastMessageAt:1,lastMessage:1,user:{name:1,email:1,phone:1}}},
+  ]);
+  return res.json({conversations});
+ }catch(e){console.error(e);return res.status(500).json({message:'تعذر تحميل محادثات العملاء.'})}
+};
 exports.getAdminConversation=async(req,res)=>{try{const conversation=await ChatConversation.findById(req.params.id).populate('user','name email phone').lean();if(!conversation)return res.status(404).json({message:'المحادثة غير موجودة'});return res.json({conversation})}catch(e){return res.status(500).json({message:'تعذر تحميل المحادثة.'})}};
 exports.agentReply=async(req,res)=>{try{const message=text(req.body?.message);if(!message)return res.status(400).json({message:'الرسالة مطلوبة'});const conversation=await ChatConversation.findById(req.params.id);if(!conversation)return res.status(404).json({message:'المحادثة غير موجودة'});conversation.status='agent';conversation.messages.push({role:'agent',text:message});conversation.lastMessageAt=new Date();await conversation.save();return res.json({conversation})}catch(e){console.error(e);return res.status(500).json({message:'تعذر إرسال رد الموظف.'})}};
 exports.closeConversation=async(req,res)=>{try{const conversation=await ChatConversation.findById(req.params.id);if(!conversation)return res.status(404).json({message:'المحادثة غير موجودة'});conversation.status='closed';conversation.messages.push({role:'system',text:'تم إغلاق المحادثة بواسطة موظف خدمة العملاء.'});conversation.lastMessageAt=new Date();await conversation.save();return res.json({conversation})}catch(e){return res.status(500).json({message:'تعذر إغلاق المحادثة.'})}};

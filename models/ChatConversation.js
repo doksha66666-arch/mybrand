@@ -32,4 +32,6 @@ const chatConversationSchema = new mongoose.Schema({
   lastMessageAt: { type: Date, default: Date.now, index: true },
 }, { timestamps: true });
 
+chatConversationSchema.index({ status: 1, lastMessageAt: -1, updatedAt: -1 });
+
 module.exports = mongoose.model('ChatConversation', chatConversationSchema);
