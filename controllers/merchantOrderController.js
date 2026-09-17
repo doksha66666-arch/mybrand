@@ -66,8 +66,25 @@ exports.getMerchantFulfillmentOrders = async (req, res, next) => {
         const productId = item.product?._id || item.product;
         if (!productId) continue;
         const key = String(productId);
-        merchantProductIds.add(key);
-        if (item.variantId) variantProductIds.add(key);
+
+        // Modern orders already contain fulfillment snapshots. Only fall back to the
+        // product document when a legacy order is missing the corresponding snapshot.
+        if (!item.nameSnapshot || !item.imageSnapshot || !item.productCodeSnapshot) {
+          merchantProductIds.add(key);
+        }
+
+        // variantId is needed only when the response must reconstruct legacy variant
+        // details (color/size/variant image/SKU).
+        if (item.variantId) {
+          const options = item.selectedOptions && typeof item.selectedOptions === 'object' && !Array.isArray(item.selectedOptions)
+            ? item.selectedOptions
+            : {};
+          const hasColor = Boolean(getOption(options, ['color', 'colour', 'اللون', 'لون']));
+          const hasSize = Boolean(getOption(options, ['size', 'المقاس', 'مقاس']));
+          if (!hasColor || !hasSize || !item.imageSnapshot || !item.productCodeSnapshot) {
+            variantProductIds.add(key);
+          }
+        }
       }
     }
 
