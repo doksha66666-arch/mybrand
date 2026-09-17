@@ -11,7 +11,12 @@ const buildMerchantFulfillment = (order, statusByMerchant) => {
       const saved = statusByMerchant.get(merchantId);
       merchants.set(merchantId, {
         merchantId,
-        merchantName: item.merchant?.storeName || item.merchant?.name || 'تاجر',
+        merchantName:
+          item.merchant?.storeName ||
+          item.merchant?.businessName ||
+          item.merchant?.name ||
+          item.merchantNameSnapshot ||
+          'تاجر',
         status: saved?.status || 'confirmed',
         items: [],
       });
@@ -43,15 +48,23 @@ const allowedPaymentTransitions = {
 exports.getAllOrders = async (req, res, next) => {
   try {
     const includeArchived = String(req.query?.includeArchived || '').toLowerCase() === 'true';
-    const orders = await Order.find(includeArchived ? {} : { isArchived: { $ne: true } })
+    const filter = includeArchived ? {} : { isArchived: { $ne: true } };
+
+    const orders = await Order.find(filter)
+      .select(
+        'orderNumber user items customer shippingAddress subtotal discount loyaltyDiscount shippingFee total paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt isArchived archivedAt'
+      )
       .populate('user', 'name email phone')
-      .populate('items.product', 'nameAr nameEn images sku variants')
-      .populate('items.merchant', 'name storeName')
-      .sort('-createdAt');
+      .populate('items.product', 'nameAr nameEn images sku')
+      .populate('items.merchant', 'name storeName businessName')
+      .sort({ createdAt: -1 })
+      .lean();
 
     const orderIds = orders.map((order) => order._id);
     const statuses = orderIds.length
-      ? await MerchantOrderStatus.find({ order: { $in: orderIds } }).lean()
+      ? await MerchantOrderStatus.find({ order: { $in: orderIds } })
+          .select('order merchant status')
+          .lean()
       : [];
     const statusMap = new Map();
     for (const row of statuses) {
@@ -62,7 +75,7 @@ exports.getAllOrders = async (req, res, next) => {
 
     res.json({
       orders: orders.map((order) => ({
-        ...order.toObject(),
+        ...order,
         merchantFulfillment: buildMerchantFulfillment(
           order,
           statusMap.get(String(order._id)) || new Map()
