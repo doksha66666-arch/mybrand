@@ -102,6 +102,5 @@ productSchema.index({ category: 1, isActive: 1, status: 1, createdAt: -1 });
 productSchema.index({ category: 1, isActive: 1, createdAt: -1 });
 // Merchant dashboard list: newest products per merchant without scanning the full collection.
 productSchema.index({ merchant: 1, createdAt: -1 });
-productSchema.index({ merchant: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Product', productSchema);
