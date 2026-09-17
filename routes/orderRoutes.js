@@ -5,6 +5,7 @@ const {
   getMyOrders,
   getMerchantOrders,
   getOrderById,
+  getMerchantSales,
 } = require('../controllers/orderController');
 const { cancelOrder } = require('../controllers/orderCancellationController');
 const { getAllOrders, updatePaymentStatus } = require('../controllers/adminOrderController');
@@ -25,6 +26,7 @@ router.use(protect);
 router.post('/', lockCustomerIdentity, customerOrderDataSanitizer, validatePaymentMethod, couponPerUserLimit, loyaltyOrderContext, createOrder);
 router.get('/my', customerOrderDataSanitizer, getMyOrders);
 router.get('/merchant/mine', merchantOnly, approvedMerchantOnly, merchantOrderDataSanitizer, getMerchantOrders);
+router.get('/merchant/sales', merchantOnly, approvedMerchantOnly, getMerchantSales);
 router.get('/merchant/fulfillment', merchantOnly, approvedMerchantOnly, getMerchantFulfillmentOrders);
 router.put('/merchant/fulfillment/:id', merchantOnly, approvedMerchantOnly, updateMerchantFulfillmentStatus);
 router.post('/:id/cancel', cancelOrder);

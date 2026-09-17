@@ -48,6 +48,8 @@ const orderSchema = new mongoose.Schema({
 orderSchema.index({ isArchived: 1, createdAt: -1 });
 // Merchant fulfillment: narrow by merchant/status and keep newest orders first.
 orderSchema.index({ 'items.merchant': 1, status: 1, createdAt: -1 });
+// Merchant sales: scope by merchant and keep newest orders first.
+orderSchema.index({ 'items.merchant': 1, createdAt: -1 });
 
 orderSchema.pre('save', async function snapshotSellerData() {
   if (!this.isNew || !this.items?.length) return;
