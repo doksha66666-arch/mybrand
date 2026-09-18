@@ -4,7 +4,7 @@ import ImageUploader from '../components/ImageUploader';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { canAccess } from '../utils/permissions';
 
-const PAGE_SIZE=20;
+const PAGE_SIZE=20; // Server-side pagination
 const emptyForm={nameAr:'',descriptionAr:'',image:'',bannerImage:'',startDate:'',endDate:'',products:[],categories:[],merchants:[]};
 
 export default function CampaignsPage(){
