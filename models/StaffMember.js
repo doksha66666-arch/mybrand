@@ -10,4 +10,6 @@ const staffMemberSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 staffMemberSchema.index({ email: 1 });
+staffMemberSchema.index({ createdAt: -1, _id: -1 });
+
 module.exports = mongoose.model('StaffMember', staffMemberSchema);
