@@ -4,6 +4,7 @@ const {
   getProducts,
   getProductBySlug,
   getAllProductsAdmin,
+  getAdminProductOptions,
   getMyProducts,
   getMyProductById,
   getPendingProducts,
@@ -18,6 +19,7 @@ const { protect, adminOnly, merchantOnly, approvedMerchantOnly } = require('../m
 router.get('/mine', protect, merchantOnly, getMyProducts);
 router.get('/mine/:id', protect, merchantOnly, getMyProductById);
 router.get('/pending', protect, adminOnly, getPendingProducts);
+router.get('/admin/options', protect, adminOnly, getAdminProductOptions);
 router.get('/admin/all', protect, adminOnly, getAllProductsAdmin);
 
 router.get('/', getProducts);
