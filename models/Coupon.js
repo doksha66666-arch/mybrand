@@ -24,4 +24,6 @@ couponSchema.pre('validate', function(next) {
   next();
 });
 
+couponSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Coupon', couponSchema);

@@ -25,4 +25,6 @@ giftCardSchema.pre('validate', function(next) {
 giftCardSchema.index({ assignedTo: 1, isActive: 1 });
 giftCardSchema.index({ expiresAt: 1, isActive: 1 });
 
+giftCardSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('GiftCard', giftCardSchema);
