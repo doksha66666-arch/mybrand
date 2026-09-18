@@ -8,7 +8,9 @@ const safePermissions = (value) => value && typeof value === 'object' && !Array.
 
 exports.listStaff = async (req, res, next) => {
   try {
-    const staff = await StaffMember.find({}).sort({ createdAt: -1 }).lean();
+    const staff = await StaffMember.find({})
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
     res.json({ staff });
   } catch (err) { next(err); }
 };
