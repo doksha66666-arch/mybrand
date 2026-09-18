@@ -68,7 +68,20 @@ exports.validate = async (req, res, next) => {
 };
 
 exports.listAdmin = async (req, res, next) => {
-  try { res.json({ coupons: await Coupon.find().populate('assignedTo', 'name email').sort({ createdAt: -1 }) }); } catch (e) { next(e); }
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+    const [coupons, total] = await Promise.all([
+      Coupon.find()
+        .populate('assignedTo', 'name email')
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Coupon.countDocuments(),
+    ]);
+    res.json({ coupons, total, page, limit, pages: Math.ceil(total / limit) });
+  } catch (e) { next(e); }
 };
 
 exports.create = async (req, res, next) => {
