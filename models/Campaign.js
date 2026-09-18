@@ -30,4 +30,6 @@ campaignSchema.pre('validate', function (next) {
   next();
 });
 
+campaignSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Campaign', campaignSchema);

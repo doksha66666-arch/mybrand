@@ -17,12 +17,20 @@ exports.getActiveCampaigns = async (req, res, next) => {
 // GET /api/campaigns/all - Admin فقط - كل الفعاليات (بكل حالاتها)
 exports.getAllCampaigns = async (req, res, next) => {
   try {
-    const campaigns = await Campaign.find({})
-      .populate('products', 'nameAr')
-      .populate('categories', 'nameAr')
-      .populate('merchants', 'businessName')
-      .sort('-createdAt');
-    res.json({ campaigns });
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+    const [campaigns, total] = await Promise.all([
+      Campaign.find({})
+        .populate('products', 'nameAr')
+        .populate('categories', 'nameAr')
+        .populate('merchants', 'businessName')
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Campaign.countDocuments({}),
+    ]);
+    res.json({ campaigns, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
   }
