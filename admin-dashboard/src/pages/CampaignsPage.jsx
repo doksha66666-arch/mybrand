@@ -1,22 +1,216 @@
-import React, { useEffect, useState } from 'react';
+import React,{useEffect,useState} from 'react';
 import api from '../api/client';
 import ImageUploader from '../components/ImageUploader';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { canAccess } from '../utils/permissions';
 
-const emptyForm = { nameAr:'',descriptionAr:'',image:'',bannerImage:'',startDate:'',endDate:'',products:[],categories:[],merchants:[] };
+const PAGE_SIZE=20;
+const emptyForm={nameAr:'',descriptionAr:'',image:'',bannerImage:'',startDate:'',endDate:'',products:[],categories:[],merchants:[]};
+
 export default function CampaignsPage(){
- const { user } = useAdminAuth();
- const [campaigns,setCampaigns]=useState([]),[products,setProducts]=useState([]),[categories,setCategories]=useState([]),[merchants,setMerchants]=useState([]),[form,setForm]=useState(emptyForm),[editingId,setEditingId]=useState(null),[error,setError]=useState(''),[showForm,setShowForm]=useState(false),[page,setPage]=useState(1),[pagination,setPagination]=useState({total:0,pages:0}),[loading,setLoading]=useState(true);
- const canCreate=canAccess(user,'/campaigns','create'); const canEdit=canAccess(user,'/campaigns','edit'); const canDelete=canAccess(user,'/campaigns','delete');
- const load=async(targetPage=page)=>{setLoading(true);try{const [c,p,cat,m]=await Promise.all([api.get('/campaigns/all',{params:{page:targetPage,limit:20}}),api.get('/products/admin/options',{params:{limit:100}}),api.get('/categories'),api.get('/merchants',{params:{status:'approved'}})]);setCampaigns(c.data.campaigns||[]);setPagination({total:Number(c.data.total||0),pages:Math.max(1,Number(c.data.pages||0)||1)});setProducts(p.data.products||[]);setCategories(cat.data.categories||[]);setMerchants(m.data.merchants||[]);}catch(err){setError(err?.response?.data?.message||'تعذر تحميل الحملات')}finally{setLoading(false)}};
- useEffect(()=>{load();},[page]);
- const handleChange=(field,value)=>setForm(f=>({...f,[field]:value}));
- const toggleInArray=(field,id)=>setForm(f=>({...f,[field]:f[field].includes(id)?f[field].filter(x=>x!==id):[...f[field],id]}));
- const handleSubmit=async(e)=>{e.preventDefault();setError('');try{if(editingId){if(!canEdit)return;await api.put(`/campaigns/${editingId}`,form);}else{if(!canCreate)return;await api.post('/campaigns',form);}setForm(emptyForm);setEditingId(null);setShowForm(false);load();}catch(err){setError(err?.response?.data?.message||'حدث خطأ')}};
- const handleEdit=(c)=>{if(!canEdit)return;setEditingId(c._id);setForm({nameAr:c.nameAr,descriptionAr:c.descriptionAr||'',image:c.image||'',bannerImage:c.bannerImage||'',startDate:c.startDate?.slice(0,10)||'',endDate:c.endDate?.slice(0,10)||'',products:(c.products||[]).map(p=>p._id||p),categories:(c.categories||[]).map(x=>x._id||x),merchants:(c.merchants||[]).map(x=>x._id||x)});setShowForm(true)};
- const toggle=async(id)=>{if(!canEdit)return;try{await api.put(`/campaigns/${id}/toggle`);load()}catch(err){setError(err?.response?.data?.message||'تعذر تغيير حالة الحملة')}};
- const remove=async(id)=>{if(!canDelete)return;if(!confirm('حذف هذه الفعالية؟'))return;try{await api.delete(`/campaigns/${id}`);const nextPage=campaigns.length===1&&page>1?page-1:page;setPage(nextPage);await load(nextPage)}catch(err){setError(err?.response?.data?.message||'تعذر حذف الحملة')}};
- return <div><div style={styles.headerRow}><div><h1>الفعاليات والحملات</h1><p style={{color:'#64748B',fontSize:13}}>أنشئ الحملات والعروض من مكان واحد.</p></div>{canCreate&&<button style={styles.addBtn} onClick={()=>{setForm(emptyForm);setEditingId(null);setShowForm(s=>!s)}}>{showForm?'إلغاء':'+ إضافة فعالية'}</button>}</div>{error&&<p style={{color:'#DC2626'}}>{error}</p>}{showForm&&canCreate&&<form onSubmit={handleSubmit} style={styles.form}><input style={styles.input} placeholder="اسم الفعالية (مثال: حملة رمضان)" value={form.nameAr} onChange={e=>handleChange('nameAr',e.target.value)} required/><textarea style={styles.textarea} placeholder="الوصف" value={form.descriptionAr} onChange={e=>handleChange('descriptionAr',e.target.value)}/><p style={styles.sectionLabel}>صورة البطاقة</p><ImageUploader images={form.image?[form.image]:[]} onChange={imgs=>handleChange('image',imgs[imgs.length-1]||'')}/><p style={styles.sectionLabel}>صورة البانر (للصفحة الرئيسية)</p><ImageUploader images={form.bannerImage?[form.bannerImage]:[]} onChange={imgs=>handleChange('bannerImage',imgs[imgs.length-1]||'')}/><div style={styles.row}><div style={{flex:1}}><label style={styles.label}>تاريخ البداية</label><input style={styles.input} type="date" value={form.startDate} onChange={e=>handleChange('startDate',e.target.value)} required/></div><div style={{flex:1}}><label style={styles.label}>تاريخ النهاية</label><input style={styles.input} type="date" value={form.endDate} onChange={e=>handleChange('endDate',e.target.value)} required/></div></div><p style={styles.sectionLabel}>الأقسام المرتبطة (اختياري)</p><div style={styles.chipsRow}>{categories.map(c=><button key={c._id} type="button" onClick={()=>toggleInArray('categories',c._id)} style={{...styles.chip,...(form.categories.includes(c._id)?styles.chipActive:{})}}>{c.nameAr}</button>)}</div><p style={styles.sectionLabel}>التجار المشاركون (اختياري)</p><div style={styles.chipsRow}>{merchants.map(m=><button key={m._id} type="button" onClick={()=>toggleInArray('merchants',m._id)} style={{...styles.chip,...(form.merchants.includes(m._id)?styles.chipActive:{})}}>{m.businessName}</button>)}</div><p style={styles.sectionLabel}>منتجات مرتبطة (اختياري)</p><div style={styles.chipsRow}>{products.slice(0,40).map(p=><button key={p._id} type="button" onClick={()=>toggleInArray('products',p._id)} style={{...styles.chip,...(form.products.includes(p._id)?styles.chipActive:{})}}>{p.nameAr}</button>)}</div><button style={styles.button} type="submit">{editingId?'حفظ التعديلات':'إضافة الفعالية'}</button></form>}{canEdit===false&&<div style={{color:'#64748B',fontSize:12,marginBottom:14}}>صلاحية المشاهدة فقط: أدوات تعديل الحملات غير متاحة.</div>}<div style={{...styles.grid,opacity:loading?0.6:1}}>{campaigns.map(c=><div key={c._id} style={styles.card}>{c.image?<img src={c.image} alt="" style={styles.cardImage}/>:<div style={{...styles.cardImage,background:'#F1F5F9'}}/>}<div style={styles.cardBody}><p style={styles.cardName}>{c.nameAr}</p><p style={styles.cardDates}>{c.startDate?.slice(0,10)} → {c.endDate?.slice(0,10)}</p><span style={c.isActive?styles.activeBadge:styles.inactiveBadge}>{c.isActive?'مفعّلة':'معطّلة'}</span><div style={{display:'flex',gap:6,marginTop:10}}>{canEdit&&<><button style={styles.smallBtn} onClick={()=>toggle(c._id)}>{c.isActive?'تعطيل':'تفعيل'}</button><button style={styles.smallBtn} onClick={()=>handleEdit(c)}>تعديل</button></>}{canDelete&&<button style={{...styles.smallBtn,background:'#DC2626'}} onClick={()=>remove(c._id)}>حذف</button>}</div></div></div>)}{campaigns.length===0&&<p style={{color:'#64748B'}}>لا توجد فعاليات بعد</p>}</div>{pagination.total>0&&<div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:12,padding:'16px 0',fontSize:12,color:'#64748B'}}><button disabled={loading||page<=1} onClick={()=>setPage(p=>p-1)} style={styles.smallBtn}>السابق</button><span>صفحة {page} من {pagination.pages}</span><button disabled={loading||page>=pagination.pages} onClick={()=>setPage(p=>p+1)} style={styles.smallBtn}>التالي</button></div></div>
+  const {user}=useAdminAuth();
+  const[campaigns,setCampaigns]=useState([]);
+  const[products,setProducts]=useState([]);
+  const[categories,setCategories]=useState([]);
+  const[merchants,setMerchants]=useState([]);
+  const[form,setForm]=useState(emptyForm);
+  const[editingId,setEditingId]=useState(null);
+  const[error,setError]=useState('');
+  const[showForm,setShowForm]=useState(false);
+  const[page,setPage]=useState(1);
+  const[pagination,setPagination]=useState({total:0,pages:1});
+  const[loading,setLoading]=useState(true);
+
+  const canCreate=canAccess(user,'/campaigns','create');
+  const canEdit=canAccess(user,'/campaigns','edit');
+  const canDelete=canAccess(user,'/campaigns','delete');
+
+  const load=async(targetPage=page)=>{
+    setLoading(true);
+    setError('');
+    try{
+      const [c,p,cat,m]=await Promise.all([
+        api.get('/campaigns/all',{params:{page:targetPage,limit:PAGE_SIZE}}),
+        api.get('/products/admin/options',{params:{limit:100}}),
+        api.get('/categories'),
+        api.get('/merchants',{params:{status:'approved'}})
+      ]);
+      setCampaigns(c.data.campaigns||[]);
+      setPagination({total:Number(c.data.total||0),pages:Math.max(1,Number(c.data.pages||1))});
+      setProducts(p.data.products||[]);
+      setCategories(cat.data.categories||[]);
+      setMerchants(m.data.merchants||[]);
+    }catch(err){
+      setError(err?.response?.data?.message||'تعذر تحميل الحملات');
+    }finally{
+      setLoading(false);
+    }
+  };
+
+  useEffect(()=>{load()},[page]);
+
+  const handleChange=(field,value)=>setForm(f=>({...f,[field]:value}));
+  const toggleInArray=(field,id)=>setForm(f=>({...f,[field]:f[field].includes(id)?f[field].filter(x=>x!==id):[...f[field],id]}));
+
+  const handleSubmit=async e=>{
+    e.preventDefault();
+    setError('');
+    try{
+      if(editingId){
+        if(!canEdit)return;
+        await api.put('/campaigns/'+editingId,form);
+      }else{
+        if(!canCreate)return;
+        await api.post('/campaigns',form);
+      }
+      setForm(emptyForm);
+      setEditingId(null);
+      setShowForm(false);
+      setPage(1);
+    }catch(err){
+      setError(err?.response?.data?.message||'حدث خطأ');
+    }
+  };
+
+  const handleEdit=c=>{
+    if(!canEdit)return;
+    setEditingId(c._id);
+    setForm({
+      nameAr:c.nameAr,
+      descriptionAr:c.descriptionAr||'',
+      image:c.image||'',
+      bannerImage:c.bannerImage||'',
+      startDate:c.startDate?.slice(0,10)||'',
+      endDate:c.endDate?.slice(0,10)||'',
+      products:(c.products||[]).map(p=>p._id||p),
+      categories:(c.categories||[]).map(x=>x._id||x),
+      merchants:(c.merchants||[]).map(x=>x._id||x)
+    });
+    setShowForm(true);
+  };
+
+  const toggle=async id=>{
+    if(!canEdit)return;
+    try{
+      await api.put('/campaigns/'+id+'/toggle');
+      await load();
+    }catch(err){
+      setError(err?.response?.data?.message||'تعذر تغيير حالة الحملة');
+    }
+  };
+
+  const remove=async id=>{
+    if(!canDelete)return;
+    if(!window.confirm('حذف هذه الفعالية؟'))return;
+    try{
+      await api.delete('/campaigns/'+id);
+      if(campaigns.length===1&&page>1)setPage(value=>value-1);
+      else await load();
+    }catch(err){
+      setError(err?.response?.data?.message||'تعذر حذف الحملة');
+    }
+  };
+
+  return <div>
+    <div style={styles.headerRow}>
+      <div>
+        <h1>الفعاليات والحملات</h1>
+        <p style={{color:'#64748B',fontSize:13}}>أنشئ الحملات والعروض من مكان واحد.</p>
+      </div>
+      {canCreate&&<button style={styles.addBtn} onClick={()=>{setForm(emptyForm);setEditingId(null);setShowForm(value=>!value)}}>
+        {showForm?'إلغاء':'+ إضافة فعالية'}
+      </button>}
+    </div>
+
+    {error&&<p style={{color:'#DC2626'}}>{error}</p>}
+
+    {showForm&&canCreate&&<form onSubmit={handleSubmit} style={styles.form}>
+      <input style={styles.input} placeholder="اسم الفعالية (مثال: حملة رمضان)" value={form.nameAr} onChange={e=>handleChange('nameAr',e.target.value)} required/>
+      <textarea style={styles.textarea} placeholder="الوصف" value={form.descriptionAr} onChange={e=>handleChange('descriptionAr',e.target.value)}/>
+      <p style={styles.sectionLabel}>صورة البطاقة</p>
+      <ImageUploader images={form.image?[form.image]:[]} onChange={imgs=>handleChange('image',imgs[imgs.length-1]||'')}/>
+      <p style={styles.sectionLabel}>صورة البانر (للصفحة الرئيسية)</p>
+      <ImageUploader images={form.bannerImage?[form.bannerImage]:[]} onChange={imgs=>handleChange('bannerImage',imgs[imgs.length-1]||'')}/>
+
+      <div style={styles.row}>
+        <div style={{flex:1}}>
+          <label style={styles.label}>تاريخ البداية</label>
+          <input style={styles.input} type="date" value={form.startDate} onChange={e=>handleChange('startDate',e.target.value)} required/>
+        </div>
+        <div style={{flex:1}}>
+          <label style={styles.label}>تاريخ النهاية</label>
+          <input style={styles.input} type="date" value={form.endDate} onChange={e=>handleChange('endDate',e.target.value)} required/>
+        </div>
+      </div>
+
+      <p style={styles.sectionLabel}>الأقسام المرتبطة (اختياري)</p>
+      <div style={styles.chipsRow}>
+        {categories.map(c=><button key={c._id} type="button" onClick={()=>toggleInArray('categories',c._id)} style={{...styles.chip,...(form.categories.includes(c._id)?styles.chipActive:{})}}>{c.nameAr}</button>)}
+      </div>
+
+      <p style={styles.sectionLabel}>التجار المشاركون (اختياري)</p>
+      <div style={styles.chipsRow}>
+        {merchants.map(m=><button key={m._id} type="button" onClick={()=>toggleInArray('merchants',m._id)} style={{...styles.chip,...(form.merchants.includes(m._id)?styles.chipActive:{})}}>{m.businessName}</button>)}
+      </div>
+
+      <p style={styles.sectionLabel}>منتجات مرتبطة (اختياري)</p>
+      <div style={styles.chipsRow}>
+        {products.slice(0,40).map(p=><button key={p._id} type="button" onClick={()=>toggleInArray('products',p._id)} style={{...styles.chip,...(form.products.includes(p._id)?styles.chipActive:{})}}>{p.nameAr||p.nameEn||'منتج بدون اسم'}</button>)}
+      </div>
+
+      <button style={styles.button} type="submit">{editingId?'حفظ التعديلات':'إضافة الفعالية'}</button>
+    </form>}
+
+    {!canEdit&&<div style={{color:'#64748B',fontSize:12,marginBottom:14}}>صلاحية المشاهدة فقط: أدوات تعديل الحملات غير متاحة.</div>}
+
+    <div style={{...styles.grid,opacity:loading?0.6:1}}>
+      {campaigns.map(c=><div key={c._id} style={styles.card}>
+        {c.image?<img src={c.image} alt="" style={styles.cardImage}/>:<div style={{...styles.cardImage,background:'#F1F5F9'}}/>}
+        <div style={styles.cardBody}>
+          <p style={styles.cardName}>{c.nameAr}</p>
+          <p style={styles.cardDates}>{c.startDate?.slice(0,10)} → {c.endDate?.slice(0,10)}</p>
+          <span style={c.isActive?styles.activeBadge:styles.inactiveBadge}>{c.isActive?'مفعّلة':'معطّلة'}</span>
+          <div style={{display:'flex',gap:6,marginTop:10}}>
+            {canEdit&&<>
+              <button style={styles.smallBtn} onClick={()=>toggle(c._id)}>{c.isActive?'تعطيل':'تفعيل'}</button>
+              <button style={styles.smallBtn} onClick={()=>handleEdit(c)}>تعديل</button>
+            </>}
+            {canDelete&&<button style={{...styles.smallBtn,background:'#DC2626'}} onClick={()=>remove(c._id)}>حذف</button>}
+          </div>
+        </div>
+      </div>)}
+      {!loading&&campaigns.length===0&&<p style={{color:'#64748B'}}>لا توجد فعاليات بعد</p>}
+    </div>
+
+    {pagination.total>0&&<div style={styles.pagination}>
+      <button disabled={loading||page<=1} onClick={()=>setPage(value=>value-1)} style={styles.smallBtn}>السابق</button>
+      <span>صفحة {page} من {pagination.pages}</span>
+      <button disabled={loading||page>=pagination.pages} onClick={()=>setPage(value=>value+1)} style={styles.smallBtn}>التالي</button>
+    </div>}
+  </div>;
 }
-const styles={headerRow:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16},addBtn:{padding:'10px 18px',borderRadius:8,border:'none',background:'#0F172A',color:'#fff',cursor:'pointer'},form:{background:'#fff',padding:20,borderRadius:12,marginBottom:24,maxWidth:620},input:{width:'100%',padding:10,borderRadius:8,border:'1px solid #E2E8F0',marginBottom:12,boxSizing:'border-box'},textarea:{width:'100%',padding:10,borderRadius:8,border:'1px solid #E2E8F0',minHeight:60,marginBottom:12,boxSizing:'border-box'},sectionLabel:{fontSize:13,fontWeight:600,color:'#0F172A',marginTop:4,marginBottom:8},row:{display:'flex',gap:12},label:{display:'block',fontSize:12,color:'#64748B',marginBottom:4},chipsRow:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12},chip:{padding:'5px 12px',borderRadius:999,border:'1px solid #E2E8F0',background:'#fff',cursor:'pointer',fontSize:12},chipActive:{background:'#0F172A',color:'#fff',borderColor:'#0F172A'},button:{padding:'10px 20px',borderRadius:8,border:'none',background:'#0F172A',color:'#fff',cursor:'pointer'},grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:16},card:{background:'#fff',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'},cardImage:{width:'100%',height:120,objectFit:'cover',display:'block'},cardBody:{padding:14},cardName:{fontWeight:700,margin:0,color:'#0F172A'},cardDates:{fontSize:11,color:'#64748B',margin:'4px 0'},activeBadge:{padding:'2px 8px',borderRadius:999,background:'#DCFCE7',color:'#16A34A',fontSize:11},inactiveBadge:{padding:'2px 8px',borderRadius:999,background:'#F1F5F9',color:'#64748B',fontSize:11},smallBtn:{padding:'4px 10px',borderRadius:6,border:'none',background:'#0F172A',color:'#fff',cursor:'pointer',fontSize:11}};
+
+const styles={
+  headerRow:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16},
+  addBtn:{padding:'10px 18px',borderRadius:8,border:'none',background:'#0F172A',color:'#fff',cursor:'pointer'},
+  form:{background:'#fff',padding:20,borderRadius:12,marginBottom:24,maxWidth:620},
+  input:{width:'100%',padding:10,borderRadius:8,border:'1px solid #E2E8F0',marginBottom:12,boxSizing:'border-box'},
+  textarea:{width:'100%',padding:10,borderRadius:8,border:'1px solid #E2E8F0',minHeight:60,marginBottom:12,boxSizing:'border-box'},
+  sectionLabel:{fontSize:13,fontWeight:600,color:'#0F172A',marginTop:4,marginBottom:8},
+  row:{display:'flex',gap:12},
+  label:{display:'block',fontSize:12,color:'#64748B',marginBottom:4},
+  chipsRow:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12},
+  chip:{padding:'5px 12px',borderRadius:999,border:'1px solid #E2E8F0',background:'#fff',cursor:'pointer',fontSize:12},
+  chipActive:{background:'#0F172A',color:'#fff',borderColor:'#0F172A'},
+  button:{padding:'10px 20px',borderRadius:8,border:'none',background:'#0F172A',color:'#fff',cursor:'pointer'},
+  grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:16},
+  card:{background:'#fff',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'},
+  cardImage:{width:'100%',height:120,objectFit:'cover',display:'block'},
+  cardBody:{padding:14},
+  cardName:{fontWeight:700,margin:0,color:'#0F172A'},
+  cardDates:{fontSize:11,color:'#64748B',margin:'4px 0'},
+  activeBadge:{padding:'2px 8px',borderRadius:999,background:'#DCFCE7',color:'#16A34A',fontSize:11},
+  inactiveBadge:{padding:'2px 8px',borderRadius:999,background:'#F1F5F9',color:'#64748B',fontSize:11},
+  smallBtn:{padding:'4px 10px',borderRadius:6,border:'none',background:'#0F172A',color:'#fff',cursor:'pointer',fontSize:11},
+  pagination:{display:'flex',justifyContent:'center',alignItems:'center',gap:12,padding:'16px 0',fontSize:12,color:'#64748B'}
+};
