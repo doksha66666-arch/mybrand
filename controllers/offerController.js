@@ -3,12 +3,20 @@ const Offer = require('../models/Offer');
 // GET /api/offers - Admin فقط - كل العروض (نشطة ومنتهية ومعطّلة)
 exports.getAllOffers = async (req, res, next) => {
   try {
-    const offers = await Offer.find({})
-      .populate('targetProduct', 'nameAr')
-      .populate('targetCategory', 'nameAr')
-      .populate({ path: 'targetMerchant', select: 'businessName' })
-      .sort('-createdAt');
-    res.json({ offers });
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+    const [offers, total] = await Promise.all([
+      Offer.find({})
+        .populate('targetProduct', 'nameAr')
+        .populate('targetCategory', 'nameAr')
+        .populate({ path: 'targetMerchant', select: 'businessName' })
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Offer.countDocuments({}),
+    ]);
+    res.json({ offers, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
   }
