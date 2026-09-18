@@ -18,14 +18,20 @@ exports.getActiveBanners = async (req, res, next) => {
     const placement = String(req.query.placement || '').trim();
     const filter = { isActive: true };
     if (placement && Banner.PLACEMENTS.includes(placement)) filter.placements = placement;
-    const banners = await Banner.find(filter).sort('sortOrder');
+    const banners = await Banner.find(filter)
+      .select(BANNER_FIELDS.join(' '))
+      .sort({ sortOrder: 1, _id: 1 })
+      .lean();
     res.json({ banners });
   } catch (err) { next(err); }
 };
 
 exports.getAllBanners = async (req, res, next) => {
   try {
-    const banners = await Banner.find({}).sort('sortOrder');
+    const banners = await Banner.find({})
+      .select(BANNER_FIELDS.join(' '))
+      .sort({ sortOrder: 1, _id: 1 })
+      .lean();
     res.json({ banners });
   } catch (err) { next(err); }
 };

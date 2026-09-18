@@ -22,6 +22,7 @@ const bannerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+bannerSchema.index({ sortOrder: 1, _id: 1 });
 bannerSchema.statics.PLACEMENTS = BANNER_PLACEMENTS;
 
 module.exports = mongoose.model('Banner', bannerSchema);

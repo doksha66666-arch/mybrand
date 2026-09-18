@@ -23,10 +23,30 @@ exports.getDashboardStats = [adminOnly, async (req, res, next) => {
     since.setHours(0, 0, 0, 0);
     since.setDate(since.getDate() - 6);
 
-    const dailyRows = await Order.aggregate([
-      { $match: { ...baseMatch, createdAt: { $gte: since } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, sales: { $sum: '$total' }, orders: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
+    const [dailyRows, categoryRows, topProductRows] = await Promise.all([
+      Order.aggregate([
+        { $match: { ...baseMatch, createdAt: { $gte: since } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, sales: { $sum: '$total' }, orders: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Order.aggregate([
+        { $match: baseMatch },
+        { $unwind: '$items' },
+        { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'product' } },
+        { $unwind: { path: '$product', preserveNullAndEmptyArrays: false } },
+        { $lookup: { from: 'categories', localField: 'product.category', foreignField: '_id', as: 'category' } },
+        { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+        { $group: { _id: '$product.category', name: { $first: { $ifNull: ['$category.nameAr', 'غير مصنف'] } }, sales: { $sum: '$items.lineTotal' } } },
+        { $sort: { sales: -1 } },
+        { $limit: 6 },
+      ]),
+      Order.aggregate([
+        { $match: baseMatch },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.product', name: { $first: '$items.nameSnapshot' }, units: { $sum: '$items.quantity' }, sales: { $sum: '$items.lineTotal' } } },
+        { $sort: { units: -1, sales: -1 } },
+        { $limit: 5 },
+      ]),
     ]);
 
     const byDay = new Map(dailyRows.map((row) => [row._id, row]));
@@ -38,26 +58,6 @@ exports.getDashboardStats = [adminOnly, async (req, res, next) => {
       const row = byDay.get(key);
       salesByDay.push({ date: key, sales: Number(row?.sales || 0), orders: Number(row?.orders || 0) });
     }
-
-    const categoryRows = await Order.aggregate([
-      { $match: baseMatch },
-      { $unwind: '$items' },
-      { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'product' } },
-      { $unwind: { path: '$product', preserveNullAndEmptyArrays: false } },
-      { $lookup: { from: 'categories', localField: 'product.category', foreignField: '_id', as: 'category' } },
-      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
-      { $group: { _id: '$product.category', name: { $first: { $ifNull: ['$category.nameAr', 'غير مصنف'] } }, sales: { $sum: '$items.lineTotal' } } },
-      { $sort: { sales: -1 } },
-      { $limit: 6 },
-    ]);
-
-    const topProductRows = await Order.aggregate([
-      { $match: baseMatch },
-      { $unwind: '$items' },
-      { $group: { _id: '$items.product', name: { $first: '$items.nameSnapshot' }, units: { $sum: '$items.quantity' }, sales: { $sum: '$items.lineTotal' } } },
-      { $sort: { units: -1, sales: -1 } },
-      { $limit: 5 },
-    ]);
 
     res.json({
       totalSales: Number(summary?.[0]?.totalSales || 0),
