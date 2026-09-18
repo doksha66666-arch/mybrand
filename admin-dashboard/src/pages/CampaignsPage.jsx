@@ -9,7 +9,7 @@ export default function CampaignsPage(){
  const { user } = useAdminAuth();
  const [campaigns,setCampaigns]=useState([]),[products,setProducts]=useState([]),[categories,setCategories]=useState([]),[merchants,setMerchants]=useState([]),[form,setForm]=useState(emptyForm),[editingId,setEditingId]=useState(null),[error,setError]=useState(''),[showForm,setShowForm]=useState(false);
  const canCreate=canAccess(user,'/campaigns','create'); const canEdit=canAccess(user,'/campaigns','edit'); const canDelete=canAccess(user,'/campaigns','delete');
- const load=async()=>{try{const [c,p,cat,m]=await Promise.all([api.get('/campaigns/all'),api.get('/products/admin/all',{params:{limit:200}}),api.get('/categories'),api.get('/merchants',{params:{status:'approved'}})]);setCampaigns(c.data.campaigns||[]);setProducts(p.data.products||[]);setCategories(cat.data.categories||[]);setMerchants(m.data.merchants||[]);}catch(err){setError(err?.response?.data?.message||'تعذر تحميل الحملات')}};
+ const load=async()=>{try{const [c,p,cat,m]=await Promise.all([api.get('/campaigns/all'),api.get('/products/admin/options',{params:{limit:100}}),api.get('/categories'),api.get('/merchants',{params:{status:'approved'}})]);setCampaigns(c.data.campaigns||[]);setProducts(p.data.products||[]);setCategories(cat.data.categories||[]);setMerchants(m.data.merchants||[]);}catch(err){setError(err?.response?.data?.message||'تعذر تحميل الحملات')}};
  useEffect(()=>{load();},[]);
  const handleChange=(field,value)=>setForm(f=>({...f,[field]:value}));
  const toggleInArray=(field,id)=>setForm(f=>({...f,[field]:f[field].includes(id)?f[field].filter(x=>x!==id):[...f[field],id]}));

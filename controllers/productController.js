@@ -88,6 +88,20 @@ exports.getProductBySlug = async (req, res, next) => {
   }
 };
 
+exports.getAdminProductOptions = async (req, res, next) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 100));
+    const products = await Product.find({})
+      .select('_id nameAr nameEn')
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit)
+      .lean();
+    res.json({ products });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getAllProductsAdmin = async (req, res, next) => {
   try {
     const { page, limit } = parsePagination(req.query.page, req.query.limit, 20);
