@@ -43,4 +43,6 @@ offerSchema.pre('validate', function (next) {
   next();
 });
 
+offerSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Offer', offerSchema);
