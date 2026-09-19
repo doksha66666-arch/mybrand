@@ -3,58 +3,86 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import './StoreCustomizerPage.css';
 
-const PAGE_DEFS = [
-  { id: 'home', title: 'الرئيسية', path: '/', icon: '🏠', sections: [['hero','البانر الرئيسي','العروض والصور الرئيسية','🖼️'],['categories','الأقسام','أقسام المتجر','🏷️'],['offers','العروض والخصومات','العروض الحالية','🔥'],['featured','منتجات مميزة','منتجات تختارها','⭐'],['best','الأكثر مبيعًا','منتجات رائجة','🏆'],['new','وصل حديثًا','أحدث المنتجات','🆕'],['why','لماذا MYBRAND','مزايا وثقة العملاء','💎'],['services','خدمات المتجر','الدفع والشحن والدعم','🚚']] },
-  { id: 'categories', title: 'الأقسام', path: '/categories', icon: '🏷️', sections: [['header','رأس الصفحة','عنوان ووصف الأقسام','🧭'],['categoryGrid','شبكة الأقسام','بطاقات الأقسام والصور','🗂️'],['featured','أقسام مميزة','اختيارات المتجر','⭐']] },
-  { id: 'search', title: 'البحث', path: '/search', icon: '🔎', sections: [['searchBox','شريط البحث','البحث والفلاتر','🔎'],['filters','الفلاتر','الفرز والتصفية','⚙️'],['results','نتائج البحث','شبكة المنتجات','🛍️'],['empty','الحالة الفارغة','رسالة عدم وجود نتائج','📭']] },
-  { id: 'product', title: 'تفاصيل المنتج', path: '/products/:slug', icon: '🛍️', sections: [['gallery','صور المنتج','المعرض والصور المصغرة','🖼️'],['info','معلومات المنتج','العنوان والسعر والتقييم','ℹ️'],['options','اختيارات المنتج','الألوان والمقاسات والكمية','🎨'],['buy','أزرار الشراء','اشترِ الآن وأضف للسلة','🛒'],['details','التفاصيل','الوصف والمواصفات','📋'],['related','منتجات مشابهة','اقتراحات للعميل','✨']] },
-  { id: 'cart', title: 'السلة', path: '/cart', icon: '🛒', sections: [['items','المنتجات','عناصر السلة والكميات','🛍️'],['coupon','كود الخصم','حقل الكوبون','🎟️'],['summary','ملخص الطلب','الإجمالي والشحن','🧾'],['actions','إجراءات السلة','متابعة التسوق وإتمام الطلب','➡️']] },
-  { id: 'checkout', title: 'إتمام الطلب', path: '/checkout', icon: '💳', sections: [['steps','مراحل الطلب','معلومات العميل والدفع','1️⃣'],['customer','بيانات العميل','الاسم والهاتف والبريد','👤'],['address','العنوان','المحافظة والمركز والعنوان','📍'],['payment','الدفع','طريقة الدفع والتأكيد','💳'],['summary','ملخص الطلب','المنتجات والإجمالي','🧾']] },
-  { id: 'orders', title: 'الطلبات', path: '/orders', icon: '📦', sections: [['header','رأس الصفحة','عنوان الطلبات','📦'],['list','قائمة الطلبات','الحالات والتفاصيل','🧾'],['empty','لا توجد طلبات','الحالة الفارغة','📭']] },
-  { id: 'wishlist', title: 'المفضلة', path: '/wishlist', icon: '❤️', sections: [['header','رأس الصفحة','عنوان المفضلة','❤️'],['products','المنتجات المفضلة','بطاقات المنتجات','🛍️'],['empty','لا توجد مفضلة','الحالة الفارغة','📭']] },
-  { id: 'account', title: 'الحساب', path: '/account', icon: '👤', sections: [['profile','الملف الشخصي','الصورة والبيانات','👤'],['navigation','تنقل الحساب','الطلبات والمفضلة والإعدادات','🧭'],['orders','طلباتي','ملخص الطلبات','📦'],['address','بيانات الحساب','الهاتف والمحافظة والمركز','📍'],['actions','إجراءات الحساب','تسجيل الخروج وإدارة الحساب','⚙️']] },
-  { id: 'login', title: 'تسجيل الدخول', path: '/login', icon: '🔐', sections: [['brand','هوية الصفحة','الشعار والصورة','✨'],['form','نموذج الدخول','البريد/الهاتف وكلمة المرور','🔐'],['actions','الأزرار','الدخول وإنشاء الحساب','➡️']] },
-  { id: 'register', title: 'إنشاء حساب', path: '/register', icon: '📝', sections: [['brand','هوية الصفحة','الشعار والصورة','✨'],['form','بيانات التسجيل','الاسم والهاتف والبريد','📝'],['location','الموقع','المحافظة والمركز','📍'],['actions','الأزرار','إنشاء الحساب وتسجيل الدخول','➡️']] },
-  { id: 'about', title: 'من نحن', path: '/about', icon: '🏪', sections: [['hero','العنوان الرئيسي','صورة وهوية المتجر','🖼️'],['story','قصتنا','نبذة ورسالة المتجر','📖'],['values','قيمنا','المميزات والثقة','💎']] },
-  { id: 'contact', title: 'تواصل معنا', path: '/contact', icon: '📞', sections: [['hero','رأس الصفحة','العنوان والوصف','📞'],['channels','قنوات التواصل','الهاتف والبريد والسوشيال','💬'],['form','نموذج التواصل','رسالة العميل','📝']] },
-  { id: 'privacy', title: 'الخصوصية', path: '/privacy', icon: '🔒', sections: [['header','رأس الصفحة','عنوان السياسة','🔒'],['content','محتوى السياسة','الأقسام والنصوص','📄']] },
-  { id: 'terms', title: 'الشروط والأحكام', path: '/terms', icon: '📄', sections: [['header','رأس الصفحة','عنوان الشروط','📄'],['content','محتوى الشروط','الأقسام والنصوص','📋']] },
+const HOME_SECTIONS = [
+  ['hero', 'العرض الرئيسي', 'منطقة العرض المباشر أو البانر الرئيسي', '🖼️'],
+  ['offers', 'العروض', 'الشريط والعروض السريعة', '🔥'],
+  ['categories', 'الأقسام', 'أقسام المتجر والصور', '🏷️'],
+  ['best', 'الأكثر مبيعًا', 'مجموعة المنتجات الرئيسية', '🏆'],
+  ['featured', 'العروض المميزة', 'المنتجات التي عليها خصم', '⭐'],
+  ['new', 'وصل حديثًا', 'أحدث المنتجات المنشورة', '🆕'],
+  ['why', 'لماذا MYBRAND', 'مزايا الثقة والخدمة', '💎'],
+  ['services', 'خدمات المتجر', 'الشحن والإرجاع والدفع', '🚚'],
 ];
 
-const makeDefaults = (page) => page.sections.map(([id,title,desc,icon], index) => ({ id, title, desc, icon, enabled: true, order: index }));
+const DEFAULT_THEME = {
+  accent: '#0F172A',
+  accentSoft: '#F1F5F9',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  text: '#111827',
+  border: '#E5E7EB',
+  radius: 18,
+};
+
+const DEFAULT_LAYOUT = HOME_SECTIONS.map(([id, title, desc, icon], order) => ({
+  id, title, desc, icon, enabled: true, order,
+}));
+
+const normalizeLayout = (value) => {
+  const source = Array.isArray(value) ? value : DEFAULT_LAYOUT;
+  return source.map((item, index) => ({
+    ...item,
+    order: index,
+    enabled: item?.enabled !== false,
+  }));
+};
+
+const normalizeTheme = (value) => ({
+  ...DEFAULT_THEME,
+  ...(value && typeof value === 'object' && !Array.isArray(value) ? value : {}),
+});
+
+const THEME_CONTROLS = [
+  ['accent', 'لون الهوية', 'الأزرار، الشعار والعناصر النشطة'],
+  ['accentSoft', 'لون التمييز الخفيف', 'الخلفيات الخفيفة والتنبيهات'],
+  ['background', 'خلفية المتجر', 'الخلفية العامة للصفحات'],
+  ['surface', 'خلفية البطاقات', 'البطاقات والنوافذ'],
+  ['text', 'لون النص', 'النص الأساسي'],
+  ['border', 'لون الحدود', 'الفواصل وحدود البطاقات'],
+];
 
 export default function StoreCustomizerPage() {
-  const [pageId, setPageId] = useState('home');
-  const [layouts, setLayouts] = useState({});
+  const [layouts, setLayouts] = useState({ home: DEFAULT_LAYOUT });
+  const [theme, setTheme] = useState(DEFAULT_THEME);
   const [dragged, setDragged] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState('layout');
   const [preview, setPreview] = useState('mobile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const page = PAGE_DEFS.find((item) => item.id === pageId) || PAGE_DEFS[0];
-  const sections = layouts[pageId] || makeDefaults(page);
+  const sections = layouts.home || DEFAULT_LAYOUT;
+  const enabledCount = useMemo(() => sections.filter((item) => item.enabled).length, [sections]);
 
   useEffect(() => {
     let alive = true;
     api.get('/settings')
       .then(({ data }) => {
         if (!alive) return;
-        const remote = data?.settings?.pageLayouts;
-        if (remote && typeof remote === 'object' && !Array.isArray(remote)) setLayouts(remote);
+        const remoteLayouts = data?.settings?.pageLayouts;
+        const remoteTheme = data?.settings?.theme;
+        if (remoteLayouts && typeof remoteLayouts === 'object' && !Array.isArray(remoteLayouts)) {
+          setLayouts({ home: normalizeLayout(remoteLayouts.home) });
+        }
+        setTheme(normalizeTheme(remoteTheme));
       })
-      .catch(() => {
-        try {
-          const stored = JSON.parse(localStorage.getItem('mybrand_store_page_layouts') || '{}');
-          if (alive && stored && typeof stored === 'object') setLayouts(stored);
-        } catch {}
-      })
+      .catch(() => setError('تعذر تحميل إعدادات التخصيص المركزية.'))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, []);
 
-  const updateSections = (next) => setLayouts((current) => ({ ...current, [pageId]: next }));
+  const updateSections = (next) => setLayouts((current) => ({ ...current, home: normalizeLayout(next) }));
 
   const move = (from, to) => {
     if (from === to) return;
@@ -64,69 +92,165 @@ export default function StoreCustomizerPage() {
     updateSections(next);
   };
 
-  const toggle = (id) => updateSections(sections.map((item) => item.id === id ? { ...item, enabled: !item.enabled } : item));
+  const toggle = (id) => updateSections(
+    sections.map((item) => item.id === id ? { ...item, enabled: !item.enabled } : item)
+  );
+
+  const setThemeValue = (key, value) => setTheme((current) => ({ ...current, [key]: value }));
+
+  const payload = {
+    pageLayouts: { ...layouts, home: normalizeLayout(sections) },
+    theme: normalizeTheme(theme),
+  };
 
   const save = async () => {
     setSaving(true);
+    setSaved(false);
     setError('');
-    const next = { ...layouts, [pageId]: sections };
     try {
-      const { data } = await api.put('/settings', { pageLayouts: next });
-      const remote = data?.settings?.pageLayouts;
-      const confirmed = remote && typeof remote === 'object' && !Array.isArray(remote) ? remote : next;
-      setLayouts(confirmed);
-      try { localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(confirmed)); } catch {}
+      const { data } = await api.put('/settings', payload);
+      setLayouts({ home: normalizeLayout(data?.settings?.pageLayouts?.home || sections) });
+      setTheme(normalizeTheme(data?.settings?.theme || theme));
+      localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(data?.settings?.pageLayouts || payload.pageLayouts));
+      localStorage.setItem('mybrand_store_theme', JSON.stringify(data?.settings?.theme || theme));
       setSaved(true);
-      setTimeout(() => setSaved(false), 2200);
+      window.setTimeout(() => setSaved(false), 2200);
     } catch (err) {
-      try { localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next)); } catch {}
-      setLayouts(next);
-      setError(err?.response?.data?.message || 'تعذر الحفظ المركزي. تم الاحتفاظ بنسخة محلية.');
+      setError(err?.response?.data?.message || 'تعذر حفظ التخصيص المركزي.');
     } finally {
       setSaving(false);
     }
   };
 
   const reset = async () => {
-    if (!confirm(`إرجاع تخصيص صفحة ${page.title} للوضع الافتراضي؟`)) return;
-    const next = { ...layouts, [pageId]: makeDefaults(page) };
-    setLayouts(next);
+    if (!window.confirm('إرجاع تخصيص الصفحة الرئيسية والمظهر العام للوضع الافتراضي؟')) return;
+    const nextLayouts = { ...layouts, home: DEFAULT_LAYOUT };
+    const nextTheme = DEFAULT_THEME;
+    setLayouts(nextLayouts);
+    setTheme(nextTheme);
+    setError('');
     try {
-      await api.put('/settings', { pageLayouts: next });
-      localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next));
-      setError('');
-    } catch {
-      try { localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(next)); } catch {}
-      setError('تعذر الحفظ المركزي، لكن تم حفظ الإعداد محليًا.');
+      const { data } = await api.put('/settings', { pageLayouts: nextLayouts, theme: nextTheme });
+      setLayouts({ home: normalizeLayout(data?.settings?.pageLayouts?.home || DEFAULT_LAYOUT) });
+      setTheme(normalizeTheme(data?.settings?.theme || nextTheme));
+      localStorage.removeItem('mybrand_store_page_layouts');
+      localStorage.removeItem('mybrand_store_theme');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'تعذر إعادة الضبط مركزيًا.');
     }
   };
 
-  const enabledCount = useMemo(() => sections.filter((item) => item.enabled).length, [sections]);
+  const previewStyle = {
+    '--preview-accent': theme.accent,
+    '--preview-accent-soft': theme.accentSoft,
+    '--preview-bg': theme.background,
+    '--preview-surface': theme.surface,
+    '--preview-text': theme.text,
+    '--preview-border': theme.border,
+    '--preview-radius': `${Number(theme.radius) || DEFAULT_THEME.radius}px`,
+  };
 
   return (
     <div className="store-customizer" dir="rtl">
       <header className="customizer-head">
-        <div><span className="customizer-kicker">MYBRAND STORE BUILDER</span><h1>تخصيص كل صفحات المتجر</h1><p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'اختر أي صفحة، ثم اسحب عناصرها ورتبها أو أخفِ ما لا تريد ظهوره.'}</p></div>
-        <div className="customizer-actions"><button className="secondary-btn" onClick={reset}>إعادة ضبط الصفحة</button><button className="primary-btn" onClick={save} disabled={saving}>{saving ? 'جارٍ الحفظ…' : saved ? '✓ تم الحفظ مركزيًا' : 'حفظ التخصيص'}</button></div>
+        <div>
+          <span className="customizer-kicker">MYBRAND STORE BUILDER</span>
+          <h1>تخصيص المتجر</h1>
+          <p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'تحكم فعلي في المظهر العام وترتيب وإخفاء أقسام الصفحة الرئيسية.'}</p>
+        </div>
+        <div className="customizer-actions">
+          <button className="secondary-btn" onClick={reset} disabled={loading || saving}>إعادة ضبط</button>
+          <button className="primary-btn" onClick={save} disabled={loading || saving}>
+            {saving ? 'جارٍ الحفظ…' : saved ? '✓ تم الحفظ مركزيًا' : 'حفظ التخصيص'}
+          </button>
+        </div>
       </header>
+
       {error && <div className="customizer-error">{error}</div>}
 
-      <section className="page-selector">
-        <div className="page-selector-title"><span>STORE PAGES</span><strong>{PAGE_DEFS.length} صفحة قابلة للتخصيص</strong></div>
-        <div className="page-tabs">{PAGE_DEFS.map((item) => <button key={item.id} className={item.id === pageId ? 'active' : ''} onClick={() => { setPageId(item.id); setDragged(null); }}>{item.icon}<span>{item.title}</span></button>)}</div>
+      <section className="customizer-tabs">
+        <button className={activeTab === 'layout' ? 'active' : ''} onClick={() => setActiveTab('layout')}>✦ ترتيب الصفحة الرئيسية</button>
+        <button className={activeTab === 'theme' ? 'active' : ''} onClick={() => setActiveTab('theme')}>🎨 المظهر العام</button>
       </section>
 
-      <div className="builder-layout">
-        <section className="builder-panel">
-          <div className="panel-title"><div><span>{page.path}</span><h2>{page.icon} {page.title}</h2></div><strong>{enabledCount} مفعّل</strong></div>
-          <div className="section-list">{sections.map((section, index) => <div key={section.id} draggable onDragStart={() => setDragged(index)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragged !== null) move(dragged,index); setDragged(null); }} className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''}`}><span className="drag-handle">⠿</span><span className="section-number">{index + 1}</span><span className="section-icon">{section.icon}</span><div className="section-copy"><strong>{section.title}</strong><small>{section.desc}</small></div><button className={`switch ${section.enabled ? 'on' : ''}`} onClick={() => toggle(section.id)} aria-label="تفعيل القسم"><span /></button></div>)}</div>
-          <div className="tip"><span>✦</span><div><strong>اسحب من علامة ⠿</strong><small>التخصيص محفوظ مركزيًا لحساب المشرف.</small></div></div>
+      {activeTab === 'layout' ? (
+        <div className="builder-layout">
+          <section className="builder-panel">
+            <div className="panel-title">
+              <div><span>/</span><h2>🏠 الصفحة الرئيسية الفعلية</h2></div>
+              <strong>{enabledCount} من {sections.length} مفعّل</strong>
+            </div>
+            <div className="section-list">
+              {sections.map((section, index) => (
+                <div
+                  key={section.id}
+                  draggable
+                  onDragStart={() => setDragged(index)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => { if (dragged !== null) move(dragged, index); setDragged(null); }}
+                  onDragEnd={() => setDragged(null)}
+                  className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''}`}
+                >
+                  <span className="drag-handle">⠿</span>
+                  <span className="section-number">{index + 1}</span>
+                  <span className="section-icon">{section.icon}</span>
+                  <div className="section-copy"><strong>{section.title}</strong><small>{section.desc}</small></div>
+                  <button className={`switch ${section.enabled ? 'on' : ''}`} onClick={() => toggle(section.id)} aria-label={section.enabled ? 'إخفاء القسم' : 'إظهار القسم'}><span /></button>
+                </div>
+              ))}
+            </div>
+            <div className="tip"><span>✓</span><div><strong>تخصيص فعلي</strong><small>الترتيب والإخفاء يُطبّقان على الصفحة الرئيسية بعد الحفظ، وتصل الإعدادات من الخادم مباشرة.</small></div></div>
+          </section>
+
+          <section className="preview-panel">
+            <div className="preview-head">
+              <div><span>LIVE PREVIEW</span><h2>معاينة المتجر</h2></div>
+              <div className="preview-switch"><button className={preview === 'mobile' ? 'active' : ''} onClick={() => setPreview('mobile')}>📱</button><button className={preview === 'desktop' ? 'active' : ''} onClick={() => setPreview('desktop')}>🖥️</button></div>
+            </div>
+            <div className={`store-preview ${preview}`} style={previewStyle}>
+              <div className="fake-header"><b>MYBRAND</b><span>⌕　♡　🛒</span></div>
+              {sections.filter((item) => item.enabled).map((section) => (
+                <div key={section.id} className={`fake-section fake-${section.id}`}>
+                  <span>{section.icon}</span><strong>{section.title}</strong><small>{section.desc}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : (
+        <section className="theme-panel">
+          <div className="theme-grid">
+            <div className="theme-card theme-editor">
+              <div className="panel-title"><div><span>GLOBAL THEME</span><h2>🎨 هوية المتجر</h2></div></div>
+              <div className="theme-controls">
+                {THEME_CONTROLS.map(([key, title, hint]) => (
+                  <label key={key} className="theme-control">
+                    <div><strong>{title}</strong><small>{hint}</small></div>
+                    <span className="color-field"><input type="color" value={theme[key]} onChange={(e) => setThemeValue(key, e.target.value)} /><code>{theme[key]}</code></span>
+                  </label>
+                ))}
+                <label className="theme-control radius-control">
+                  <div><strong>استدارة البطاقات</strong><small>من الشكل الحاد إلى الناعم</small></div>
+                  <span><input type="range" min="8" max="32" value={Number(theme.radius) || 18} onChange={(e) => setThemeValue('radius', Number(e.target.value))} /><b>{Number(theme.radius) || 18}px</b></span>
+                </label>
+              </div>
+            </div>
+            <div className="theme-card theme-preview" style={previewStyle}>
+              <div className="mini-site">
+                <div className="mini-header"><b>MYBRAND</b><span>سلة　حسابي</span></div>
+                <div className="mini-hero"><span>MYBRAND STORE</span><strong>تسوق بثقة وجودة عالية</strong><button>تسوق الآن</button></div>
+                <div className="mini-cards"><div/><div/><div/></div>
+                <div className="mini-banner"><b>عروض اليوم</b><span>اكتشف أحدث المنتجات</span></div>
+              </div>
+            </div>
+          </div>
         </section>
+      )}
 
-        <section className="preview-panel"><div className="preview-head"><div><span>LIVE PREVIEW</span><h2>معاينة {page.title}</h2></div><div className="preview-switch"><button className={preview === 'mobile' ? 'active' : ''} onClick={() => setPreview('mobile')}>📱 موبايل</button><button className={preview === 'desktop' ? 'active' : ''} onClick={() => setPreview('desktop')}>🖥️ كمبيوتر</button></div></div><div className={`store-preview ${preview}`}><div className="fake-header"><b>MYBRAND</b><span>⌕　♡　🛒</span></div>{sections.filter((s) => s.enabled).map((section) => <div key={section.id} className={`fake-section fake-${section.id}`}><span>{section.icon}</span><strong>{section.title}</strong><small>{section.desc}</small></div>)}</div></section>
+      <div className="customizer-links">
+        <Link to="/banners">إدارة البنرات ←</Link>
+        <Link to="/settings">إعدادات المتجر ←</Link>
       </div>
-
-      <div className="customizer-links"><Link to="/banners">إدارة البنرات ←</Link><Link to="/campaigns">إدارة الحملات والعروض ←</Link></div>
     </div>
   );
 }

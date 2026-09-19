@@ -15,7 +15,30 @@ const DEFAULTS = {
   lowStock: true,
   customerMessage: true,
   pageLayouts: {},
+  theme: {
+    accent: '#0F172A',
+    accentSoft: '#F1F5F9',
+    background: '#F8FAFC',
+    surface: '#FFFFFF',
+    text: '#111827',
+    border: '#E5E7EB',
+    radius: 18,
+  },
 };
+
+const COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
+const normalizeTheme = (value = {}) => ({
+  accent: COLOR_RE.test(String(value.accent || '')) ? String(value.accent) : DEFAULTS.theme.accent,
+  accentSoft: COLOR_RE.test(String(value.accentSoft || '')) ? String(value.accentSoft) : DEFAULTS.theme.accentSoft,
+  background: COLOR_RE.test(String(value.background || '')) ? String(value.background) : DEFAULTS.theme.background,
+  surface: COLOR_RE.test(String(value.surface || '')) ? String(value.surface) : DEFAULTS.theme.surface,
+  text: COLOR_RE.test(String(value.text || '')) ? String(value.text) : DEFAULTS.theme.text,
+  border: COLOR_RE.test(String(value.border || '')) ? String(value.border) : DEFAULTS.theme.border,
+  radius: Math.min(32, Math.max(8, Number(value.radius) || DEFAULTS.theme.radius)),
+});
+
+const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
 
 router.get('/', protect, adminOnly, async (req, res, next) => {
   try {
@@ -32,25 +55,26 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 
 router.put('/', protect, adminOnly, async (req, res, next) => {
   try {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
-    const payload = {
-      storeName: String(body.storeName ?? DEFAULTS.storeName).trim().slice(0, 120),
-      storeEmail: String(body.storeEmail ?? DEFAULTS.storeEmail).trim().slice(0, 200),
-      phone: String(body.phone ?? '').trim().slice(0, 40),
-      currency: ['EGP', 'USD', 'SAR'].includes(body.currency) ? body.currency : DEFAULTS.currency,
-      timezone: ['Africa/Cairo', 'UTC', 'Asia/Riyadh'].includes(body.timezone) ? body.timezone : DEFAULTS.timezone,
-      maintenance: Boolean(body.maintenance),
-      newOrder: Boolean(body.newOrder),
-      lowStock: Boolean(body.lowStock),
-      customerMessage: Boolean(body.customerMessage),
-    };
-    if (body.pageLayouts && typeof body.pageLayouts === 'object' && !Array.isArray(body.pageLayouts)) {
-      payload.pageLayouts = body.pageLayouts;
-    }
+    const body = isPlainObject(req.body) ? req.body : {};
+    const payload = {};
+
+    if (Object.prototype.hasOwnProperty.call(body, 'storeName')) payload.storeName = String(body.storeName).trim().slice(0, 120);
+    if (Object.prototype.hasOwnProperty.call(body, 'storeEmail')) payload.storeEmail = String(body.storeEmail).trim().slice(0, 200);
+    if (Object.prototype.hasOwnProperty.call(body, 'phone')) payload.phone = String(body.phone).trim().slice(0, 40);
+    if (Object.prototype.hasOwnProperty.call(body, 'currency') && ['EGP', 'USD', 'SAR'].includes(body.currency)) payload.currency = body.currency;
+    if (Object.prototype.hasOwnProperty.call(body, 'timezone') && ['Africa/Cairo', 'UTC', 'Asia/Riyadh'].includes(body.timezone)) payload.timezone = body.timezone;
+    if (Object.prototype.hasOwnProperty.call(body, 'maintenance')) payload.maintenance = Boolean(body.maintenance);
+    if (Object.prototype.hasOwnProperty.call(body, 'newOrder')) payload.newOrder = Boolean(body.newOrder);
+    if (Object.prototype.hasOwnProperty.call(body, 'lowStock')) payload.lowStock = Boolean(body.lowStock);
+    if (Object.prototype.hasOwnProperty.call(body, 'customerMessage')) payload.customerMessage = Boolean(body.customerMessage);
+    if (Object.prototype.hasOwnProperty.call(body, 'pageLayouts') && isPlainObject(body.pageLayouts)) payload.pageLayouts = body.pageLayouts;
+    if (Object.prototype.hasOwnProperty.call(body, 'theme') && isPlainObject(body.theme)) payload.theme = normalizeTheme(body.theme);
+
+    if (!Object.keys(payload).length) return res.status(400).json({ message: 'لا توجد إعدادات صالحة للحفظ' });
 
     const settings = await StoreSettings.findOneAndUpdate(
       { key: 'global' },
-      { $set: payload, $setOnInsert: { key: 'global' } },
+      { $set: payload, $setOnInsert: { key: 'global', ...DEFAULTS } },
       { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
     ).lean();
 
