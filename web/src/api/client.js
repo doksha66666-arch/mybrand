@@ -5,6 +5,8 @@ const configuredApiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').tri
 
 // Development keeps the local backend; production uses the Railway variable
 // when configured, with the current MYBRAND backend as a safe fallback.
+export const API_ORIGIN = (import.meta.env.DEV ? 'http://localhost:5000' : (configuredApiBaseUrl || DEFAULT_PRODUCTION_API_BASE_URL.replace(/\/api$/, '')));
+
 const API_BASE_URL = import.meta.env.DEV
   ? 'http://localhost:5000/api'
   : (configuredApiBaseUrl || DEFAULT_PRODUCTION_API_BASE_URL);
