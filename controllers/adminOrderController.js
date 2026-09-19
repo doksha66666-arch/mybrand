@@ -59,6 +59,7 @@ exports.getAllOrders = async (req, res, next) => {
     const status = String(req.query?.status || '').trim().toLowerCase();
     const sortDirection = String(req.query?.sort || 'newest').trim().toLowerCase() === 'oldest' ? 1 : -1;
     const query = String(req.query?.q || '').trim();
+    const compact = String(req.query?.compact || '').toLowerCase() === 'true';
 
     const baseFilter = includeArchived ? {} : { isArchived: { $ne: true } };
     const filter = { ...baseFilter };
@@ -73,60 +74,67 @@ exports.getAllOrders = async (req, res, next) => {
       ];
     }
 
-    const [orders, total, statusRows] = await Promise.all([
-      Order.find(filter)
-        .select(
-          'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport'
-        )
+    const projection = compact
+      ? 'orderNumber items customer total status createdAt'
+      : 'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport';
+    const orderQuery = Order.find(filter)
+      .select(projection)
+      .sort({ createdAt: sortDirection, _id: sortDirection })
+      .skip((requestedPage - 1) * limit)
+      .limit(limit);
+    if (!compact) {
+      orderQuery
         .populate('user', 'name email phone')
         .populate('items.product', 'nameAr nameEn images sku')
-        .populate('items.merchant', 'name storeName businessName')
-        .sort({ createdAt: sortDirection, _id: sortDirection })
-        .skip((requestedPage - 1) * limit)
-        .limit(limit)
-        .lean(),
-      Order.countDocuments(filter),
-      Order.aggregate([
-        { $match: baseFilter },
-        {
-          $group: {
-            _id: null,
-            pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
-            confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
-            processing: { $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] } },
-            shipped: { $sum: { $cond: [{ $eq: ['$status', 'shipped'] }, 1, 0] } },
-            delivered: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
-            cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
-            paymentAttentionCount: {
-              $sum: {
-                $cond: [
-                  { $and: [{ $eq: ['$paymentMethod', 'vodafone_cash'] }, { $ne: ['$paymentStatus', 'paid'] }] },
-                  1,
-                  0,
-                ],
-              },
-            },
-            attentionCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $or: [
-                      { $in: ['$status', ['pending', 'processing', 'shipped']] },
+        .populate('items.merchant', 'name storeName businessName');
+    }
+
+    const [orders, total, statusRows] = await Promise.all([
+      orderQuery.lean(),
+      compact ? Promise.resolve(0) : Order.countDocuments(filter),
+      compact
+        ? Promise.resolve([])
+        : Order.aggregate([
+            { $match: baseFilter },
+            {
+              $group: {
+                _id: null,
+                pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+                confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
+                processing: { $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] } },
+                shipped: { $sum: { $cond: [{ $eq: ['$status', 'shipped'] }, 1, 0] } },
+                delivered: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+                cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+                paymentAttentionCount: {
+                  $sum: {
+                    $cond: [
                       { $and: [{ $eq: ['$paymentMethod', 'vodafone_cash'] }, { $ne: ['$paymentStatus', 'paid'] }] },
+                      1,
+                      0,
                     ],
                   },
-                  1,
-                  0,
-                ],
+                },
+                attentionCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $in: ['$status', ['pending', 'processing', 'shipped']] },
+                          { $and: [{ $eq: ['$paymentMethod', 'vodafone_cash'] }, { $ne: ['$paymentStatus', 'paid'] }] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
               },
             },
-          },
-        },
-      ]),
+          ]),
     ]);
 
     const orderIds = orders.map((order) => order._id);
-    const statuses = orderIds.length
+    const statuses = !compact && orderIds.length
       ? await MerchantOrderStatus.find({ order: { $in: orderIds } })
           .select('order merchant status')
           .lean()
@@ -142,7 +150,7 @@ exports.getAllOrders = async (req, res, next) => {
     const pages = Math.ceil(Number(total || 0) / limit);
 
     res.json({
-      orders: orders.map((order) => ({
+      orders: compact ? orders : orders.map((order) => ({
         ...order,
         merchantFulfillment: buildMerchantFulfillment(
           order,
