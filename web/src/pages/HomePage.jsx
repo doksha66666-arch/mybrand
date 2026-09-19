@@ -7,6 +7,14 @@ import { useWishlist } from '../context/WishlistContext';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import './HomePagePremium.css';
 
+const toImageUrl = (value) => {
+  if (!value) return '';
+  const text = String(value).trim();
+  if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text;
+  if (text.startsWith('//')) return `https:${text}`;
+  return `${API_ORIGIN}/${text.replace(/^\/+/, '')}`;
+};
+
 function Icon({ type }) {
   const c = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
   if (type === 'home') return <svg width="20" height="20" viewBox="0 0 24 24" {...c}><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>;
@@ -36,7 +44,7 @@ function ProductCard({ product }) {
   const price = Number(product.finalPrice ?? product.price ?? 0);
   const old = Number(product.compareAtPrice ?? product.oldPrice ?? 0);
   const rawImage = product.images?.[0] || product.image || product.imageUrl;
-  const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
+  const image = toImageUrl(rawImage);
   const discount = Number(product.discountAmount || 0);
   const stock = Math.max(0, Number(product.stock ?? product.quantity ?? 0));
   const outOfStock = stock <= 0;
@@ -62,13 +70,13 @@ function HomeHero() {
       catch { if (!cancelled) setLiveStream(null); }
       finally { if (!cancelled) setChecked(true); }
     };
-    load(); const id = setInterval(load, 3000); return () => { cancelled = true; clearInterval(id); };
+    load(); const id = setInterval(load, 10000); return () => { cancelled = true; clearInterval(id); };
   }, []);
   return <section className="home-hero home-hero-live-stream" aria-label="عرض الفيديو الحالي"><div className="home-live-card-wrap">{liveStream ? <TrendLiveCard stream={liveStream} /> : checked ? <div className="home-live-empty"><strong>لا يوجد عرض الآن</strong><span>سيظهر الفيديو هنا تلقائيًا عند نشره من المذيع.</span></div> : <div className="home-live-loading"><span>جارٍ تجهيز العرض...</span></div>}</div></section>;
 }
 
 function CategoryImages({ categories }) {
-  return <section className="home-category-images" aria-label="الأقسام"><div className="sec-title"><h2>الأقسام</h2><Link className="more" to="/categories">عرض الكل</Link></div>{categories.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px 10px', padding: '4px 2px 16px' }}>{categories.map((c, i) => { const image = c.image || c.imageUrl || c.coverImage || c.bannerImage || c.thumbnail; const categoryPath = c._id || c.id || c.slug; const categoryTarget = categoryPath ? `/categories?category=${encodeURIComponent(categoryPath)}` : '/categories'; return <Link to={categoryTarget} key={c._id || c.id || i} style={{ minWidth: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}><div style={{ width: '72px', height: '72px', margin: '0 auto 8px', borderRadius: '50%', overflow: 'hidden', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.08)', border: '1px solid rgba(0,0,0,.06)' }}>{image ? <img src={image} alt={c.nameAr || c.name || 'قسم'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon type={c.icon || 'bag'} />}</div><span style={{ display: 'block', fontWeight: 700, fontSize: '13px' }}>{c.nameAr || c.name || 'قسم'}</span></Link>; })}</div> : <div className="category-empty">لا توجد أقسام منشورة حاليًا. ستظهر الأقسام هنا تلقائيًا عند إضافتها.</div>}</section>;
+  return <section className="home-category-images" aria-label="الأقسام"><div className="sec-title"><h2>الأقسام</h2><Link className="more" to="/categories">عرض الكل</Link></div>{categories.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px 10px', padding: '4px 2px 16px' }}>{categories.map((c, i) => { const image = toImageUrl(c.image || c.imageUrl || c.coverImage || c.bannerImage || c.thumbnail); const categoryPath = c._id || c.id || c.slug; const categoryTarget = categoryPath ? `/categories?category=${encodeURIComponent(categoryPath)}` : '/categories'; return <Link to={categoryTarget} key={c._id || c.id || i} style={{ minWidth: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}><div style={{ width: '72px', height: '72px', margin: '0 auto 8px', borderRadius: '50%', overflow: 'hidden', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.08)', border: '1px solid rgba(0,0,0,.06)' }}>{image ? <img src={image} alt={c.nameAr || c.name || 'قسم'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon type={c.icon || 'bag'} />}</div><span style={{ display: 'block', fontWeight: 700, fontSize: '13px' }}>{c.nameAr || c.name || 'قسم'}</span></Link>; })}</div> : <div className="category-empty">لا توجد أقسام منشورة حاليًا. ستظهر الأقسام هنا تلقائيًا عند إضافتها.</div>}</section>;
 }
 
 function StoreSection({ id, style, children }) {
