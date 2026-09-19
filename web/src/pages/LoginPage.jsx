@@ -17,9 +17,11 @@ const socialLogin = (provider, returnTo, returnState) => {
 export default function LoginPage() {
   const { getStyle } = useStoreLayout('login');
   const { login } = useAuth(); const navigate = useNavigate(); const location = useLocation(); const [searchParams] = useSearchParams();
-  const returnTo = location.state?.returnTo || '/'; const returnState = location.state?.checkoutState || undefined;
+  const socialError = searchParams.get('social_error');
+  const storedSocialReturn = (() => { if (!socialError || typeof window === 'undefined') return null; try { const raw = localStorage.getItem('mybrand_social_return'); return raw ? JSON.parse(raw) : null; } catch (_) { return null; } })();
+  const returnTo = location.state?.returnTo || storedSocialReturn?.returnTo || '/'; const returnState = location.state?.checkoutState || storedSocialReturn?.checkoutState || undefined;
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false); const [error, setError] = useState(''); const [submitting, setSubmitting] = useState(false);
-  useEffect(() => { const socialError = searchParams.get('social_error'); if (socialError) setError(socialError); }, [searchParams]);
+  useEffect(() => { if (socialError) setError(socialError); }, [socialError]);
   const submit = async (e) => { e.preventDefault(); setError(''); setSubmitting(true); try { await login(email, password); navigate(returnTo, { replace: true, state: returnState }); } catch (err) { if (err?.response?.data?.needsVerification) { navigate(`/verify-email?email=${encodeURIComponent(err.response.data.email || email)}`, { state: { returnTo, checkoutState: returnState } }); return; } setError(err?.response?.data?.message || 'تعذر تسجيل الدخول'); } finally { setSubmitting(false); } };
 
   return <div className="app">
