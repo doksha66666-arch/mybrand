@@ -12,6 +12,7 @@ const paths = {
   commission: 'M7.5 4.5h9A1.5 1.5 0 0 1 18 6v12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 18V6a1.5 1.5 0 0 1 1.5-1.5z M9 9h6 M9 12h6 M9 15h3.5',
   studio: 'M12 3.8 13.8 8l4.4.2-3.4 2.8 1.1 4.2-3.9-2.3-3.9 2.3 1.1-4.2-3.4-2.8 4.4-.2z',
   profile: 'M12 12.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2z M5.5 19.5a6.5 6.5 0 0 1 13 0',
+  store: 'M4 10h16l-1.2 10H5.2z M7 10V6.5A2.5 2.5 0 0 1 9.5 4h5A2.5 2.5 0 0 1 17 6.5V10 M8 14h8',
   logout: 'M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10 M13 8l4 4-4 4 M17 12H9',
 };
 
@@ -22,6 +23,7 @@ function Icon({ name, size = 19, strokeWidth = 1.9 }) {
 const links = [
   { to: '/', label: 'الرئيسية', icon: 'home', end: true, group: 'تشغيل المتجر' },
   { to: '/products', label: 'المنتجات', icon: 'products', group: 'تشغيل المتجر' },
+  { to: '/store-customizer', label: 'تخصيص المتجر', icon: 'store', group: 'تشغيل المتجر' },
   { to: '/orders', label: 'الطلبات', icon: 'orders', group: 'تشغيل المتجر' },
   { to: '/sales', label: 'المبيعات', icon: 'sales', group: 'المال والأداء' },
   { to: '/commission', label: 'العمولة والمستحقات', icon: 'commission', group: 'المال والأداء' },
