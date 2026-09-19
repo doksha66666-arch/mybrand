@@ -1,10 +1,9 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{Link,useSearchParams}from'react-router-dom';
-import api from'../api/client';
+import api, { API_ORIGIN } from'../api/client';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import'./CategoriesPage.css';
 
-const API_ORIGIN=String(import.meta.env.VITE_API_BASE_URL||'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/api\/?$/,'');
 const toImageUrl=value=>{if(!value)return '';const s=String(value).trim();if(/^(data:image|https?:|blob:|file:)/i.test(s))return s;if(s.startsWith('//'))return`https:${s}`;return`${API_ORIGIN}/${s.replace(/^\/+/, '')}`};
 function SearchIcon(){return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>}
 function HomeIcon(){return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>}
