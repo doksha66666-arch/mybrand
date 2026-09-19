@@ -47,7 +47,7 @@ export function StoreLayoutProvider({ children }) {
       .home-reference .home-add-cart,.home-reference .bottom-nav .active .trend-circle,.home-reference .bottom-nav .nav-item.active{background:var(--store-accent-raw)!important;color:#fff!important}
       .categories-reference .categories-rail-item.active{border-color:var(--store-accent-raw)!important;color:var(--store-accent-raw)!important}
       .home-reference .card,.categories-reference .categories-product-card,.categories-reference .category-product-card,.product-reference .variant-panel,.product-reference .seller-card{border-radius:var(--store-radius-raw)}
-      .home-reference .app,.categories-reference .categories-app,.product-reference .product-app,.checkout-app,.orders-page,.wishlist-app,.account-page{max-width:var(--store-content-width-raw)}
+      .home-reference .app,.categories-reference .categories-app,.product-reference .product-app,.checkout-app,.orders-page,.wishlist-app,.account-page,.new-arrivals-page,.offers-page{max-width:var(--store-content-width-raw)}
       .home-reference .home-add-cart,.home-reference .checkout-btn,.checkout-app .place-order,.product-reference .btn-cart,.product-reference .btn-buy,.wishlist-app .wishlist-primary,.account-page .account-primary{border-radius:var(--store-button-radius-raw)!important}
       .home-reference .card,.categories-reference .category-product-card,.product-reference .seller-card,.product-reference .variant-panel,.wishlist-app .wishlist-card,.orders-page .order-card{box-shadow:var(--store-shadow-raw)}
       .store-customizer-preview-shell{border-radius:var(--store-radius-raw)}
