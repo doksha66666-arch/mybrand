@@ -107,21 +107,35 @@ function CartPage() {
     if (!product) return { stock: Math.max(0, Number(item?.stock ?? item?.quantity ?? 0)), outOptions: new Set(), source: 'fallback' };
     const variants = Array.isArray(product?.variants) ? product.variants : [];
     if (!variants.length) return { stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)), outOptions: new Set(), source: 'product' };
+
+    const options = getOptions(item);
+    const matched = Object.entries(options)
+      .map(([name, value]) => ({ name, value, variant: findVariant(variants, name, value) }))
+      .filter((entry) => entry.variant);
+
+    if (matched.length) {
+      const outOptions = new Set(
+        matched.filter((entry) => Number(entry.variant?.stock ?? 0) <= 0).map((entry) => optionKey(entry.name)),
+      );
+      const stock = Math.min(...matched.map((entry) => Math.max(0, Number(entry.variant?.stock ?? 0))));
+      return { stock, outOptions, source: 'options' };
+    }
+
     if (item?.variantId != null) {
-      const selectedVariant = variants.find((variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId));
+      const selectedVariant = variants.find(
+        (variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId),
+      );
       if (selectedVariant) {
         const stock = Math.max(0, Number(selectedVariant.stock ?? 0));
-        return { stock, outOptions: stock === 0 ? new Set(Object.keys(getOptions(item)).map(optionKey)) : new Set(), source: 'variant' };
+        return { stock, outOptions: stock === 0 ? new Set(['variant']) : new Set(), source: 'variant' };
       }
     }
-    const options = getOptions(item);
-    const matched = Object.entries(options).map(([name, value]) => ({ name, value, variant: findVariant(variants, name, value) })).filter((entry) => entry.variant);
-    if (matched.length) {
-      const outOptions = new Set(matched.filter((entry) => Number(entry.variant?.stock ?? 0) <= 0).map((entry) => optionKey(entry.name)));
-      const stock = Math.min(...matched.map((entry) => Math.max(0, Number(entry.variant?.stock ?? 0))));
-      return { stock, outOptions, source: 'option' };
-    }
-    return { stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)), outOptions: new Set(), source: 'product' };
+
+    return {
+      stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)),
+      outOptions: new Set(),
+      source: 'product',
+    };
   };
   const getCurrentStock = (item) => getVariantStatus(item).stock;
   const invalidSelected = useMemo(() => selectedItems.some((item) => { const stock = getVariantStatus(item).stock; return stock === 0 || (stock != null && stock < item.quantity); }), [selectedItems, liveStock]);
