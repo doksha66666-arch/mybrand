@@ -87,14 +87,14 @@ export function StoreLayoutProvider({ children }) {
 export function useStoreLayout(pageId) {
   const { layouts, loading } = useContext(StoreLayoutContext);
   const configured = layouts?.[pageId];
-  const map = new Map(Array.isArray(configured) ? configured.map((item) => [item.id, item]) : []);
+  const map = new Map(Array.isArray(configured) ? configured.map((item, index) => [item.id, { ...item, __index: index }]) : []);
   return {
     loading,
     getStyle(id) {
       const item = map.get(id);
       if (!item) return { order: 0 };
       return {
-        order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0,
+        order: item.__index,
         display: item.enabled === false ? 'none' : undefined,
       };
     },
