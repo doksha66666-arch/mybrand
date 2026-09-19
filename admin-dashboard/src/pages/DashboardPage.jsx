@@ -18,14 +18,13 @@ export default function DashboardPage(){
  const [stats,setStats]=useState({sales:0,orders:0,customers:0,avg:0,salesByDay:[],categorySales:[],topProducts:[]});
  const [orders,setOrders]=useState([]); const[loading,setLoading]=useState(true); const[error,setError]=useState(false);
  useEffect(()=>{let live=true;(async()=>{try{
-   const requests=[api.get('/orders/stats/summary'),canCustomers?api.get('/customers'):null,canOrders?api.get('/orders'):null].filter(Boolean);
+   const requests=[api.get('/orders/stats/summary'),canOrders?api.get('/orders',{params:{limit:5}}):null].filter(Boolean);
    const results=await Promise.allSettled(requests); if(!live)return;
-   const summary=results[0]; let idx=1;
-   const customersResult=canCustomers?results[idx++]:null; const orderList=canOrders?results[idx++]:null;
+   const summary=results[0];
+   const orderList=canOrders?results[1]:null;
    const s=summary?.status==='fulfilled'?summary.value.data||{}:{};
-   const c=customersResult?.status==='fulfilled'?customersResult.value.data||{}:{};
    const o=orderList?.status==='fulfilled'?orderList.value.data||{}:{};
-   setStats({sales:Number(s.totalSales||0),orders:Number(s.ordersCount||0),customers:Number(c.total||c.count||0),avg:Number(s.averageOrder||0),salesByDay:Array.isArray(s.salesByDay)?s.salesByDay:[],categorySales:Array.isArray(s.categorySales)?s.categorySales:[],topProducts:Array.isArray(s.topProducts)?s.topProducts:[]});
+   setStats({sales:Number(s.totalSales||0),orders:Number(s.ordersCount||0),customers:Number(s.customersCount||0),avg:Number(s.averageOrder||0),salesByDay:Array.isArray(s.salesByDay)?s.salesByDay:[],categorySales:Array.isArray(s.categorySales)?s.categorySales:[],topProducts:Array.isArray(s.topProducts)?s.topProducts:[]});
    const rows=o.orders||o.data||[]; if(canOrders&&Array.isArray(rows))setOrders(rows.slice(0,5).map(x=>({id:x.orderNumber||x._id||'',customer:x.customer?.name||x.customerName||'—',merchant:x.items?.find(i=>i.merchantNameSnapshot)?.merchantNameSnapshot||'—',amount:x.total||0,status:x.status||''})));
    setError(results.some(r=>r?.status==='rejected'));
  }catch{if(live)setError(true)}finally{if(live)setLoading(false)}})();return()=>{live=false}},[canOrders,canCustomers]);

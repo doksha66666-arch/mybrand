@@ -46,6 +46,8 @@ const orderSchema = new mongoose.Schema({
 
 // Main admin list: filter active orders and return newest first without a collection scan.
 orderSchema.index({ isArchived: 1, createdAt: -1 });
+// Admin order status filters: scope active/archived orders and keep newest-first ordering indexable.
+orderSchema.index({ isArchived: 1, status: 1, createdAt: -1 });
 // Merchant fulfillment: narrow by merchant/status and keep newest orders first.
 orderSchema.index({ 'items.merchant': 1, status: 1, createdAt: -1 });
 // Merchant sales: scope by merchant and keep newest orders first.
