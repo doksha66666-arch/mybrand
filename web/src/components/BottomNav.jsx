@@ -25,8 +25,9 @@ export default function BottomNav() {
   const { itemsCount } = useCart();
   const { user } = useAuth();
 
-  // الصفحة الرئيسية لديها الشريط الأصلي داخل HomePage، لذلك لا نكرر الشريط هنا.
-  if (location.pathname === '/') return null;
+  // بعض صفحات المتجر ترسم شريطها السفلي الخاص بها؛ لا نكرر الشريط العام فوقه.
+  const hasOwnBottomNav = ['/categories', '/wishlist', '/trend'].includes(location.pathname);
+  if (location.pathname === '/' || hasOwnBottomNav) return null;
 
   return <nav className="bottom-nav" aria-label="التنقل الرئيسي">
     {navItems.map(([to, icon, label]) => {
