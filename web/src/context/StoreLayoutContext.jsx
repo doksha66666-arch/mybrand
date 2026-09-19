@@ -40,14 +40,14 @@ export function StoreLayoutProvider({ children }) {
         --store-shadow:var(--store-shadow-raw);
       }
       body{background:var(--store-bg-raw);color:var(--store-text-raw);font-size:calc(16px * var(--store-font-scale-raw))}
-      .home-reference,.categories-reference,.product-reference,.cart-reference,.checkout-reference,.orders-reference,.wishlist-reference,.account-reference,.register-app,.app{--store-radius-local:var(--store-radius-raw);background:var(--store-bg-raw)!important;color:var(--store-text-raw)}
+      .home-reference,.categories-reference,.product-reference,.cart-reference,.checkout-reference,.orders-reference,.wishlist-reference,.account-reference,.new-arrivals-page,.offers-page,.register-app,.app{--store-radius-local:var(--store-radius-raw);background:var(--store-bg-raw)!important;color:var(--store-text-raw)}
       .home-reference .card,.home-reference header,.categories-reference .categories-header,.product-reference .product-app{border-color:var(--store-border-raw)!important}
       .home-reference .card,.home-reference header,.categories-reference .categories-header,.product-reference .product-app{background:var(--store-surface-raw)}
       .home-reference .logo,.categories-reference .categories-logo{color:var(--store-accent-raw)!important}
       .home-reference .home-add-cart,.home-reference .bottom-nav .active .trend-circle,.home-reference .bottom-nav .nav-item.active{background:var(--store-accent-raw)!important;color:#fff!important}
       .categories-reference .categories-rail-item.active{border-color:var(--store-accent-raw)!important;color:var(--store-accent-raw)!important}
       .home-reference .card,.categories-reference .categories-product-card,.categories-reference .category-product-card,.product-reference .variant-panel,.product-reference .seller-card{border-radius:var(--store-radius-raw)}
-      .home-reference .app,.categories-reference .categories-app,.product-reference .product-app,.checkout-app,.orders-page,.wishlist-app,.account-page{max-width:var(--store-content-width-raw)}
+      .home-reference .app,.categories-reference .categories-app,.product-reference .product-app,.checkout-app,.orders-page,.wishlist-app,.account-page,.new-arrivals-page,.offers-page{max-width:var(--store-content-width-raw)}
       .home-reference .home-add-cart,.home-reference .checkout-btn,.checkout-app .place-order,.product-reference .btn-cart,.product-reference .btn-buy,.wishlist-app .wishlist-primary,.account-page .account-primary{border-radius:var(--store-button-radius-raw)!important}
       .home-reference .card,.categories-reference .category-product-card,.product-reference .seller-card,.product-reference .variant-panel,.wishlist-app .wishlist-card,.orders-page .order-card{box-shadow:var(--store-shadow-raw)}
       .store-customizer-preview-shell{border-radius:var(--store-radius-raw)}

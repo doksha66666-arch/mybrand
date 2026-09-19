@@ -39,6 +39,12 @@ const PAGE_DEFS = [
   { id: 'wishlist', title: 'المفضلة', icon: '❤️', movable: false, sections: [
     ['topbar','الشريط العلوي','العودة ومسح المفضلة','↩️'],['tabs','تبويبات المفضلة','المنتجات ومتابعة التسوق','🧭'],['products','المنتجات المحفوظة','شبكة المنتجات','❤️'],['bottomNav','التنقل السفلي','التنقل الرئيسي','📱']
   ]},
+  { id: 'new-arrivals', title: 'وصل حديثًا', icon: '🆕', movable: false, sections: [
+    ['header','رأس الصفحة','العودة والعنوان والسلة','🧭'],['hero','العنوان التعريفي','وصف وعدد المنتجات الجديدة','✨'],['products','المنتجات الجديدة','شبكة المنتجات الفعلية','🛍️']
+  ]},
+  { id: 'offers', title: 'العروض', icon: '🔥', movable: false, sections: [
+    ['header','رأس الصفحة','العودة والعنوان والسلة','🧭'],['hero','عنوان العروض','التعريف بعدد العروض','🔥'],['filters','فلاتر العروض','شرائح تصفية الخصومات','🎛️'],['products','منتجات العروض','شبكة المنتجات المخفضة','🛍️']
+  ]},
 ];
 
 const DEFAULT_THEME = {
@@ -194,6 +200,8 @@ export default function StoreCustomizerPage() {
     account: '/account',
     orders: '/orders',
     wishlist: '/wishlist',
+    'new-arrivals': '/new-arrivals',
+    offers: '/offers',
   };
   const previewUrl = `${storePreviewBase}${previewPaths[pageId] || '/'}${previewPaths[pageId] === '/' ? '?customizerPreview=1' : '?customizerPreview=1'}`;
 

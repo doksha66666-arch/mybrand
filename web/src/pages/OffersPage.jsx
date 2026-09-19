@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useCart } from '../context/CartContext';
 import './OffersPage.css';
+import { useStoreLayout } from '../context/StoreLayoutContext';
 
 const FILTERS = [
   ['all', '🔥 كل العروض'],
@@ -52,6 +53,7 @@ function ProductCard({ product }) {
 }
 
 export default function OffersPage() {
+  const { getStyle } = useStoreLayout('offers');
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -71,23 +73,23 @@ export default function OffersPage() {
   const countLabel = visibleProducts.length.toLocaleString('ar-EG');
 
   return <main className="offers-page" dir="rtl">
-    <header className="offers-header">
+    <header className="offers-header" style={getStyle('header')}>
       <Link to="/" className="offers-back">←</Link>
       <div><strong>🏷️ عروض وخصومات</strong><span>أفضل الأسعار المختارة</span></div>
       <Link to="/cart" className="offers-cart">🛒</Link>
     </header>
 
-    <section className="offers-hero">
+    <section className="offers-hero" style={getStyle('hero')}>
       <div><span className="offers-kicker">🔥 لفترة محدودة</span><h1>عروض وخصومات</h1><p>لقطات حلوة وأسعار أقوى — اختار عرضك وخد أفضل سعر على MYBRAND.</p></div>
       {!loading && !error && <strong className="offers-count">{products.length.toLocaleString('ar-EG')} عرض</strong>}
     </section>
 
-    <div className="offers-filters" aria-label="تصنيفات العروض">
+    <div className="offers-filters" style={getStyle('filters')} aria-label="تصنيفات العروض">
       {FILTERS.map(([value, label]) => <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>)}
     </div>
 
     {!loading && !error && <div className="offers-results-line"><strong>{countLabel}</strong> منتج في الاختيار ده</div>}
 
-    {error ? <div className="offers-empty">{error}</div> : loading ? <div className="offers-grid">{Array.from({ length: 8 }).map((_, i) => <div className="offers-skeleton" key={i}/>)}</div> : visibleProducts.length ? <div className="offers-grid">{visibleProducts.map(product => <ProductCard key={product._id || product.id || product.slug} product={product}/>)}</div> : <div className="offers-empty"><strong>مفيش عروض في الاختيار ده 😅</strong><span>جرّب اختيار تاني وشوف أقوى اللقطات.</span><button type="button" onClick={() => setFilter('all')}>🔥 شوف كل العروض</button></div>}
+    {error ? <div className="offers-empty">{error}</div> : loading ? <div className="offers-grid" style={getStyle('products')}>{Array.from({ length: 8 }).map((_, i) => <div className="offers-skeleton" key={i}/>)}</div> : visibleProducts.length ? <div className="offers-grid" style={getStyle('products')}>{visibleProducts.map(product => <ProductCard key={product._id || product.id || product.slug} product={product}/>)}</div> : <div className="offers-empty"><strong>مفيش عروض في الاختيار ده 😅</strong><span>جرّب اختيار تاني وشوف أقوى اللقطات.</span><button type="button" onClick={() => setFilter('all')}>🔥 شوف كل العروض</button></div>}
   </main>;
 }
