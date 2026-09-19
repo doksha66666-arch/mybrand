@@ -19,10 +19,43 @@ const sellerKey = (item) => { const merchant = item?.merchant || item?.product?.
 
 export default function OrdersPage() {
   const { user } = useAuth(); const location = useLocation(); const navigate = useNavigate(); const { getStyle } = useStoreLayout('orders'); const [orders, setOrders] = useState([]); const [loading, setLoading] = useState(true); const [filter, setFilter] = useState('all');
-  useEffect(() => { let alive = true; if (!user) { setLoading(false); return () => { alive = false; }; } setLoading(true); api.get('/orders/my').then(({ data }) => { if (alive) setOrders(Array.isArray(data?.orders) ? data.orders : []); }).catch(() => { if (alive) setOrders([]); }).finally(() => { if (alive) setLoading(false); }); return () => { alive = false; }; }, [user]);
+  const previewMode = typeof window !== 'undefined' && (window.__MYBRAND_CUSTOMIZER_PREVIEW__ === true || new URLSearchParams(window.location.search).get('customizerPreview') === '1');
+  useEffect(() => {
+    let alive = true;
+    if (previewMode) {
+      setLoading(true);
+      api.get('/products', { params: { limit: 4, page: 1 } }).then(({ data }) => {
+        if (!alive) return;
+        const products = Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : [];
+        const makeItem = (product, index) => ({
+          productId: product?._id || product?.id,
+          nameSnapshot: product?.nameAr || product?.name || 'منتج',
+          imageSnapshot: product?.image || product?.images?.[0] || '',
+          priceSnapshot: Number(product?.price || 0),
+          quantity: index + 1,
+          merchantNameSnapshot: product?.merchant?.businessName || product?.merchant?.storeName || 'MYBRAND',
+          sellerLevelSnapshot: index === 0 ? 'five_star' : 'featured',
+          sellerRatingSnapshot: index === 0 ? 4.9 : 4.7,
+          sellerReviewCountSnapshot: index === 0 ? 128 : 76,
+        });
+        const first = products[0] || {};
+        const second = products[1] || products[0] || {};
+        const third = products[2] || products[1] || products[0] || {};
+        const now = Date.now();
+        setOrders([
+          { id: 'preview-order-1', orderNumber: 'MB-10248', status: 'processing', paymentStatus: 'paid', total: Math.max(Number(first.price || 0), 250), createdAt: new Date(now - 86400000).toISOString(), shippingAddress: { city: 'القاهرة' }, items: [makeItem(first, 0), makeItem(second, 1)] },
+          { id: 'preview-order-2', orderNumber: 'MB-10192', status: 'delivered', paymentStatus: 'paid', total: Math.max(Number(second.price || 0), 180), createdAt: new Date(now - 604800000).toISOString(), shippingAddress: { city: 'الجيزة' }, items: [makeItem(second, 0), makeItem(third, 1)] },
+          { id: 'preview-order-3', orderNumber: 'MB-10141', status: 'cancelled', paymentStatus: 'refunded', total: Math.max(Number(third.price || 0), 120), createdAt: new Date(now - 1296000000).toISOString(), shippingAddress: { city: 'الإسكندرية' }, items: [makeItem(third, 0)] },
+        ]);
+      }).catch(() => { if (alive) setOrders([]); }).finally(() => { if (alive) setLoading(false); });
+      return () => { alive = false; };
+    }
+    if (!user) { setLoading(false); return () => { alive = false; }; }
+    setLoading(true); api.get('/orders/my').then(({ data }) => { if (alive) setOrders(Array.isArray(data?.orders) ? data.orders : []); }).catch(() => { if (alive) setOrders([]); }).finally(() => { if (alive) setLoading(false); }); return () => { alive = false; };
+  }, [user, previewMode]);
   const stats = useMemo(() => ({ total: orders.length, active: orders.filter((order) => !['delivered', 'cancelled'].includes(order?.status)).length, delivered: orders.filter((order) => order?.status === 'delivered').length, cancelled: orders.filter((order) => order?.status === 'cancelled').length }), [orders]);
   const filteredOrders = useMemo(() => orders.filter((order) => { if (filter === 'active') return !['delivered', 'cancelled'].includes(order?.status); if (filter === 'delivered') return order?.status === 'delivered'; if (filter === 'cancelled') return order?.status === 'cancelled'; return true; }), [orders, filter]);
-  if (!user) return <EmptyState icon="🔒" title="سجّل الدخول لعرض طلباتك" />;
+  if (!user && !previewMode) return <EmptyState icon="🔒" title="سجّل الدخول لعرض طلباتك" />;
   if (loading) return <div className="orders-page" dir="rtl"><div className="orders-loading"><span className="orders-spinner" /> جارٍ تحميل طلباتك...</div></div>;
   return <main className="orders-page" dir="rtl"><section className="orders-hero" style={getStyle('hero')}><div className="orders-hero-copy"><span className="orders-eyebrow">حسابي / المشتريات</span><h1>طلباتي</h1><p>كل مشترياتك في مكان واحد، مع متابعة واضحة لحالة كل طلب.</p></div><div className="orders-box-icon" aria-hidden="true">📦</div></section>
     {location.state?.justPlaced&&<div className="orders-success" role="status"><div className="orders-success-icon">✓</div><div><strong>تم إنشاء طلبك بنجاح</strong><span>رقم الطلب: {location.state.justPlaced}</span></div></div>}
