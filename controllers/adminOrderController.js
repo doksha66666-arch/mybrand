@@ -2,6 +2,10 @@ const Order = require('../models/Order');
 const MerchantOrderStatus = require('../models/MerchantOrderStatus');
 const mongoose = require('mongoose');
 
+const PAGE_DEFAULT = 25;
+const PAGE_MAX = 50;
+const allowedStatuses = new Set(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled']);
+
 const buildMerchantFulfillment = (order, statusByMerchant) => {
   const merchants = new Map();
   for (const item of order.items || []) {
@@ -45,20 +49,81 @@ const allowedPaymentTransitions = {
   refunded: new Set(['refunded']),
 };
 
+const escapeRegex = (value) => String(value).replace(/[\^$.*+?()[\]{}|]/g, '\\$&');
+
 exports.getAllOrders = async (req, res, next) => {
   try {
+    const requestedPage = Math.max(1, Number(req.query?.page) || 1);
+    const limit = Math.min(PAGE_MAX, Math.max(1, Number(req.query?.limit) || PAGE_DEFAULT));
     const includeArchived = String(req.query?.includeArchived || '').toLowerCase() === 'true';
-    const filter = includeArchived ? {} : { isArchived: { $ne: true } };
+    const status = String(req.query?.status || '').trim().toLowerCase();
+    const sortDirection = String(req.query?.sort || 'newest').trim().toLowerCase() === 'oldest' ? 1 : -1;
+    const query = String(req.query?.q || '').trim();
 
-    const orders = await Order.find(filter)
-      .select(
-        'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport'
-      )
-      .populate('user', 'name email phone')
-      .populate('items.product', 'nameAr nameEn images sku')
-      .populate('items.merchant', 'name storeName businessName')
-      .sort({ createdAt: -1 })
-      .lean();
+    const baseFilter = includeArchived ? {} : { isArchived: { $ne: true } };
+    const filter = { ...baseFilter };
+    if (allowedStatuses.has(status)) filter.status = status;
+    if (query) {
+      const regex = new RegExp(escapeRegex(query), 'i');
+      filter.$or = [
+        { orderNumber: regex },
+        { 'customer.name': regex },
+        { 'customer.phone': regex },
+        { 'customer.email': regex },
+      ];
+    }
+
+    const [orders, total, statusRows] = await Promise.all([
+      Order.find(filter)
+        .select(
+          'orderNumber user items customer shippingAddress subtotal discount loyaltyPointsRedeemed loyaltyDiscount shippingFee total totalCommissionAmount totalMerchantAmount paymentMethod vodafoneCashInfo paymentStatus status couponCode placedAt createdAt updatedAt isArchived archivedAt dailyReport'
+        )
+        .populate('user', 'name email phone')
+        .populate('items.product', 'nameAr nameEn images sku')
+        .populate('items.merchant', 'name storeName businessName')
+        .sort({ createdAt: sortDirection, _id: sortDirection })
+        .skip((requestedPage - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(filter),
+      Order.aggregate([
+        { $match: baseFilter },
+        {
+          $group: {
+            _id: null,
+            pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+            confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
+            processing: { $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] } },
+            shipped: { $sum: { $cond: [{ $eq: ['$status', 'shipped'] }, 1, 0] } },
+            delivered: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+            cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+            paymentAttentionCount: {
+              $sum: {
+                $cond: [
+                  { $and: [{ $eq: ['$paymentMethod', 'vodafone_cash'] }, { $ne: ['$paymentStatus', 'paid'] }] },
+                  1,
+                  0,
+                ],
+              },
+            },
+            attentionCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $in: ['$status', ['pending', 'processing', 'shipped']] },
+                      { $and: [{ $eq: ['$paymentMethod', 'vodafone_cash'] }, { $ne: ['$paymentStatus', 'paid'] }] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+    ]);
 
     const orderIds = orders.map((order) => order._id);
     const statuses = orderIds.length
@@ -73,6 +138,9 @@ exports.getAllOrders = async (req, res, next) => {
       statusMap.get(orderKey).set(String(row.merchant), row);
     }
 
+    const meta = statusRows?.[0] || {};
+    const pages = Math.ceil(Number(total || 0) / limit);
+
     res.json({
       orders: orders.map((order) => ({
         ...order,
@@ -81,6 +149,20 @@ exports.getAllOrders = async (req, res, next) => {
           statusMap.get(String(order._id)) || new Map()
         ),
       })),
+      total: Number(total || 0),
+      page: requestedPage,
+      limit,
+      pages,
+      statusCounts: {
+        pending: Number(meta.pending || 0),
+        confirmed: Number(meta.confirmed || 0),
+        processing: Number(meta.processing || 0),
+        shipped: Number(meta.shipped || 0),
+        delivered: Number(meta.delivered || 0),
+        cancelled: Number(meta.cancelled || 0),
+      },
+      paymentAttentionCount: Number(meta.paymentAttentionCount || 0),
+      attentionCount: Number(meta.attentionCount || 0),
     });
   } catch (error) {
     next(error);
@@ -103,7 +185,7 @@ exports.updatePaymentStatus = async (req, res, next) => {
 
     const currentStatus = String(order.paymentStatus || 'pending');
     if (!allowedPaymentTransitions[currentStatus]?.has(paymentStatus)) {
-      return res.status(409).json({ message: `لا يمكن تغيير حالة الدفع من ${currentStatus} إلى ${paymentStatus}` });
+      return res.status(409).json({ message: 'لا يمكن تغيير حالة الدفع من ' + currentStatus + ' إلى ' + paymentStatus });
     }
 
     order.paymentStatus = paymentStatus;
