@@ -123,7 +123,7 @@ export default function StoreCustomizerPage() {
   const setThemeValue = (key, value) => setTheme((current) => ({ ...current, [key]: value }));
 
   const payload = {
-    pageLayouts: { ...layouts, home: normalizeLayout(sections) },
+    pageLayouts: { ...layouts, [pageId]: normalizeLayout(page, sections) },
     theme: normalizeTheme(theme),
   };
 
@@ -154,11 +154,9 @@ export default function StoreCustomizerPage() {
     setTheme(nextTheme);
     setError('');
     try {
-      const { data } = await api.put('/settings', { pageLayouts: nextLayouts, theme: nextTheme });
+      const { data } = await api.put('/settings', { pageLayouts: nextLayouts });
       setLayouts((current) => ({ ...current, [pageId]: normalizeLayout(page, data?.settings?.pageLayouts?.[pageId] || makeDefault(page)) }));
-      setTheme(normalizeTheme(data?.settings?.theme || nextTheme));
-      localStorage.removeItem('mybrand_store_page_layouts');
-      localStorage.removeItem('mybrand_store_theme');
+      localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(data?.settings?.pageLayouts || nextLayouts));
     } catch (err) {
       setError(err?.response?.data?.message || 'تعذر إعادة الضبط مركزيًا.');
     }
@@ -180,7 +178,7 @@ export default function StoreCustomizerPage() {
         <div>
           <span className="customizer-kicker">MYBRAND STORE BUILDER</span>
           <h1>تخصيص المتجر</h1>
-          <p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'تحكم فعلي في المظهر العام وترتيب وإخفاء أقسام الصفحة الرئيسية.'}</p>
+          <p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'تحكم فعلي في مظهر المتجر وإظهار أو إخفاء أقسام الصفحات المرتبطة.'}</p>
         </div>
         <div className="customizer-actions">
           <button className="secondary-btn" onClick={reset} disabled={loading || saving}>إعادة ضبط</button>
@@ -195,7 +193,7 @@ export default function StoreCustomizerPage() {
       {activeTab === 'layout' && <section className="page-selector"><div className="page-selector-title"><span>STORE PAGES</span><strong>{PAGE_DEFS.length} صفحات مرتبطة فعليًا</strong></div><div className="page-tabs">{PAGE_DEFS.map((item) => <button key={item.id} className={item.id === pageId ? 'active' : ''} onClick={() => { setPageId(item.id); setDragged(null); }}>{item.icon}<span>{item.title}</span></button>)}</div></section>}
 
       <section className="customizer-tabs">
-        <button className={activeTab === 'layout' ? 'active' : ''} onClick={() => setActiveTab('layout')}>✦ ترتيب الصفحة الرئيسية</button>
+        <button className={activeTab === 'layout' ? 'active' : ''} onClick={() => setActiveTab('layout')}>✦ تخطيط الصفحات</button>
         <button className={activeTab === 'theme' ? 'active' : ''} onClick={() => setActiveTab('theme')}>🎨 المظهر العام</button>
       </section>
 
@@ -203,21 +201,21 @@ export default function StoreCustomizerPage() {
         <div className="builder-layout">
           <section className="builder-panel">
             <div className="panel-title">
-              <div><span>/</span><h2>🏠 الصفحة الرئيسية الفعلية</h2></div>
+              <div><span>{page.movable ? 'قابل لإعادة الترتيب' : 'تحكم في الظهور'}</span><h2>{page.icon} {page.title}</h2></div>
               <strong>{enabledCount} من {sections.length} مفعّل</strong>
             </div>
             <div className="section-list">
               {sections.map((section, index) => (
                 <div
                   key={section.id}
-                  draggable
-                  onDragStart={() => setDragged(index)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => { if (dragged !== null) move(dragged, index); setDragged(null); }}
+                  draggable={page.movable}
+                  onDragStart={() => page.movable && setDragged(index)}
+                  onDragOver={(e) => page.movable && e.preventDefault()}
+                  onDrop={() => { if (page.movable && dragged !== null) move(dragged, index); setDragged(null); }}
                   onDragEnd={() => setDragged(null)}
-                  className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''}`}
+                  className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''} ${!page.movable ? 'locked' : ''}`}
                 >
-                  <span className="drag-handle">⠿</span>
+                  <span className="drag-handle">{page.movable ? '⠿' : '•'}</span>
                   <span className="section-number">{index + 1}</span>
                   <span className="section-icon">{section.icon}</span>
                   <div className="section-copy"><strong>{section.title}</strong><small>{section.desc}</small></div>
@@ -225,7 +223,7 @@ export default function StoreCustomizerPage() {
                 </div>
               ))}
             </div>
-            <div className="tip"><span>✓</span><div><strong>تخصيص فعلي</strong><small>الترتيب والإخفاء يُطبّقان على الصفحة الرئيسية بعد الحفظ، وتصل الإعدادات من الخادم مباشرة.</small></div></div>
+            <div className="tip"><span>✓</span><div><strong>{page.movable ? 'الترتيب والإخفاء فعّالان' : 'الإظهار والإخفاء فعّالان'}</strong><small>{page.movable ? 'اسحب الأقسام لتغيير ترتيب الصفحة الرئيسية.' : 'تم ربط هذه العناصر بواجهة المتجر الحقيقية؛ الإخفاء يُطبق بعد الحفظ.'}</small></div></div>
           </section>
 
           <section className="preview-panel">
