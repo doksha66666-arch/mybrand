@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { API_ORIGIN } from '../api/client';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -16,6 +16,7 @@ const imageOf = (p) => {
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { getStyle } = useStoreLayout('products');
@@ -80,12 +81,13 @@ export default function SearchPage() {
           const old = Number(p.compareAtPrice ?? p.oldPrice ?? 0);
           const out = Number(p.stock ?? p.quantity ?? 0) <= 0;
           const liked = id != null && isWishlisted(id);
+          const hasOptions = Array.isArray(p.variants) && p.variants.length > 0;
           return <article className="search-card" key={id}>
             <Link to={`/products/${encodeURIComponent(slug)}`} className="search-image">{image ? <img src={image} alt={p.nameAr || p.name || 'منتج'} loading="lazy" /> : <span>MYBRAND</span>}{out && <b>نفد المخزون</b>}</Link>
             <div className="search-info">
               <div className="search-card-top"><Link to={`/products/${encodeURIComponent(slug)}`} className="search-name">{p.nameAr || p.name || p.nameEn || 'منتج'}</Link><button type="button" className={liked ? 'liked' : ''} onClick={() => id != null && toggleWishlist(id)} aria-label={liked ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}>{liked ? '♥' : '♡'}</button></div>
               <div className="search-price">{price.toLocaleString('ar-EG')} ج{old > price && <del>{old.toLocaleString('ar-EG')} ج</del>}</div>
-              <button type="button" className="search-add" disabled={out} onClick={() => addToCart({ ...p, id, price, oldPrice: old, image })}>{out ? 'غير متوفر' : 'أضف للسلة'}</button>
+              <button type="button" className="search-add" disabled={out} onClick={() => hasOptions ? navigate(`/products/${encodeURIComponent(slug)}`) : addToCart({ ...p, id, price, oldPrice: old, image })}>{out ? 'غير متوفر' : hasOptions ? 'اختر الخيارات' : 'أضف للسلة'}</button>
             </div>
           </article>;
         })}
