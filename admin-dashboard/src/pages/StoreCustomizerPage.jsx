@@ -49,6 +49,10 @@ const DEFAULT_THEME = {
   text: '#111827',
   border: '#E5E7EB',
   radius: 18,
+  buttonRadius: 12,
+  contentWidth: 1200,
+  fontScale: 1,
+  shadow: 1,
 };
 
 const DEFAULT_LAYOUT = HOME_SECTIONS.map(([id, title, desc, icon], order) => ({ id, title, desc, icon, enabled: true, order }));
@@ -75,6 +79,14 @@ const THEME_CONTROLS = [
   ['surface', 'خلفية البطاقات', 'البطاقات والنوافذ'],
   ['text', 'لون النص', 'النص الأساسي'],
   ['border', 'لون الحدود', 'الفواصل وحدود البطاقات'],
+];
+
+const RANGE_CONTROLS = [
+  ['radius', 'استدارة البطاقات', 'استدارة البطاقات والصناديق', 8, 32, 1, 'px'],
+  ['buttonRadius', 'استدارة الأزرار', 'شكل أزرار الشراء والإجراءات', 6, 24, 1, 'px'],
+  ['contentWidth', 'عرض المحتوى', 'أقصى عرض للمحتوى على الشاشات الكبيرة', 980, 1500, 10, 'px'],
+  ['fontScale', 'حجم النص', 'تحكم بسيط في كثافة النصوص', 0.9, 1.1, 0.05, 'x'],
+  ['shadow', 'شدة الظلال', 'من دون ظل إلى ظل واضح', 0, 3, 1, ''],
 ];
 
 export default function StoreCustomizerPage() {
@@ -153,11 +165,9 @@ export default function StoreCustomizerPage() {
   };
 
   const reset = async () => {
-    if (!window.confirm('إرجاع تخصيص الصفحة الرئيسية والمظهر العام للوضع الافتراضي؟')) return;
+    if (!window.confirm(`إرجاع تخطيط صفحة ${page.title} للوضع الافتراضي؟`)) return;
     const nextLayouts = { ...layouts, [pageId]: makeDefault(page) };
-    const nextTheme = DEFAULT_THEME;
     setLayouts(nextLayouts);
-    setTheme(nextTheme);
     setError('');
     try {
       const { data } = await api.put('/settings', { pageLayouts: nextLayouts });
@@ -176,6 +186,10 @@ export default function StoreCustomizerPage() {
     '--preview-text': theme.text,
     '--preview-border': theme.border,
     '--preview-radius': `${Number(theme.radius) || DEFAULT_THEME.radius}px`,
+    '--preview-button-radius': `${Number(theme.buttonRadius) || DEFAULT_THEME.buttonRadius}px`,
+    '--preview-width': `${Number(theme.contentWidth) || DEFAULT_THEME.contentWidth}px`,
+    '--preview-font-scale': Number(theme.fontScale) || DEFAULT_THEME.fontScale,
+    '--preview-shadow': ['none','0 8px 25px rgba(15,23,42,.07)','0 14px 35px rgba(15,23,42,.11)','0 20px 50px rgba(15,23,42,.15)'][Math.min(3, Math.max(0, Number(theme.shadow)||0))],
   };
 
   return (
@@ -259,10 +273,13 @@ export default function StoreCustomizerPage() {
                     <span className="color-field"><input type="color" value={theme[key]} onChange={(e) => setThemeValue(key, e.target.value)} /><code>{theme[key]}</code></span>
                   </label>
                 ))}
-                <label className="theme-control radius-control">
-                  <div><strong>استدارة البطاقات</strong><small>من الشكل الحاد إلى الناعم</small></div>
-                  <span><input type="range" min="8" max="32" value={Number(theme.radius) || 18} onChange={(e) => setThemeValue('radius', Number(e.target.value))} /><b>{Number(theme.radius) || 18}px</b></span>
-                </label>
+                {RANGE_CONTROLS.map(([key, title, hint, min, max, step, suffix]) => (
+                  <label key={key} className="theme-control radius-control">
+                    <div><strong>{title}</strong><small>{hint}</small></div>
+                    <span><input type="range" min={min} max={max} step={step} value={Number(theme[key])} onChange={(e) => setThemeValue(key, Number(e.target.value))} /><b>{Number(theme[key])}{suffix}</b></span>
+                  </label>
+                ))}
+                <button type="button" className="theme-reset-btn" onClick={() => setTheme(DEFAULT_THEME)}>إرجاع المظهر الافتراضي</button>
               </div>
             </div>
             <div className="theme-card theme-preview" style={previewStyle}>

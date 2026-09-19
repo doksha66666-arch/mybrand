@@ -8,6 +8,10 @@ const themeSchema = new mongoose.Schema({
   text: { type: String, default: '#111827', maxlength: 20 },
   border: { type: String, default: '#E5E7EB', maxlength: 20 },
   radius: { type: Number, default: 18, min: 8, max: 32 },
+  buttonRadius: { type: Number, default: 12, min: 6, max: 24 },
+  contentWidth: { type: Number, default: 1200, min: 980, max: 1500 },
+  fontScale: { type: Number, default: 1, min: 0.9, max: 1.1 },
+  shadow: { type: Number, default: 1, min: 0, max: 3 },
 }, { _id: false });
 
 const storeSettingsSchema = new mongoose.Schema({

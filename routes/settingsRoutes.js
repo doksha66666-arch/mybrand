@@ -36,6 +36,10 @@ const normalizeTheme = (value = {}) => ({
   text: COLOR_RE.test(String(value.text || '')) ? String(value.text) : DEFAULTS.theme.text,
   border: COLOR_RE.test(String(value.border || '')) ? String(value.border) : DEFAULTS.theme.border,
   radius: Math.min(32, Math.max(8, Number(value.radius) || DEFAULTS.theme.radius)),
+  buttonRadius: Math.min(24, Math.max(6, Number(value.buttonRadius) || DEFAULTS.theme.buttonRadius)),
+  contentWidth: Math.min(1500, Math.max(980, Number(value.contentWidth) || DEFAULTS.theme.contentWidth)),
+  fontScale: Math.min(1.1, Math.max(0.9, Number(value.fontScale) || DEFAULTS.theme.fontScale)),
+  shadow: Math.min(3, Math.max(0, Number.isFinite(Number(value.shadow)) ? Number(value.shadow) : DEFAULTS.theme.shadow)),
 });
 
 const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
