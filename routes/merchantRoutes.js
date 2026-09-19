@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { registerMerchant, getMyMerchantProfile, updateMyMerchantProfile, listMerchants, getMerchantOverview, getMerchantById, updateMerchantStatus, updateMerchantCommission, updateMerchantSellerLevel, updateMerchantByAdmin, deleteMerchant } = require('../controllers/merchantController');
+const { registerMerchant, getMyMerchantProfile, updateMyMerchantProfile, getMyStorefront, updateMyStorefront, listMerchants, getMerchantOverview, getMerchantById, updateMerchantStatus, updateMerchantCommission, updateMerchantSellerLevel, updateMerchantByAdmin, deleteMerchant } = require('../controllers/merchantController');
 const { protect, adminOnly, merchantOnly } = require('../middleware/auth');
 router.post('/register', registerMerchant);
 router.get('/me', protect, merchantOnly, getMyMerchantProfile);
 router.put('/me', protect, merchantOnly, updateMyMerchantProfile);
+router.get('/me/storefront', protect, merchantOnly, getMyStorefront);
+router.put('/me/storefront', protect, merchantOnly, updateMyStorefront);
 router.get('/overview', protect, adminOnly, getMerchantOverview);
 router.get('/', protect, adminOnly, listMerchants);
 router.get('/:id', protect, adminOnly, getMerchantById);
