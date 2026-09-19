@@ -73,6 +73,29 @@ export function StoreLayoutProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+    if (search.get('customizerPreview') !== '1') return undefined;
+
+    const onMessage = (event) => {
+      if (event.source !== window.parent) return;
+      const data = event.data;
+      if (!data || data.type !== 'MYBRAND_STORE_CUSTOMIZER_PREVIEW') return;
+
+      const nextLayouts = data.pageLayouts;
+      const nextTheme = data.theme;
+      if (nextLayouts && typeof nextLayouts === 'object' && !Array.isArray(nextLayouts)) {
+        setLayouts(nextLayouts);
+      }
+      if (nextTheme && typeof nextTheme === 'object' && !Array.isArray(nextTheme)) {
+        setTheme({ ...DEFAULT_THEME, ...nextTheme });
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--store-accent-raw', theme.accent);
     root.style.setProperty('--store-accent-soft-raw', theme.accentSoft);
