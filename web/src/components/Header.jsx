@@ -4,9 +4,11 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { MERCHANT_DASHBOARD_URL } from '../api/client';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 
 const merchantStatusLabel = { pending: 'طلب التاجر قيد المراجعة', suspended: 'حساب التاجر موقوف' };
+const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\/+/, '')}`; };
+
 const navItems = [
   ['/', '⌂', 'الرئيسية'],
   ['/categories', '☷', 'الأقسام'],
@@ -31,7 +33,7 @@ export default function Header() {
   useEffect(() => { loadNotifications(); if (!user || user.role !== 'customer') return undefined; const timer = window.setInterval(loadNotifications, 20000); return () => window.clearInterval(timer); }, [user?._id, user?.role]);
   const openNotification = async (notification) => { try { if (!notification.isRead) { await api.put(`/notifications/${notification._id}/read`); setNotifications((items) => items.map((item) => item._id === notification._id ? { ...item, isRead: true } : item)); setUnreadCount((count) => Math.max(0, count - 1)); } } catch (_) {} setOpenNotifications(false); if (notification.link) navigate(notification.link); };
   const markAllRead = async () => { try { await api.put('/notifications/read-all'); setNotifications((items) => items.map((item) => ({ ...item, isRead: true }))); setUnreadCount(0); } catch (_) {} };
-  const notificationList = (compact = false) => notifications.length ? notifications.slice(0, compact ? 8 : notifications.length).map((notification) => (<button type="button" key={notification._id} onClick={() => openNotification(notification)} style={{ ...styles.notificationItem, background: notification.isRead ? '#fff' : '#F8FAFC' }}>{notification.image ? <img src={notification.image} alt="" style={styles.notificationImage} /> : <span style={styles.notificationIcon}>✨</span>}<span style={styles.notificationText}><strong>{notification.titleAr}</strong><small>{notification.bodyAr}</small>{!compact && <em>{new Date(notification.createdAt).toLocaleString('ar-EG')}</em>}</span></button>)) : <div style={styles.emptyNotifications}>لا توجد إشعارات جديدة</div>;
+  const notificationList = (compact = false) => notifications.length ? notifications.slice(0, compact ? 8 : notifications.length).map((notification) => (<button type="button" key={notification._id} onClick={() => openNotification(notification)} style={{ ...styles.notificationItem, background: notification.isRead ? '#fff' : '#F8FAFC' }}>{notification.image ? <img src={normalizeImage(notification.image)} alt="" style={styles.notificationImage} /> : <span style={styles.notificationIcon}>✨</span>}<span style={styles.notificationText}><strong>{notification.titleAr}</strong><small>{notification.bodyAr}</small>{!compact && <em>{new Date(notification.createdAt).toLocaleString('ar-EG')}</em>}</span></button>)) : <div style={styles.emptyNotifications}>لا توجد إشعارات جديدة</div>;
 
   return (<>
     <header style={styles.header}>
