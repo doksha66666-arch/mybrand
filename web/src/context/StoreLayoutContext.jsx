@@ -40,7 +40,7 @@ export function StoreLayoutProvider({ children }) {
         --store-shadow:var(--store-shadow-raw);
       }
       body{background:var(--store-bg-raw);color:var(--store-text-raw);font-size:calc(16px * var(--store-font-scale-raw))}
-      .home-reference,.categories-reference,.product-reference,.cart-reference,.checkout-reference,.orders-reference,.wishlist-reference,.account-reference,.register-app,.app{--store-radius-local:var(--store-radius-raw);background:var(--store-bg-raw)!important;color:var(--store-text-raw)}
+      .home-reference,.categories-reference,.product-reference,.cart-reference,.checkout-reference,.orders-reference,.wishlist-reference,.account-reference,.new-arrivals-page,.offers-page,.register-app,.app{--store-radius-local:var(--store-radius-raw);background:var(--store-bg-raw)!important;color:var(--store-text-raw)}
       .home-reference .card,.home-reference header,.categories-reference .categories-header,.product-reference .product-app{border-color:var(--store-border-raw)!important}
       .home-reference .card,.home-reference header,.categories-reference .categories-header,.product-reference .product-app{background:var(--store-surface-raw)}
       .home-reference .logo,.categories-reference .categories-logo{color:var(--store-accent-raw)!important}
