@@ -36,13 +36,17 @@ function ProductCard({ product }) {
   const old = Number(product.compareAtPrice ?? product.oldPrice ?? 0);
   const image = product.images?.[0] || product.image || product.imageUrl;
   const discount = Number(product.discountAmount || 0);
+  const stock = Math.max(0, Number(product.stock ?? product.quantity ?? 0));
+  const outOfStock = stock <= 0;
   const liked = productIds.includes(id);
   const add = (e) => {
-    e.preventDefault(); setBusy(true);
+    e.preventDefault();
+    if (!id || outOfStock) return;
+    setBusy(true);
     addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1);
     setTimeout(() => setBusy(false), 900);
   };
-  return <Link to={`/products/${product.slug || id}`} className="card"><div className="card-img" style={{ background: product.bg || '#F3F4F6' }}>{(discount > 0 || old > price) && <span className="off-tag">-{Math.round(discount || ((old - price) / old * 100))}٪</span>}<button type="button" className={`fav-ic ${liked ? 'liked' : ''}`} onClick={(e) => { e.preventDefault(); toggleWishlist(id); }} aria-label="المفضلة">♥</button>{image ? <img src={image} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span className="mock-product-icon"><Icon type="bag" /></span>}</div><div className="card-info"><div className="card-title">{title}</div><div className="price-line"><span className="price-now">{price.toLocaleString('ar-EG')}ج</span>{old > price && <span className="price-old">{old.toLocaleString('ar-EG')}ج</span>}</div><div className="rating-line">★ {Number(product.rating || 0).toFixed(1)} ({Number(product.reviewsCount || product.reviewCount || 0).toLocaleString('ar-EG')} تقييم)</div><button type="button" className="home-add-cart" onClick={add}>{busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button></div></Link>;
+  return <Link to={`/products/${product.slug || id}`} className="card"><div className="card-img" style={{ background: product.bg || '#F3F4F6' }}>{(discount > 0 || old > price) && <span className="off-tag">-{Math.round(discount || ((old - price) / old * 100))}٪</span>}<button type="button" className={`fav-ic ${liked ? 'liked' : ''}`} onClick={(e) => { e.preventDefault(); toggleWishlist(id); }} aria-label="المفضلة">♥</button>{image ? <img src={image} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span className="mock-product-icon"><Icon type="bag" /></span>}</div><div className="card-info"><div className="card-title">{title}</div><div className="price-line"><span className="price-now">{price.toLocaleString('ar-EG')}ج</span>{old > price && <span className="price-old">{old.toLocaleString('ar-EG')}ج</span>}</div><div className="rating-line">★ {Number(product.rating || 0).toFixed(1)} ({Number(product.reviewsCount || product.reviewCount || 0).toLocaleString('ar-EG')} تقييم)</div><button type="button" className="home-add-cart" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button></div></Link>;
 }
 
 function HomeHero() {
@@ -84,7 +88,7 @@ export default function HomePage() {
     {(searching || searched) && <section className="home-search-results"><div className="sec-title"><h2>{searching ? 'جاري البحث...' : `نتائج البحث عن «${searchInput}»`}</h2>{searched && !searching && <button type="button" className="more" onClick={clearSearch}>مسح</button>}</div>{!searching && searched && !searchResults.length ? <div className="category-empty">لا توجد منتجات مطابقة. جرّب كلمة أخرى.</div> : !searching && searchResults.length > 0 && <div className="grid">{searchResults.slice(0, 12).map((p) => <ProductCard key={p._id || p.id} product={p}/>)}</div>}</section>}
     <div className="home-layout-sections">
       {section('hero', <HomeHero />)}
-      {section('offers', <><section className="flash"><div className="flash-left"><span className="t1">⚡ فلاش سيل حتى ٧٠٪</span><span className="t2">العرض لفترة محدودة</span></div><Countdown/></section><div className="tile-row"><Link to="/new-arrivals" className="tile tile-dark"><h4>وصل حديثًا</h4><span>تشكيلة الأسبوع</span></Link><Link to="/offers" className="tile tile-sale"><h4>عروض وخصومات</h4><span>قطع مختارة</span></Link></div></>)}
+      {section('offers', <><section className="flash"><div className="flash-left"><span className="t1">⚡ عروض محدودة</span><span className="t2">الخصومات المتاحة تظهر على المنتجات</span></div><Countdown/></section><div className="tile-row"><Link to="/new-arrivals" className="tile tile-dark"><h4>وصل حديثًا</h4><span>تشكيلة الأسبوع</span></Link><Link to="/offers" className="tile tile-sale"><h4>عروض وخصومات</h4><span>قطع مختارة</span></Link></div></>)}
       {section('categories', <CategoryImages categories={categories}/>)}
       {section('best', <><div className="sec-title"><h2>🔥 الأكثر مبيعًا</h2><Link className="more" to="/categories">عرض الكل</Link></div>{loading ? <div className="grid">{Array.from({ length: 6 }).map((_, i) => <div className="card" key={i}><div className="card-img"/><div className="card-info"><div className="card-title">جاري تحميل المنتج...</div></div></div>)}</div> : products.length ? <div className="grid">{products.slice(0, 8).map((p) => <ProductCard key={p._id || p.id} product={p}/>)}</div> : <div className="category-empty">لا توجد منتجات منشورة حاليًا. أضف المنتجات من لوحة الإدارة.</div>}</>)}
       {section('featured', discounted.length > 0 ? <><div className="sec-title"><h2>⚡ عروض اليوم</h2><Link className="more" to="/offers">عرض الكل</Link></div><div className="grid">{discounted.slice(0, 4).map((p) => <ProductCard key={`d-${p._id || p.id}`} product={p}/>)}</div></> : null)}
