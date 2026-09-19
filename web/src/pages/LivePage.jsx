@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useStoreLayout } from '../context/StoreLayoutContext';
 
 const getViewerKey = () => {
   try {
@@ -16,6 +17,7 @@ const getViewerKey = () => {
 export default function LivePage() {
   const { id: routeStreamId } = useParams();
   const { user, loading } = useAuth();
+  const { getStyle } = useStoreLayout('live');
   const broadcaster = user?.role === 'merchant' || user?.role === 'admin';
   const [activeIndex, setActiveIndex] = useState(0);
   const [active, setActive] = useState(null);
@@ -110,7 +112,7 @@ export default function LivePage() {
 
   return <div className="mybrand-live" dir="rtl">
     <section className="viewer-reels">
-      <div className="viewer-reels-stage">
+      <div className="viewer-reels-stage" style={getStyle('stage')}>
         {active?.videoUrl ? <>
           <video src={active.videoUrl} className="viewer-video" controls playsInline preload="metadata" autoPlay muted onEnded={loadStreams} />
           <div className="viewer-top"><b>🔴 عرض الآن</b><span>👁 {viewerCount}</span></div>
@@ -118,7 +120,7 @@ export default function LivePage() {
         </> : <div className="empty"><b>لا يوجد عرض الآن</b><span>عندما ينشر المذيع فيديو جديد سيظهر هنا تلقائيًا.</span></div>}
       </div>
       {error && <div className="viewer-status">{error}</div>}
-      {active && <form className="live-comments" onSubmit={sendComment}><div>{comments.slice(-5).map((item) => <p key={item.id}><b>{item.name}</b> {item.text}</p>)}</div><input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="اكتب تعليقك..." /><button type="submit">إرسال</button></form>}
+      {active && <form className="live-comments" style={getStyle('comments')} onSubmit={sendComment}><div>{comments.slice(-5).map((item) => <p key={item.id}><b>{item.name}</b> {item.text}</p>)}</div><input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="اكتب تعليقك..." /><button type="submit">إرسال</button></form>}
     </section>
   </div>;
 }
