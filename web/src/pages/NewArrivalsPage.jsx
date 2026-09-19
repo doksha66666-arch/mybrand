@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api, { API_ORIGIN } from '../api/client';
 import { useCart } from '../context/CartContext';
 import './NewArrivalsPage.css';
@@ -7,6 +7,7 @@ import { useStoreLayout } from '../context/StoreLayoutContext';
 
 function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const id = product?._id || product?.id;
   const title = product?.nameAr || product?.name || 'منتج';
@@ -16,7 +17,8 @@ function ProductCard({ product }) {
   const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
   const stock = Math.max(0, Number(product?.stock ?? product?.quantity ?? 0));
   const outOfStock = stock <= 0;
-  const add = (event) => { event.preventDefault(); if (!id || outOfStock) return; setBusy(true); addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1); setTimeout(() => setBusy(false), 900); };
+  const hasOptions = Array.isArray(product?.variants) && product.variants.length > 0;
+  const add = (event) => { event.preventDefault(); if (!id || outOfStock) return; setBusy(true); if (hasOptions) { navigate(`/products/${encodeURIComponent(product?.slug || id)}`); setBusy(false); return; } addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1); setTimeout(() => setBusy(false), 900); };
   return <Link to={`/products/${product?.slug || id}`} className="new-product-card">
     <div className="new-product-image">{image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{old > price && <span className="new-product-discount">-{Math.round((1 - price / old) * 100)}٪</span>}</div>
     <div className="new-product-info"><div className="new-product-title">{title}</div><div className="new-product-price"><strong>{price.toLocaleString('ar-EG')}ج</strong>{old > price && <del>{old.toLocaleString('ar-EG')}ج</del>}</div><button type="button" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button></div>
