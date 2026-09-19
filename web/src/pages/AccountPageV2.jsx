@@ -9,19 +9,20 @@ const MenuLink=({to,icon,label})=><Link to={to} className="account-menu-link"><s
 
 export default function AccountPageV2(){
  const{user,logout}=useAuth();
+ const { getStyle } = useStoreLayout('account');
  const[account,setAccount]=useState(null),[orders,setOrders]=useState([]),[wishlist,setWishlist]=useState([]),[msg,setMsg]=useState('');
  useEffect(()=>{if(!user)return;Promise.all([api.get('/account'),api.get('/orders/my'),api.get('/wishlist')]).then(([a,o,w])=>{setAccount(a.data.user);setOrders(o.data.orders||[]);setWishlist(w.data.wishlist?.products||[])}).catch(()=>setMsg('تعذر تحميل بيانات الحساب'));},[user]);
  if(!user)return <main dir="rtl" className="account-page"><div className="account-login-card"><div className="account-logo">MY<span>BRAND</span></div><h1>حساب MYBRAND</h1><p>سجّل الدخول للوصول إلى حسابك وطلباتك.</p><Link className="account-primary" to="/login">تسجيل الدخول</Link></div></main>;
  const name=account?.name||user.name||'عضو MYBRAND';
  const points=Number(account?.points||0),gift=Number(account?.giftBalance||0),coupons=account?.coupons?.length||0;
  return <main dir="rtl" className="account-page">
-  <section className="account-hero"><div className="account-avatar">{name.charAt(0)}</div><div className="account-identity"><h1>{name}</h1><p>{account?.phone||user.phone||user.email||''}</p><span>عضو MYBRAND</span></div><Link to="/account/settings" className="account-settings" aria-label="إعدادات الحساب"><Icon type="settings"/></Link></section>
+  <section className="account-hero" style={getStyle('profile')}><div className="account-avatar">{name.charAt(0)}</div><div className="account-identity"><h1>{name}</h1><p>{account?.phone||user.phone||user.email||''}</p><span>عضو MYBRAND</span></div><Link to="/account/settings" className="account-settings" aria-label="إعدادات الحساب"><Icon type="settings"/></Link></section>
   {msg&&<div className="account-message">{msg}</div>}
-  <section className="account-stats"><Link to="/orders"><b>{orders.length}</b><span>طلباتي</span></Link><Link to="/account/points"><b>{points}</b><span>نقاطي</span></Link><Link to="/coupons"><b>{coupons}</b><span>كوبوناتي</span></Link><Link to="/wishlist"><b>{wishlist.length}</b><span>المفضلة</span></Link></section>
-  <section className="account-cards"><Link to="/account/points" className="balance-card points-card"><span>نقاط الولاء</span><strong>{points} نقطة</strong><small>الرصيد المتاح</small><b>عرض التفاصيل ←</b></Link><Link to="/account/gifts" className="balance-card gift-card"><span>بطاقة الهدايا</span><strong>{gift} ج.م</strong><small>الرصيد المتاح</small><b>إدارة الرصيد ←</b></Link></section>
-  <section className="account-section"><h2>حسابي</h2><MenuLink to="/orders" icon="orders" label="طلباتي"/><MenuLink to="/account/addresses" icon="pin" label="العناوين المحفوظة"/><MenuLink to="/wishlist" icon="heart" label="المفضلة"/><MenuLink to="/account/payments" icon="card" label="وسائل الدفع"/><MenuLink to="/account/settings" icon="settings" label="إعدادات الحساب"/></section>
-  <section className="account-chat-section"><div className="account-chat-heading"><div><span>MYBRAND CARE</span><h2>تحدث مع خدمة العملاء</h2><p>مساعد خدمة العملاء للمشاكل والعقبات: الشحن، الإرجاع والاستبدال، الدفع، الشكاوى والتصعيد للموظف.</p></div><span className="account-chat-badge">Customer Care</span></div><CustomerChat embedded/></section>
-  <button className="account-logout" type="button" onClick={async()=>{await logout();window.location.href='/';}}>تسجيل الخروج</button>
+  <section className="account-stats" style={getStyle('stats')}><Link to="/orders"><b>{orders.length}</b><span>طلباتي</span></Link><Link to="/account/points"><b>{points}</b><span>نقاطي</span></Link><Link to="/coupons"><b>{coupons}</b><span>كوبوناتي</span></Link><Link to="/wishlist"><b>{wishlist.length}</b><span>المفضلة</span></Link></section>
+  <section className="account-cards" style={getStyle('stats')}><Link to="/account/points" className="balance-card points-card"><span>نقاط الولاء</span><strong>{points} نقطة</strong><small>الرصيد المتاح</small><b>عرض التفاصيل ←</b></Link><Link to="/account/gifts" className="balance-card gift-card"><span>بطاقة الهدايا</span><strong>{gift} ج.م</strong><small>الرصيد المتاح</small><b>إدارة الرصيد ←</b></Link></section>
+  <section className="account-section" style={getStyle('menu')}><h2>حسابي</h2><MenuLink to="/orders" icon="orders" label="طلباتي"/><MenuLink to="/account/addresses" icon="pin" label="العناوين المحفوظة"/><MenuLink to="/wishlist" icon="heart" label="المفضلة"/><MenuLink to="/account/payments" icon="card" label="وسائل الدفع"/><MenuLink to="/account/settings" icon="settings" label="إعدادات الحساب"/></section>
+  <section className="account-chat-section" style={getStyle('chat')}><div className="account-chat-heading"><div><span>MYBRAND CARE</span><h2>تحدث مع خدمة العملاء</h2><p>مساعد خدمة العملاء للمشاكل والعقبات: الشحن، الإرجاع والاستبدال، الدفع، الشكاوى والتصعيد للموظف.</p></div><span className="account-chat-badge">Customer Care</span></div><CustomerChat embedded/></section>
+  <button className="account-logout" style={getStyle('logout')} type="button" onClick={async()=>{await logout();window.location.href='/';}}>تسجيل الخروج</button>
  </main>
 }
 
