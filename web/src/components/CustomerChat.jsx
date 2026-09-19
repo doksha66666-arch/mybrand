@@ -1,7 +1,8 @@
 import React,{useEffect,useMemo,useState}from'react';
+import { API_ORIGIN } from '../api/client';
 import'./CustomerChat.css';
 
-const API=import.meta.env.VITE_API_URL||'/api';
+const API=`${API_ORIGIN}/api`;
 const visitorKey='mybrand_chat_visitor_id';
 const tokenKey='mybrand_token';
 const serviceLabels={shipping:'مشكلة في الشحن',payment:'مشكلة في الدفع',return:'الإرجاع',exchange:'الاستبدال',complaint:'شكوى أو مشكلة'};
