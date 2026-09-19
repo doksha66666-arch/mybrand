@@ -200,6 +200,8 @@ export default function StoreCustomizerPage() {
     account: '/account',
     orders: '/orders',
     wishlist: '/wishlist',
+    'new-arrivals': '/new-arrivals',
+    offers: '/offers',
   };
   const previewUrl = `${storePreviewBase}${previewPaths[pageId] || '/'}${previewPaths[pageId] === '/' ? '?customizerPreview=1' : '?customizerPreview=1'}`;
 
