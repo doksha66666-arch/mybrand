@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
 export default function VerifyEmailPage() {
   const { verifyEmail, resendVerificationCode } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [code, setCode] = useState('');
@@ -13,6 +14,8 @@ export default function VerifyEmailPage() {
   const [info, setInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
+  const returnTo = location.state?.returnTo || searchParams.get('returnTo') || '/';
+  const returnState = location.state?.checkoutState || undefined;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -24,7 +27,7 @@ export default function VerifyEmailPage() {
       if (data?.user?.role === 'merchant') {
         setInfo('تم تأكيد بريدك بنجاح. طلب انضمامك كتاجر الآن قيد المراجعة من الإدارة، سيتم إعلامك فور الموافقة.');
       } else {
-        navigate('/');
+        navigate(returnTo, { replace: true, state: returnState });
       }
     } catch (err) {
       setError(err?.response?.data?.message || 'تعذر تأكيد الكود');
