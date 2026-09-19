@@ -12,6 +12,7 @@ import MerchantFulfillmentCenterPage from './pages/MerchantFulfillmentCenterPage
 import SalesPage from './pages/SalesPage';
 import CommissionPage from './pages/CommissionPage';
 import ProfilePage from './pages/ProfilePage';
+import StoreCustomizerPage from './pages/StoreCustomizerPage';
 import StudioPage from './pages/StudioPage';
 import MerchantTrendStudio from './pages/MerchantTrendStudio';
 import MerchantLiveStudioPage from './pages/MerchantLiveStudioPage';
