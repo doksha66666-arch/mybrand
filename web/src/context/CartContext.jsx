@@ -3,6 +3,7 @@ import api from '../api/client';
 const CartContext = createContext(null);
 const STORAGE_KEY = 'mybrand_cart_v2';
 const MAX_QUANTITY = 1000;
+const isCustomizerPreview = () => typeof window !== 'undefined' && (window.__MYBRAND_CUSTOMIZER_PREVIEW__ === true || new URLSearchParams(window.location.search).get('customizerPreview') === '1');
 const normalizeOptionValue = (value) => String(value ?? '').trim().toLocaleLowerCase('ar-EG');
 const getSelectedOptions = (item) => {
   if (item?.selectedOptions && typeof item.selectedOptions === 'object' && !Array.isArray(item.selectedOptions)) return item.selectedOptions;
@@ -27,11 +28,32 @@ const getColorImage = (product) => {
   return match?.image || match?.imageUrl || match?.photo || match?.thumbnail || match?.imagePath || '';
 };
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => { try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? normalizeStoredItems(JSON.parse(raw)?.items) : []; } catch { return []; } });
+  const previewMode = isCustomizerPreview();
+  const [items, setItems] = useState(() => { if (previewMode) return []; try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? normalizeStoredItems(JSON.parse(raw)?.items) : []; } catch { return []; } });
   const [coupon, setCoupon] = useState(() => { try { return JSON.parse(localStorage.getItem('mybrand_coupon')) || null; } catch { return null; } });
   const [discount, setDiscount] = useState(() => Math.max(0, Number(localStorage.getItem('mybrand_coupon_discount') || 0)));
   const [shippingFee, setShippingFee] = useState(0);
-  useEffect(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ items })); } catch {} }, [items]);
+  useEffect(() => { if (previewMode) return; try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ items })); } catch {} }, [items, previewMode]);
+  useEffect(() => {
+    if (!previewMode) return undefined;
+    let active = true;
+    api.get('/products', { params: { limit: 2, page: 1 } }).then(({ data }) => {
+      if (!active) return;
+      const products = Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : [];
+      const seeded = products.slice(0, 2).map((product, index) => ({
+        ...product,
+        id: product.id ?? product._id,
+        nameAr: product.nameAr ?? product.name ?? product.nameEn ?? 'منتج',
+        price: Number(product.price || 0),
+        oldPrice: Number(product.compareAtPrice || 0),
+        image: product.image || product.images?.[0] || '',
+        quantity: index === 0 ? 1 : 2,
+        store: product.merchant?.businessName || product.merchant?.storeName || 'MYBRAND',
+      })).filter((product) => product.id != null);
+      setItems(seeded);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [previewMode]);
   useEffect(() => { try { if (coupon) localStorage.setItem('mybrand_coupon', JSON.stringify(coupon)); else localStorage.removeItem('mybrand_coupon'); localStorage.setItem('mybrand_coupon_discount', String(Math.max(0, discount))); } catch {} }, [coupon, discount]);
   const addToCart = useCallback((product, quantity = 1) => { if (!product || (product.id == null && product._id == null)) return; const colorImage = getColorImage(product); const fallbackImage = Array.isArray(product.images) ? product.images[0] : product.images; const normalizedProduct = { ...product, id: product.id ?? product._id, image: colorImage || product.image || fallbackImage }; const safeQuantity = Math.min(MAX_QUANTITY, Math.max(1, Number(quantity) || 1)); setItems((prev) => { const key = cartLineKey(normalizedProduct); const existing = prev.find((item) => cartLineKey(item) === key); if (existing) return prev.map((item) => cartLineKey(item) === key ? { ...item, quantity: Math.min(MAX_QUANTITY, Math.max(1, Number(item.quantity) || 1) + safeQuantity) } : item); return [...prev, { ...normalizedProduct, quantity: safeQuantity }]; }); }, []);
   const removeFromCart = useCallback((id, variantId = null, selectedOptions = {}) => { const key = cartLineKey({ id, variantId, selectedOptions }); setItems((prev) => prev.filter((item) => cartLineKey(item) !== key)); }, []);
