@@ -6,7 +6,13 @@ const { attachPricing } = require('../utils/pricing');
 
 // Approved merchants may have products in moderation-pending state; active products
 // from those merchants should still appear in the public storefront/homepage.
-const APPROVED_MERCHANT_PRODUCT_FILTER = async () => {
+const APPROVED_MERCHANT_PRODUCT_FILTER = async (merchantId = '') => {
+  if (merchantId) {
+    if (!require('mongoose').isValidObjectId(merchantId)) return null;
+    const approved = await Merchant.exists({ _id: merchantId, status: 'approved' });
+    if (!approved) return null;
+    return { merchant: require('mongoose').Types.ObjectId.createFromHexString(merchantId), status: { $in: ['approved', 'pending', 'out_of_stock'] } };
+  }
   const approvedMerchantIds = await Merchant.find({ status: 'approved' }).distinct('_id');
   return {
     $or: [
@@ -30,10 +36,12 @@ const PUBLIC_EXCLUDED_FIELDS = '-commissionRateOverride';
 exports.getHomepage = async (req, res, next) => {
   try {
     const now = new Date();
-    const publicProductFilter = await APPROVED_MERCHANT_PRODUCT_FILTER();
+    const merchantId = String(req.query?.merchant || '').trim();
+    const publicProductFilter = await APPROVED_MERCHANT_PRODUCT_FILTER(merchantId);
+    if (merchantId && !publicProductFilter) return res.status(404).json({ message: 'المتجر غير متاح حاليًا' });
 
     const [campaigns, categories, featured, newest, candidatesForDiscount] = await Promise.all([
-      Campaign.find({ isActive: true, startDate: { $lte: now }, endDate: { $gte: now } })
+      merchantId ? Promise.resolve([]) : Campaign.find({ isActive: true, startDate: { $lte: now }, endDate: { $gte: now } })
         .populate('products', 'nameAr slug images price')
         .sort('sortOrder')
         .limit(6),
