@@ -17,6 +17,7 @@ const merchantSchema = new mongoose.Schema({
   suspensionReason: { type: String, default: '' },
   approvedAt: { type: Date, default: null },
   suspendedAt: { type: Date, default: null },
+  storefront: { type: mongoose.Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
 
 merchantSchema.index({ createdAt: -1 });
