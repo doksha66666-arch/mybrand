@@ -26,6 +26,6 @@ export default function LoginPage() {
     </form>
     <div className="divider"><div className="line"></div>أو تسجيل الدخول عن طريق<div className="line"></div></div>
     <div className="social-row" style={getStyle('social')}><button type="button" className="social-btn" onClick={() => socialLogin('google')}><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.2-5.5 4.2-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.9 1.5l2.7-2.6C16.9 3.4 14.7 2.5 12 2.5 6.9 2.5 2.8 6.7 2.8 11.8s4.1 9.3 9.2 9.3c5.3 0 8.8-3.7 8.8-9 0-.6-.1-1.1-.1-1.5H12z"/></svg>جوجل</button></div>
-    <Link to="/register" className="register-link" style={getStyle('links')}>إنشاء حساب جديد</Link><button type="button" className="guest-link" onClick={() => navigate('/')}>المتابعة كزائر</button><div className="terms">بتسجيل الدخول إنت موافق على <Link to="/terms">الشروط والأحكام</Link> و<Link to="/privacy">سياسة الخصوصية</Link> الخاصة بمتجر MYBRAND</div>
+    <Link to="/register" state={returnTo !== '/' ? { returnTo, checkoutState: returnState } : undefined} className="register-link" style={getStyle('links')}>إنشاء حساب جديد</Link><button type="button" className="guest-link" onClick={() => navigate('/')}>المتابعة كزائر</button><div className="terms">بتسجيل الدخول إنت موافق على <Link to="/terms">الشروط والأحكام</Link> و<Link to="/privacy">سياسة الخصوصية</Link> الخاصة بمتجر MYBRAND</div>
   </div>;
 }
