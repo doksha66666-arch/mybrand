@@ -184,7 +184,7 @@ export default function StoreCustomizerPage() {
     }
   };
 
-  const storePreviewBase = String(import.meta.env.VITE_STORE_PUBLIC_URL || 'https://enchanting-miracle-production-a5d2.up.railway.app').replace(/\\/+$/, '');
+  const storePreviewBase = String(import.meta.env.VITE_STORE_PUBLIC_URL || 'https://enchanting-miracle-production-a5d2.up.railway.app').replace(/\/+$/, '');
   const previewPaths = {
     home: '/',
     categories: '/categories',
