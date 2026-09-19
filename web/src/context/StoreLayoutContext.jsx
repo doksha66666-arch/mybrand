@@ -81,6 +81,26 @@ export function StoreLayoutProvider({ children }) {
     if (!previewMode) return undefined;
     window.__MYBRAND_CUSTOMIZER_PREVIEW__ = true;
 
+    const preservePreviewQuery = (url) => {
+      if (!url) return url;
+      try {
+        const next = new URL(url, window.location.origin);
+        next.searchParams.set('customizerPreview', '1');
+        return `${next.pathname}${next.search}${next.hash}`;
+      } catch {
+        return url;
+      }
+    };
+    const originalPushState = window.history.pushState.bind(window.history);
+    const originalReplaceState = window.history.replaceState.bind(window.history);
+    window.history.pushState = (state, title, url) => originalPushState(state, title, preservePreviewQuery(url));
+    window.history.replaceState = (state, title, url) => originalReplaceState(state, title, preservePreviewQuery(url));
+
+    const currentUrl = preservePreviewQuery(window.location.href);
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== currentUrl) {
+      originalReplaceState(window.history.state, document.title, currentUrl);
+    }
+
     const onMessage = (event) => {
       if (event.source !== window.parent) return;
       const data = event.data;
@@ -99,6 +119,8 @@ export function StoreLayoutProvider({ children }) {
     window.addEventListener('message', onMessage);
     return () => {
       window.removeEventListener('message', onMessage);
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
       delete window.__MYBRAND_CUSTOMIZER_PREVIEW__;
     };
   }, []);
