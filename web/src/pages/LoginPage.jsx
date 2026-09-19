@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_ORIGIN } from '../api/client';
 import './LoginPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
-const API_BASE = String(import.meta.env.VITE_API_BASE_URL || 'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/$/, '');
+const API_BASE = `${API_ORIGIN}/api`;
 const socialLogin = (provider) => window.location.assign(`${API_BASE}/auth/${provider}`);
 
 export default function LoginPage() {

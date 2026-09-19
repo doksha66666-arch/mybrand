@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import './CartPage.css';
 
@@ -35,7 +35,7 @@ const lineKey = (item) => {
   const optionText = Object.keys(options).sort().map((key) => `${key}:${options[key]}`).join('|');
   return `${id}:${variantId}:${optionText}`;
 };
-const API_ORIGIN = String(import.meta.env.VITE_API_BASE_URL || 'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/api\/?$/, '');
+
 const imageCandidates = (item) => {
   const values = [item?.image, Array.isArray(item?.images) ? item.images[0] : item?.images, item?.imageUrl, item?.thumbnail, item?.photo];
   return [...new Set(values.flatMap((value) => {

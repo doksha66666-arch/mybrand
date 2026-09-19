@@ -24,10 +24,10 @@ export default function AccountPageV2(){
   Promise.all([api.get('/account'),api.get('/orders/my'),api.get('/wishlist')]).then(([a,o,w])=>{setAccount(a.data.user);setOrders(o.data.orders||[]);setWishlist(w.data.wishlist?.products||[])}).catch(()=>setMsg('تعذر تحميل بيانات الحساب'));
  },[user,previewMode]);
  if(!user&&!previewMode)return <main dir="rtl" className="account-page"><div className="account-login-card"><div className="account-logo">MY<span>BRAND</span></div><h1>حساب MYBRAND</h1><p>سجّل الدخول للوصول إلى حسابك وطلباتك.</p><Link className="account-primary" to="/login">تسجيل الدخول</Link></div></main>;
- const name=account?.name||user.name||'عضو MYBRAND';
+ const name=account?.name||user?.name||'عضو MYBRAND';
  const points=Number(account?.points||0),gift=Number(account?.giftBalance||0),coupons=account?.coupons?.length||0;
  return <main dir="rtl" className="account-page">
-  <section className="account-hero" style={getStyle('profile')}><div className="account-avatar">{name.charAt(0)}</div><div className="account-identity"><h1>{name}</h1><p>{account?.phone||user.phone||user.email||''}</p><span>عضو MYBRAND</span></div><Link to="/account/settings" className="account-settings" aria-label="إعدادات الحساب"><Icon type="settings"/></Link></section>
+  <section className="account-hero" style={getStyle('profile')}><div className="account-avatar">{name.charAt(0)}</div><div className="account-identity"><h1>{name}</h1><p>{account?.phone||user?.phone||user?.email||''}</p><span>عضو MYBRAND</span></div><Link to="/account/settings" className="account-settings" aria-label="إعدادات الحساب"><Icon type="settings"/></Link></section>
   {msg&&<div className="account-message">{msg}</div>}
   <section className="account-stats" style={getStyle('stats')}><Link to="/orders"><b>{orders.length}</b><span>طلباتي</span></Link><Link to="/account/points"><b>{points}</b><span>نقاطي</span></Link><Link to="/coupons"><b>{coupons}</b><span>كوبوناتي</span></Link><Link to="/wishlist"><b>{wishlist.length}</b><span>المفضلة</span></Link></section>
   <section className="account-cards" style={getStyle('stats')}><Link to="/account/points" className="balance-card points-card"><span>نقاط الولاء</span><strong>{points} نقطة</strong><small>الرصيد المتاح</small><b>عرض التفاصيل ←</b></Link><Link to="/account/gifts" className="balance-card gift-card"><span>بطاقة الهدايا</span><strong>{gift} ج.م</strong><small>الرصيد المتاح</small><b>إدارة الرصيد ←</b></Link></section>

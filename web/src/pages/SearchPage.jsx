@@ -1,0 +1,92 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import api from '../api/client';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+import { useStoreLayout } from '../context/StoreLayoutContext';
+import './SearchPage.css';
+
+const imageOf = (p) => {
+  const value = p?.images?.[0] || p?.image || p?.imageUrl || p?.thumbnail || '';
+  if (!value) return '';
+  if (/^(https?:|data:|blob:)/i.test(String(value))) return value;
+  return value.startsWith('/') ? value : `/${value}`;
+};
+
+export default function SearchPage() {
+  const [params, setParams] = useSearchParams();
+  const { addToCart } = useCart();
+  const { toggleWishlist, isWishlisted } = useWishlist();
+  const { getStyle } = useStoreLayout('products');
+  const initial = params.get('q') || '';
+  const [query, setQuery] = useState(initial);
+  const [submitted, setSubmitted] = useState(initial);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(Boolean(initial));
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const next = params.get('q') || '';
+    setQuery(next);
+    setSubmitted(next);
+  }, [params]);
+
+  useEffect(() => {
+    let active = true;
+    const value = submitted.trim();
+    if (!value) { setProducts([]); setLoading(false); setError(''); return undefined; }
+    setLoading(true); setError('');
+    api.get('/products', { params: { search: value, q: value, limit: 40, page: 1 } })
+      .then(({ data }) => {
+        if (!active) return;
+        const list = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        setProducts(list);
+      })
+      .catch(() => active && setError('تعذر تحميل نتائج البحث. حاول مرة أخرى.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [submitted]);
+
+  const title = useMemo(() => submitted ? `نتائج البحث عن «${submitted}»` : 'ابحث عن منتج', [submitted]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    const value = query.trim();
+    setParams(value ? { q: value } : {});
+  };
+
+  return <main className="search-reference" dir="rtl">
+    <div className="search-page">
+      <header className="search-header" style={getStyle('topbar')}>
+        <Link to="/" className="search-back" aria-label="العودة">‹</Link>
+        <h1>{title}</h1>
+        <Link to="/cart" className="search-cart">السلة</Link>
+      </header>
+      <form className="search-form" onSubmit={submit}>
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث عن منتج أو قسم..." aria-label="البحث" autoFocus />
+        <button type="submit">بحث</button>
+      </form>
+      {!submitted && <div className="search-empty"><div className="search-empty-icon">⌕</div><h2>ابدأ البحث</h2><p>اكتب اسم المنتج أو الكلمة التي تبحث عنها.</p></div>}
+      {loading && <div className="search-state">جاري البحث...</div>}
+      {error && <div className="search-state error">{error}</div>}
+      {!loading && !error && submitted && products.length === 0 && <div className="search-empty"><div className="search-empty-icon">⌕</div><h2>لا توجد نتائج</h2><p>جرّب كلمة أخرى أو تصفح الأقسام.</p><Link to="/categories">تصفح الأقسام</Link></div>}
+      {!loading && !error && products.length > 0 && <section className="search-results" aria-label="نتائج البحث">
+        {products.map((p) => {
+          const id = p._id || p.id || p.productId;
+          const slug = p.slug || id;
+          const image = imageOf(p);
+          const out = Number(p.stock ?? p.quantity ?? 0) <= 0;
+          const liked = id != null && isWishlisted(id);
+          return <article className="search-card" key={id}>
+            <Link to={`/products/${encodeURIComponent(slug)}`} className="search-image">{image ? <img src={image} alt={p.nameAr || p.name || 'منتج'} loading="lazy" /> : <span>MYBRAND</span>}{out && <b>نفد المخزون</b>}</Link>
+            <div className="search-info">
+              <div className="search-card-top"><Link to={`/products/${encodeURIComponent(slug)}`} className="search-name">{p.nameAr || p.name || p.nameEn || 'منتج'}</Link><button type="button" className={liked ? 'liked' : ''} onClick={() => id != null && toggleWishlist(id)} aria-label={liked ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}>{liked ? '♥' : '♡'}</button></div>
+              <div className="search-price">{Number(p.price || 0).toLocaleString('ar-EG')} ج</div>
+              <button type="button" className="search-add" disabled={out} onClick={() => addToCart(p)}>{out ? 'غير متوفر' : 'أضف للسلة'}</button>
+            </div>
+          </article>;
+        })}
+      </section>}
+    </div>
+  </main>;
+}
