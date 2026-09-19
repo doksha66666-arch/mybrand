@@ -24,6 +24,7 @@ export default function TrackingPage() {
   const { getStyle } = useStoreLayout('track');
   const stateOrder = normalizeOrder(location.state?.order);
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const previewMode = typeof window !== 'undefined' && (window.__MYBRAND_CUSTOMIZER_PREVIEW__ === true || new URLSearchParams(window.location.search).get('customizerPreview') === '1');
   const orderId = location.state?.orderId || stateOrder?._id || params.get('orderId');
   const orderNumber = location.state?.orderNumber || stateOrder?.orderNumber || params.get('orderNumber');
   const [order, setOrder] = useState(stateOrder);
@@ -36,6 +37,35 @@ export default function TrackingPage() {
     const load = async () => {
       try {
         setError('');
+        if (previewMode && !orderId && !orderNumber && !stateOrder) {
+          const { data } = await api.get('/products', { params: { limit: 3, page: 1 } });
+          const products = Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : [];
+          const makeItem = (product, index) => ({
+            productId: product?._id || product?.id,
+            nameSnapshot: product?.nameAr || product?.name || 'منتج',
+            imageSnapshot: product?.image || product?.images?.[0] || '',
+            unitPrice: Number(product?.price || 0),
+            quantity: index + 1,
+            selectedOptions: {},
+            productCodeSnapshot: product?.sku || product?.code || '',
+          });
+          const first = products[0] || {};
+          const second = products[1] || first;
+          const third = products[2] || second;
+          const subtotal = Number(first.price || 0) + (Number(second.price || 0) * 2) + (Number(third.price || 0) * 3);
+          if (alive) setOrder({
+            id: 'preview-track-order',
+            orderNumber: 'MB-10248',
+            status: 'shipped',
+            total: Math.max(subtotal, 580),
+            createdAt: new Date(Date.now() - 172800000).toISOString(),
+            trackingNumber: 'MYB-TRACK-10248',
+            customer: { name: 'عميل MYBRAND', phone: '01000000000' },
+            shippingAddress: { street: 'عنوان تجريبي للمعاينة', city: 'القاهرة' },
+            items: [makeItem(first, 0), makeItem(second, 1), makeItem(third, 2)],
+          });
+          return;
+        }
         if (orderId) {
           const { data } = await api.get(`/orders/${encodeURIComponent(orderId)}`);
           const next = normalizeOrder(data);
@@ -61,7 +91,7 @@ export default function TrackingPage() {
     };
     load();
     return () => { alive = false; };
-  }, [orderId, orderNumber, stateOrder]);
+  }, [orderId, orderNumber, stateOrder, previewMode]);
 
   if (loading) return <div className="tracking-app" dir="rtl"><div className="tracking-block"><div className="tracking-block-title">جارٍ تحميل بيانات الطلب...</div></div></div>;
   if (error || !order) return <div className="tracking-app" dir="rtl"><div className="tracking-block"><div className="tracking-block-title">{error || 'الطلب غير موجود'}</div><button className="action-btn" type="button" onClick={() => navigate('/orders')}>العودة للطلبات</button></div></div>;
