@@ -77,7 +77,9 @@ export function StoreLayoutProvider({ children }) {
 
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
-    if (search.get('customizerPreview') !== '1') return undefined;
+    const previewMode = search.get('customizerPreview') === '1';
+    if (!previewMode) return undefined;
+    window.__MYBRAND_CUSTOMIZER_PREVIEW__ = true;
 
     const onMessage = (event) => {
       if (event.source !== window.parent) return;
@@ -95,7 +97,10 @@ export function StoreLayoutProvider({ children }) {
     };
 
     window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      delete window.__MYBRAND_CUSTOMIZER_PREVIEW__;
+    };
   }, []);
 
   useEffect(() => {
