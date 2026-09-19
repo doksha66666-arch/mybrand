@@ -58,10 +58,13 @@ export function StoreLayoutProvider({ children }) {
     api.get('/config')
       .then(({ data }) => {
         if (!active) return;
-        const value = data?.pageLayouts;
-        if (value && typeof value === 'object' && !Array.isArray(value)) setLayouts(value);
-        const remoteTheme = data?.theme;
-        if (remoteTheme && typeof remoteTheme === 'object' && !Array.isArray(remoteTheme)) setTheme({ ...DEFAULT_THEME, ...remoteTheme });
+        const previewMode = new URLSearchParams(window.location.search).get('customizerPreview') === '1';
+        if (!previewMode) {
+          const value = data?.pageLayouts;
+          if (value && typeof value === 'object' && !Array.isArray(value)) setLayouts(value);
+          const remoteTheme = data?.theme;
+          if (remoteTheme && typeof remoteTheme === 'object' && !Array.isArray(remoteTheme)) setTheme({ ...DEFAULT_THEME, ...remoteTheme });
+        }
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
@@ -70,6 +73,29 @@ export function StoreLayoutProvider({ children }) {
       active = false;
       style.remove();
     };
+  }, []);
+
+  useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+    if (search.get('customizerPreview') !== '1') return undefined;
+
+    const onMessage = (event) => {
+      if (event.source !== window.parent) return;
+      const data = event.data;
+      if (!data || data.type !== 'MYBRAND_STORE_CUSTOMIZER_PREVIEW') return;
+
+      const nextLayouts = data.pageLayouts;
+      const nextTheme = data.theme;
+      if (nextLayouts && typeof nextLayouts === 'object' && !Array.isArray(nextLayouts)) {
+        setLayouts(nextLayouts);
+      }
+      if (nextTheme && typeof nextTheme === 'object' && !Array.isArray(nextTheme)) {
+        setTheme({ ...DEFAULT_THEME, ...nextTheme });
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
   }, []);
 
   useEffect(() => {
