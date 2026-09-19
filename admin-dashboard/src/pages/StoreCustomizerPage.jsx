@@ -45,6 +45,24 @@ const PAGE_DEFS = [
   { id: 'offers', title: 'العروض', icon: '🔥', movable: false, sections: [
     ['header','رأس الصفحة','العودة والعنوان والسلة','🧭'],['hero','عنوان العروض','التعريف بعدد العروض','🔥'],['filters','فلاتر العروض','شرائح تصفية الخصومات','🎛️'],['products','منتجات العروض','شبكة المنتجات المخفضة','🛍️']
   ]},
+  { id: 'trend', title: 'الترند', icon: '✨', movable: false, sections: [
+    ['header','رأس الترند','العنوان وأدوات البحث والسلة','🧭'],['tabs','تبويبات الترند','الترند والبث المباشر','🎛️'],['stories','القصص','شريط القصص النشطة','⭕'],['feed','المحتوى','الريلز والمنشورات والفعاليات','✨'],['bottomNav','التنقل السفلي','التنقل الرئيسي','📱']
+  ]},
+  { id: 'live', title: 'البث المباشر', icon: '🔴', movable: false, sections: [
+    ['stage','العرض المباشر','الفيديو ومعلومات العرض','📺'],['comments','التعليقات','التفاعل والتعليقات','💬']
+  ]},
+  { id: 'track', title: 'تتبع الطلب', icon: '🚚', movable: false, sections: [
+    ['topbar','شريط التتبع','العودة والدعم','🧭'],['status','حالة الطلب','حالة ورقم الطلب والإجمالي','🚚'],['tracking','رقم الشحنة','رقم التتبع والنسخ','🏷️'],['timeline','المراحل','خط سير حالة الطلب','📍'],['address','عنوان التوصيل','العنوان وبيانات العميل','📦'],['items','محتويات الطلب','المنتجات والكميات','🛍️'],['actions','الإجراءات','الإلغاء والدعم والعودة','✅']
+  ]},
+  { id: 'login', title: 'تسجيل الدخول', icon: '🔐', movable: false, sections: [
+    ['topbar','رأس الدخول','العودة والتخطي','🧭'],['hero','ترحيب الدخول','الشعار والعنوان والوصف','👋'],['form','نموذج الدخول','البريد وكلمة المرور وزر الدخول','🔑'],['social','الدخول الاجتماعي','تسجيل الدخول عبر جوجل','🌐'],['links','روابط الحساب','التسجيل والضيف والسياسات','🔗']
+  ]},
+  { id: 'register', title: 'إنشاء حساب', icon: '📝', movable: false, sections: [
+    ['topbar','رأس التسجيل','العودة والتخطي','🧭'],['hero','رأس التسجيل','الشعار والعنوان والوصف','👋'],['form','نموذج التسجيل','بيانات العميل أو التاجر','📝'],['social','التسجيل الاجتماعي','التسجيل عبر جوجل','🌐']
+  ]},
+  { id: 'coupons', title: 'القسائم', icon: '🎟️', movable: false, sections: [
+    ['hero','رأس القسائم','العنوان والوصف','🎟️'],['products','القسائم','بطاقات القسائم والمكافآت','🏷️']
+  ]},
 ];
 
 const DEFAULT_THEME = {
@@ -202,6 +220,12 @@ export default function StoreCustomizerPage() {
     wishlist: '/wishlist',
     'new-arrivals': '/new-arrivals',
     offers: '/offers',
+    trend: '/trend',
+    live: '/live',
+    track: '/track',
+    login: '/login',
+    register: '/register',
+    coupons: '/coupons',
   };
   const previewUrl = `${storePreviewBase}${previewPaths[pageId] || '/'}${previewPaths[pageId] === '/' ? '?customizerPreview=1' : '?customizerPreview=1'}`;
 
