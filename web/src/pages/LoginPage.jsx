@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_ORIGIN } from '../api/client';
 import './LoginPage.css';
@@ -10,10 +10,11 @@ const socialLogin = (provider) => window.location.assign(`${API_BASE}/auth/${pro
 
 export default function LoginPage() {
   const { getStyle } = useStoreLayout('login');
-  const { login } = useAuth(); const navigate = useNavigate(); const [searchParams] = useSearchParams();
+  const { login } = useAuth(); const navigate = useNavigate(); const location = useLocation(); const [searchParams] = useSearchParams();
+  const returnTo = location.state?.returnTo || '/'; const returnState = location.state?.checkoutState || undefined;
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false); const [error, setError] = useState(''); const [submitting, setSubmitting] = useState(false);
   useEffect(() => { const socialError = searchParams.get('social_error'); if (socialError) setError(socialError); }, [searchParams]);
-  const submit = async (e) => { e.preventDefault(); setError(''); setSubmitting(true); try { await login(email, password); navigate('/'); } catch (err) { if (err?.response?.data?.needsVerification) { navigate(`/verify-email?email=${encodeURIComponent(err.response.data.email || email)}`); return; } setError(err?.response?.data?.message || 'تعذر تسجيل الدخول'); } finally { setSubmitting(false); } };
+  const submit = async (e) => { e.preventDefault(); setError(''); setSubmitting(true); try { await login(email, password); navigate(returnTo, { replace: true, state: returnState }); } catch (err) { if (err?.response?.data?.needsVerification) { navigate(`/verify-email?email=${encodeURIComponent(err.response.data.email || email)}`); return; } setError(err?.response?.data?.message || 'تعذر تسجيل الدخول'); } finally { setSubmitting(false); } };
 
   return <div className="app">
     <div className="topbar" style={getStyle('topbar')}><button type="button" className="back-btn" onClick={() => navigate(-1)} aria-label="رجوع"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.2"><path d="M15 18l-6-6 6-6" /></svg></button><button type="button" className="skip-link" onClick={() => navigate('/')}>تخطي</button></div>
