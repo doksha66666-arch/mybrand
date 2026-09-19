@@ -83,7 +83,7 @@ export default function HomePage() {
   useEffect(() => { const q = searchParams.get('q') || ''; setSearchInput(q); if (!q) { setSearchResults([]); setSearched(false); return; } let active = true; setSearching(true); api.get('/products', { params: { search: q } }).then(({ data: result }) => active && setSearchResults(result.products || [])).catch(() => active && setSearchResults([])).finally(() => active && setSearching(false)); return () => { active = false; }; }, [searchParams]);
   const submitSearch = async (e) => { e.preventDefault(); const q = searchInput.trim(); if (!q) { setSearchParams({}); return; } setSearchParams({ q }); };
   const clearSearch = () => { setSearchInput(''); setSearchParams({}); };
-  const categories = data?.categories?.length ? data.categories : FALLBACK_CATEGORIES.map((x, i) => ({ _id: `fallback-${i}`, nameAr: x[0], icon: x[1] }));
+  const categories = Array.isArray(data?.categories) ? data.categories.filter(Boolean) : [];
   const products = data?.featuredProducts?.length ? data.featuredProducts : (data?.newProducts || []);
   const discounted = data?.discountedProducts || [];
   const section = (id, children) => <StoreSection id={id} style={getStyle(id)}>{children}</StoreSection>;
