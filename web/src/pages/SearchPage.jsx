@@ -11,7 +11,7 @@ const imageOf = (p) => {
   if (!value) return '';
   if (/^(https?:|data:|blob:|file:)/i.test(String(value))) return value;
   if (value.startsWith('//')) return `https:${value}`;
-  return `${API_ORIGIN}/${String(value).replace(/^\\/+/, '')}`;
+  return `${API_ORIGIN}/${String(value).replace(/^\/+/, '')}`;
 };
 
 export default function SearchPage() {
