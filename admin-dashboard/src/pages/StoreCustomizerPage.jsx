@@ -100,6 +100,8 @@ export default function StoreCustomizerPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [previewProductId, setPreviewProductId] = useState('');
+  const previewFrameRef = React.useRef(null);
 
   const page = PAGE_DEFS.find((item) => item.id === pageId) || PAGE_DEFS[0];
   const sections = layouts[pageId] || makeDefault(page);
@@ -107,8 +109,12 @@ export default function StoreCustomizerPage() {
 
   useEffect(() => {
     let alive = true;
-    api.get('/settings')
-      .then(({ data }) => {
+    Promise.all([api.get('/settings'), api.get('/products', { params: { limit: 1, page: 1 } }).catch(() => ({ data: {} }))])
+      .then(([settingsResponse, productsResponse]) => {
+        const data = settingsResponse?.data || {};
+        const sampleProducts = Array.isArray(productsResponse?.data?.products) ? productsResponse.data.products : [];
+        const sample = sampleProducts[0];
+        if (sample) setPreviewProductId(sample.slug || sample._id || sample.id || '');
         if (!alive) return;
         const remoteLayouts = data?.settings?.pageLayouts;
         const remoteTheme = data?.settings?.theme;
@@ -177,6 +183,50 @@ export default function StoreCustomizerPage() {
       setError(err?.response?.data?.message || 'تعذر إعادة الضبط مركزيًا.');
     }
   };
+
+  const storePreviewBase = String(import.meta.env.VITE_STORE_PUBLIC_URL || 'https://enchanting-miracle-production-a5d2.up.railway.app').replace(/\\/+$/, '');
+  const previewPaths = {
+    home: '/',
+    categories: '/categories',
+    product: previewProductId ? `/products/${encodeURIComponent(String(previewProductId))}` : '/categories',
+    cart: '/cart',
+    checkout: '/checkout',
+    account: '/account',
+    orders: '/orders',
+    wishlist: '/wishlist',
+  };
+  const previewUrl = `${storePreviewBase}${previewPaths[pageId] || '/'}${previewPaths[pageId] === '/' ? '?customizerPreview=1' : '?customizerPreview=1'}`;
+
+  const postPreviewState = React.useCallback(() => {
+    const frame = previewFrameRef.current;
+    if (!frame?.contentWindow) return;
+    frame.contentWindow.postMessage({
+      type: 'MYBRAND_STORE_CUSTOMIZER_PREVIEW',
+      pageLayouts: layouts,
+      theme: normalizeTheme(theme),
+    }, new URL(storePreviewBase).origin);
+  }, [layouts, theme, storePreviewBase]);
+
+  useEffect(() => {
+    postPreviewState();
+  }, [postPreviewState, pageId, previewProductId]);
+
+  const livePreview = (
+    <div className={`live-store-preview ${preview}`}>
+      <div className="live-store-preview-toolbar">
+        <span>المعاينة من المتجر الحقيقي — التعديلات غير المحفوظة تظهر هنا فورًا</span>
+        {previewProductId ? <small>المنتج التجريبي: {String(previewProductId)}</small> : <small>أضف منتجًا لرؤية تفاصيل المنتج</small>}
+      </div>
+      <iframe
+        key={previewUrl}
+        ref={previewFrameRef}
+        title={`معاينة ${page.title}`}
+        src={previewUrl}
+        className="live-store-preview-frame"
+        onLoad={postPreviewState}
+      />
+    </div>
+  );
 
   const previewStyle = {
     '--preview-accent': theme.accent,
@@ -251,14 +301,7 @@ export default function StoreCustomizerPage() {
               <div><span>LIVE PREVIEW</span><h2>معاينة {page.title}</h2></div>
               <div className="preview-switch"><button className={preview === 'mobile' ? 'active' : ''} onClick={() => setPreview('mobile')}>📱</button><button className={preview === 'desktop' ? 'active' : ''} onClick={() => setPreview('desktop')}>🖥️</button></div>
             </div>
-            <div className={`store-preview ${preview}`} style={previewStyle}>
-              <div className="fake-header"><b>MYBRAND</b><span>⌕　♡　🛒</span></div>
-              {sections.filter((item) => item.enabled).map((section) => (
-                <div key={section.id} className={`fake-section fake-${section.id}`}>
-                  <span>{section.icon}</span><strong>{section.title}</strong><small>{section.desc}</small>
-                </div>
-              ))}
-            </div>
+            {livePreview}
           </section>
         </div>
       ) : (
@@ -282,14 +325,7 @@ export default function StoreCustomizerPage() {
                 <button type="button" className="theme-reset-btn" onClick={() => setTheme(DEFAULT_THEME)}>إرجاع المظهر الافتراضي</button>
               </div>
             </div>
-            <div className="theme-card theme-preview" style={previewStyle}>
-              <div className="mini-site">
-                <div className="mini-header"><b>MYBRAND</b><span>سلة　حسابي</span></div>
-                <div className="mini-hero"><span>MYBRAND STORE</span><strong>تسوق بثقة وجودة عالية</strong><button>تسوق الآن</button></div>
-                <div className="mini-cards"><div/><div/><div/></div>
-                <div className="mini-banner"><b>عروض اليوم</b><span>اكتشف أحدث المنتجات</span></div>
-              </div>
-            </div>
+            <div className="theme-card theme-preview" style={previewStyle}>{livePreview}</div>
           </div>
         </section>
       )}
