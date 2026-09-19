@@ -45,12 +45,11 @@ const DEFAULT_THEME = {
   radius: 18,
 };
 
-const DEFAULT_LAYOUT = HOME_SECTIONS.map(([id, title, desc, icon], order) => ({
-  id, title, desc, icon, enabled: true, order,
-}));
+const DEFAULT_LAYOUT = HOME_SECTIONS.map(([id, title, desc, icon], order) => ({ id, title, desc, icon, enabled: true, order }));
+const makeDefault = (page) => page.sections.map(([id, title, desc, icon], order) => ({ id, title, desc, icon, enabled: true, order }));
 
-const normalizeLayout = (value) => {
-  const source = Array.isArray(value) ? value : DEFAULT_LAYOUT;
+const normalizeLayout = (page, value) => {
+  const source = Array.isArray(value) ? value : makeDefault(page);
   return source.map((item, index) => ({
     ...item,
     order: index,
