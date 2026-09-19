@@ -9,7 +9,7 @@ import { useStoreLayout } from '../context/StoreLayoutContext';
 const CartIcon=({size=15})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="21" r="1.4"/><circle cx="18" cy="21" r="1.4"/><path d="M3 4h2l2.4 11.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"/></svg>;
 const Heart=()=> <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--wish-red)" stroke="var(--wish-red)" strokeWidth="1"><path d="M20.8 4.6c-1.8-1.5-4.4-1.3-6 .4L12 7.8 9.2 5c-1.6-1.7-4.2-1.9-6-.4-2 1.7-2.1 4.8-.3 6.6L12 21l9.1-9.8c1.8-1.8 1.7-4.9-.3-6.6z"/></svg>;
 
-const normalizeImage=(src)=>{if(!src)return '';if(/^https?:\/\//i.test(src)||src.startsWith('data:')||src.startsWith('blob:'))return src;return src.startsWith('/')?src:`/${src}`};
+const normalizeImage=(src)=>{if(!src)return '';const value=String(src).trim();if(/^(https?:|data:|blob:|file:)/i.test(value))return value;if(value.startsWith('//'))return `https:${value}`;return `${API_ORIGIN}/${value.replace(/^\/+/, '')}`};
 
 export default function WishlistPage(){
  const { getStyle } = useStoreLayout('wishlist');
