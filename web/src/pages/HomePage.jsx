@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { API_ORIGIN } from '../api/client';
 import TrendLiveCard from '../components/TrendLiveCard';
 import { useCart } from '../context/CartContext';
@@ -28,6 +28,7 @@ function Countdown() {
 
 function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const { productIds, toggleWishlist } = useWishlist();
   const [busy, setBusy] = useState(false);
   const id = product._id || product.id;
@@ -39,11 +40,13 @@ function ProductCard({ product }) {
   const discount = Number(product.discountAmount || 0);
   const stock = Math.max(0, Number(product.stock ?? product.quantity ?? 0));
   const outOfStock = stock <= 0;
+  const hasOptions = Array.isArray(product.variants) && product.variants.length > 0;
   const liked = productIds.includes(id);
   const add = (e) => {
     e.preventDefault();
     if (!id || outOfStock) return;
     setBusy(true);
+    if (hasOptions) { navigate(`/products/${encodeURIComponent(product.slug || id)}`); setBusy(false); return; }
     addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1);
     setTimeout(() => setBusy(false), 900);
   };
