@@ -14,6 +14,33 @@ const HOME_SECTIONS = [
   ['services', 'خدمات المتجر', 'الشحن والإرجاع والدفع', '🚚'],
 ];
 
+const PAGE_DEFS = [
+  { id: 'home', title: 'الرئيسية', icon: '🏠', movable: true, sections: [
+    ['hero','العرض الرئيسي','منطقة العرض المباشر أو البانر الرئيسي','🖼️'],['offers','العروض','الشريط والعروض السريعة','🔥'],['categories','الأقسام','أقسام المتجر والصور','🏷️'],['best','الأكثر مبيعًا','مجموعة المنتجات الرئيسية','🏆'],['featured','العروض المميزة','المنتجات التي عليها خصم','⭐'],['new','وصل حديثًا','أحدث المنتجات المنشورة','🆕'],['why','لماذا MYBRAND','مزايا الثقة والخدمة','💎'],['services','خدمات المتجر','الشحن والإرجاع والدفع','🚚']
+  ]},
+  { id: 'categories', title: 'الأقسام', icon: '🏷️', movable: false, sections: [
+    ['header','رأس صفحة الأقسام','الشعار والبحث','🧭'],['rail','شريط الأقسام','قائمة الأقسام الجانبية','🗂️'],['products','منتجات القسم','المنتجات والتصنيفات الفرعية','🛍️'],['bottomNav','التنقل السفلي','التنقل الرئيسي','📱']
+  ]},
+  { id: 'product', title: 'تفاصيل المنتج', icon: '🛍️', movable: false, sections: [
+    ['topbar','الشريط العلوي','العودة والبحث والسلة','↩️'],['gallery','صور المنتج','المعرض والصور المصغرة','🖼️'],['info','معلومات المنتج','العنوان والسعر والتقييم','ℹ️'],['seller','البائع','بيانات وتصنيف البائع','🏪'],['delivery','التوصيل والمخزون','التوفر والشحن','🚚'],['variants','اختيارات المنتج','الألوان والمقاسات','🎨'],['details','التفاصيل والشحن','الوصف والشحن والإرجاع','📋'],['reviews','التقييمات','ملخص تقييمات المنتج','⭐'],['actions','أزرار الشراء','المفضلة والسلة والشراء الآن','🛒']
+  ]},
+  { id: 'cart', title: 'السلة', icon: '🛒', movable: false, sections: [
+    ['header','رأس السلة','العنوان والعودة والتسوق','🧭'],['items','المنتجات','العناصر والكميات والمخزون','🛍️'],['checkoutBar','إتمام الشراء','الإجمالي وزر المتابعة','💳']
+  ]},
+  { id: 'checkout', title: 'إتمام الطلب', icon: '💳', movable: false, sections: [
+    ['header','رأس الدفع','العودة والعنوان','🧭'],['steps','مراحل الطلب','السلة والدفع والتأكيد','1️⃣'],['customer','بيانات العميل','الاسم والهاتف','👤'],['address','العنوان والشحن','العنوان وخيارات الشحن','📍'],['products','المنتجات','محتويات الطلب','🛍️'],['coupon','كود الخصم','الكوبونات والخصم','🎟️'],['payment','الدفع','طرق الدفع والمعلومات','💳'],['summary','ملخص الطلب','الخصم والشحن والإجمالي','🧾'],['actions','تأكيد الطلب','الزر النهائي وملاحظة الأمان','✅']
+  ]},
+  { id: 'account', title: 'الحساب', icon: '👤', movable: false, sections: [
+    ['profile','الملف الشخصي','بيانات الحساب والاسم','👤'],['stats','ملخص الحساب','الطلبات والنقاط والمفضلة','📊'],['menu','قائمة الحساب','الأقسام والروابط','🧭'],['chat','خدمة العملاء','محادثة خدمة العملاء','🎧'],['logout','تسجيل الخروج','خروج الحساب','↪️']
+  ]},
+  { id: 'orders', title: 'الطلبات', icon: '📦', movable: false, sections: [
+    ['hero','رأس الطلبات','عنوان صفحة الطلبات','📦'],['stats','إحصاءات الطلبات','ملخص الحالات','📊'],['toolbar','أدوات التصفية','فلترة الطلبات','⚙️'],['list','سجل الطلبات','بطاقات الطلبات والتتبع','🧾']
+  ]},
+  { id: 'wishlist', title: 'المفضلة', icon: '❤️', movable: false, sections: [
+    ['topbar','الشريط العلوي','العودة ومسح المفضلة','↩️'],['tabs','تبويبات المفضلة','المنتجات ومتابعة التسوق','🧭'],['products','المنتجات المحفوظة','شبكة المنتجات','❤️'],['bottomNav','التنقل السفلي','التنقل الرئيسي','📱']
+  ]},
+];
+
 const DEFAULT_THEME = {
   accent: '#0F172A',
   accentSoft: '#F1F5F9',
@@ -24,12 +51,11 @@ const DEFAULT_THEME = {
   radius: 18,
 };
 
-const DEFAULT_LAYOUT = HOME_SECTIONS.map(([id, title, desc, icon], order) => ({
-  id, title, desc, icon, enabled: true, order,
-}));
+const DEFAULT_LAYOUT = HOME_SECTIONS.map(([id, title, desc, icon], order) => ({ id, title, desc, icon, enabled: true, order }));
+const makeDefault = (page) => page.sections.map(([id, title, desc, icon], order) => ({ id, title, desc, icon, enabled: true, order }));
 
-const normalizeLayout = (value) => {
-  const source = Array.isArray(value) ? value : DEFAULT_LAYOUT;
+const normalizeLayout = (page, value) => {
+  const source = Array.isArray(value) ? value : makeDefault(page);
   return source.map((item, index) => ({
     ...item,
     order: index,
@@ -52,7 +78,8 @@ const THEME_CONTROLS = [
 ];
 
 export default function StoreCustomizerPage() {
-  const [layouts, setLayouts] = useState({ home: DEFAULT_LAYOUT });
+  const [pageId, setPageId] = useState('home');
+  const [layouts, setLayouts] = useState(() => Object.fromEntries(PAGE_DEFS.map((item) => [item.id, makeDefault(item)])));
   const [theme, setTheme] = useState(DEFAULT_THEME);
   const [dragged, setDragged] = useState(null);
   const [saved, setSaved] = useState(false);
@@ -62,7 +89,8 @@ export default function StoreCustomizerPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const sections = layouts.home || DEFAULT_LAYOUT;
+  const page = PAGE_DEFS.find((item) => item.id === pageId) || PAGE_DEFS[0];
+  const sections = layouts[pageId] || makeDefault(page);
   const enabledCount = useMemo(() => sections.filter((item) => item.enabled).length, [sections]);
 
   useEffect(() => {
@@ -73,7 +101,8 @@ export default function StoreCustomizerPage() {
         const remoteLayouts = data?.settings?.pageLayouts;
         const remoteTheme = data?.settings?.theme;
         if (remoteLayouts && typeof remoteLayouts === 'object' && !Array.isArray(remoteLayouts)) {
-          setLayouts({ home: normalizeLayout(remoteLayouts.home) });
+          const next = Object.fromEntries(PAGE_DEFS.map((item) => [item.id, normalizeLayout(item, remoteLayouts[item.id])]));
+          setLayouts(next);
         }
         setTheme(normalizeTheme(remoteTheme));
       })
@@ -82,10 +111,11 @@ export default function StoreCustomizerPage() {
     return () => { alive = false; };
   }, []);
 
-  const updateSections = (next) => setLayouts((current) => ({ ...current, home: normalizeLayout(next) }));
+  const updateSections = (next) => setLayouts((current) => ({ ...current, [pageId]: normalizeLayout(page, next) }));
 
   const move = (from, to) => {
     if (from === to) return;
+    if (!page.movable) return;
     const next = [...sections];
     const [item] = next.splice(from, 1);
     next.splice(to, 0, item);
@@ -99,7 +129,7 @@ export default function StoreCustomizerPage() {
   const setThemeValue = (key, value) => setTheme((current) => ({ ...current, [key]: value }));
 
   const payload = {
-    pageLayouts: { ...layouts, home: normalizeLayout(sections) },
+    pageLayouts: { ...layouts, [pageId]: normalizeLayout(page, sections) },
     theme: normalizeTheme(theme),
   };
 
@@ -109,7 +139,7 @@ export default function StoreCustomizerPage() {
     setError('');
     try {
       const { data } = await api.put('/settings', payload);
-      setLayouts({ home: normalizeLayout(data?.settings?.pageLayouts?.home || sections) });
+      setLayouts((current) => ({ ...current, [pageId]: normalizeLayout(page, data?.settings?.pageLayouts?.[pageId] || sections) }));
       setTheme(normalizeTheme(data?.settings?.theme || theme));
       localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(data?.settings?.pageLayouts || payload.pageLayouts));
       localStorage.setItem('mybrand_store_theme', JSON.stringify(data?.settings?.theme || theme));
@@ -124,17 +154,15 @@ export default function StoreCustomizerPage() {
 
   const reset = async () => {
     if (!window.confirm('إرجاع تخصيص الصفحة الرئيسية والمظهر العام للوضع الافتراضي؟')) return;
-    const nextLayouts = { ...layouts, home: DEFAULT_LAYOUT };
+    const nextLayouts = { ...layouts, [pageId]: makeDefault(page) };
     const nextTheme = DEFAULT_THEME;
     setLayouts(nextLayouts);
     setTheme(nextTheme);
     setError('');
     try {
-      const { data } = await api.put('/settings', { pageLayouts: nextLayouts, theme: nextTheme });
-      setLayouts({ home: normalizeLayout(data?.settings?.pageLayouts?.home || DEFAULT_LAYOUT) });
-      setTheme(normalizeTheme(data?.settings?.theme || nextTheme));
-      localStorage.removeItem('mybrand_store_page_layouts');
-      localStorage.removeItem('mybrand_store_theme');
+      const { data } = await api.put('/settings', { pageLayouts: nextLayouts });
+      setLayouts((current) => ({ ...current, [pageId]: normalizeLayout(page, data?.settings?.pageLayouts?.[pageId] || makeDefault(page)) }));
+      localStorage.setItem('mybrand_store_page_layouts', JSON.stringify(data?.settings?.pageLayouts || nextLayouts));
     } catch (err) {
       setError(err?.response?.data?.message || 'تعذر إعادة الضبط مركزيًا.');
     }
@@ -156,7 +184,7 @@ export default function StoreCustomizerPage() {
         <div>
           <span className="customizer-kicker">MYBRAND STORE BUILDER</span>
           <h1>تخصيص المتجر</h1>
-          <p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'تحكم فعلي في المظهر العام وترتيب وإخفاء أقسام الصفحة الرئيسية.'}</p>
+          <p>{loading ? 'جارٍ تحميل التخصيص المركزي…' : 'تحكم فعلي في مظهر المتجر وإظهار أو إخفاء أقسام الصفحات المرتبطة.'}</p>
         </div>
         <div className="customizer-actions">
           <button className="secondary-btn" onClick={reset} disabled={loading || saving}>إعادة ضبط</button>
@@ -168,8 +196,10 @@ export default function StoreCustomizerPage() {
 
       {error && <div className="customizer-error">{error}</div>}
 
+      {activeTab === 'layout' && <section className="page-selector"><div className="page-selector-title"><span>STORE PAGES</span><strong>{PAGE_DEFS.length} صفحات مرتبطة فعليًا</strong></div><div className="page-tabs">{PAGE_DEFS.map((item) => <button key={item.id} className={item.id === pageId ? 'active' : ''} onClick={() => { setPageId(item.id); setDragged(null); }}>{item.icon}<span>{item.title}</span></button>)}</div></section>}
+
       <section className="customizer-tabs">
-        <button className={activeTab === 'layout' ? 'active' : ''} onClick={() => setActiveTab('layout')}>✦ ترتيب الصفحة الرئيسية</button>
+        <button className={activeTab === 'layout' ? 'active' : ''} onClick={() => setActiveTab('layout')}>✦ تخطيط الصفحات</button>
         <button className={activeTab === 'theme' ? 'active' : ''} onClick={() => setActiveTab('theme')}>🎨 المظهر العام</button>
       </section>
 
@@ -177,21 +207,21 @@ export default function StoreCustomizerPage() {
         <div className="builder-layout">
           <section className="builder-panel">
             <div className="panel-title">
-              <div><span>/</span><h2>🏠 الصفحة الرئيسية الفعلية</h2></div>
+              <div><span>{page.movable ? 'قابل لإعادة الترتيب' : 'تحكم في الظهور'}</span><h2>{page.icon} {page.title}</h2></div>
               <strong>{enabledCount} من {sections.length} مفعّل</strong>
             </div>
             <div className="section-list">
               {sections.map((section, index) => (
                 <div
                   key={section.id}
-                  draggable
-                  onDragStart={() => setDragged(index)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => { if (dragged !== null) move(dragged, index); setDragged(null); }}
+                  draggable={page.movable}
+                  onDragStart={() => page.movable && setDragged(index)}
+                  onDragOver={(e) => page.movable && e.preventDefault()}
+                  onDrop={() => { if (page.movable && dragged !== null) move(dragged, index); setDragged(null); }}
                   onDragEnd={() => setDragged(null)}
-                  className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''}`}
+                  className={`section-row ${!section.enabled ? 'disabled' : ''} ${dragged === index ? 'dragging' : ''} ${!page.movable ? 'locked' : ''}`}
                 >
-                  <span className="drag-handle">⠿</span>
+                  <span className="drag-handle">{page.movable ? '⠿' : '•'}</span>
                   <span className="section-number">{index + 1}</span>
                   <span className="section-icon">{section.icon}</span>
                   <div className="section-copy"><strong>{section.title}</strong><small>{section.desc}</small></div>
@@ -199,12 +229,12 @@ export default function StoreCustomizerPage() {
                 </div>
               ))}
             </div>
-            <div className="tip"><span>✓</span><div><strong>تخصيص فعلي</strong><small>الترتيب والإخفاء يُطبّقان على الصفحة الرئيسية بعد الحفظ، وتصل الإعدادات من الخادم مباشرة.</small></div></div>
+            <div className="tip"><span>✓</span><div><strong>{page.movable ? 'الترتيب والإخفاء فعّالان' : 'الإظهار والإخفاء فعّالان'}</strong><small>{page.movable ? 'اسحب الأقسام لتغيير ترتيب الصفحة الرئيسية.' : 'تم ربط هذه العناصر بواجهة المتجر الحقيقية؛ الإخفاء يُطبق بعد الحفظ.'}</small></div></div>
           </section>
 
           <section className="preview-panel">
             <div className="preview-head">
-              <div><span>LIVE PREVIEW</span><h2>معاينة المتجر</h2></div>
+              <div><span>LIVE PREVIEW</span><h2>معاينة {page.title}</h2></div>
               <div className="preview-switch"><button className={preview === 'mobile' ? 'active' : ''} onClick={() => setPreview('mobile')}>📱</button><button className={preview === 'desktop' ? 'active' : ''} onClick={() => setPreview('desktop')}>🖥️</button></div>
             </div>
             <div className={`store-preview ${preview}`} style={previewStyle}>
