@@ -3,6 +3,7 @@ import{Link}from'react-router-dom';
 import api from'../api/client';
 import{useAuth}from'../context/AuthContext';
 import CustomerChat from'../components/CustomerChat';
+import { useStoreLayout } from '../context/StoreLayoutContext';
 
 const Icon=({type})=>{const paths={orders:<><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></>,heart:<><path d="M20.8 8.8c0 5.2-8.8 10.2-8.8 10.2S3.2 14 3.2 8.8A4.8 4.8 0 0 1 12 6.2a4.8 4.8 0 0 1 8.8 2.6z"/></>,pin:<><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></>,card:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></>,settings:<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.1h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1-2.8-2.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2.8-2.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.8 2.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1z"/></>};return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[type]||paths.settings}</svg>};
 const MenuLink=({to,icon,label})=><Link to={to} className="account-menu-link"><span className="menu-icon"><Icon type={icon}/></span><span>{label}</span><span className="menu-arrow">‹</span></Link>;
@@ -10,9 +11,19 @@ const MenuLink=({to,icon,label})=><Link to={to} className="account-menu-link"><s
 export default function AccountPageV2(){
  const{user,logout}=useAuth();
  const { getStyle } = useStoreLayout('account');
+ const previewMode=typeof window!=='undefined'&&(window.__MYBRAND_CUSTOMIZER_PREVIEW__===true||new URLSearchParams(window.location.search).get('customizerPreview')==='1');
  const[account,setAccount]=useState(null),[orders,setOrders]=useState([]),[wishlist,setWishlist]=useState([]),[msg,setMsg]=useState('');
- useEffect(()=>{if(!user)return;Promise.all([api.get('/account'),api.get('/orders/my'),api.get('/wishlist')]).then(([a,o,w])=>{setAccount(a.data.user);setOrders(o.data.orders||[]);setWishlist(w.data.wishlist?.products||[])}).catch(()=>setMsg('تعذر تحميل بيانات الحساب'));},[user]);
- if(!user)return <main dir="rtl" className="account-page"><div className="account-login-card"><div className="account-logo">MY<span>BRAND</span></div><h1>حساب MYBRAND</h1><p>سجّل الدخول للوصول إلى حسابك وطلباتك.</p><Link className="account-primary" to="/login">تسجيل الدخول</Link></div></main>;
+ useEffect(()=>{
+  if(previewMode){
+   setAccount({name:'عميل MYBRAND',phone:'01000000000',points:320,giftBalance:150,coupons:[{},{}]});
+   setOrders([{id:'preview-order-a'},{id:'preview-order-b'}]);
+   setWishlist(['preview-a','preview-b','preview-c']);
+   return;
+  }
+  if(!user)return;
+  Promise.all([api.get('/account'),api.get('/orders/my'),api.get('/wishlist')]).then(([a,o,w])=>{setAccount(a.data.user);setOrders(o.data.orders||[]);setWishlist(w.data.wishlist?.products||[])}).catch(()=>setMsg('تعذر تحميل بيانات الحساب'));
+ },[user,previewMode]);
+ if(!user&&!previewMode)return <main dir="rtl" className="account-page"><div className="account-login-card"><div className="account-logo">MY<span>BRAND</span></div><h1>حساب MYBRAND</h1><p>سجّل الدخول للوصول إلى حسابك وطلباتك.</p><Link className="account-primary" to="/login">تسجيل الدخول</Link></div></main>;
  const name=account?.name||user.name||'عضو MYBRAND';
  const points=Number(account?.points||0),gift=Number(account?.giftBalance||0),coupons=account?.coupons?.length||0;
  return <main dir="rtl" className="account-page">
