@@ -13,7 +13,8 @@ export function StoreLayoutProvider({ children }) {
     style.textContent = '.home-layout-sections{display:flex;flex-direction:column;width:100%}.home-layout-sections>[data-store-layout]{width:100%}';
     document.head.appendChild(style);
     let active = true;
-    api.get('/config')
+    const merchantId = new URLSearchParams(window.location.search).get('merchant') || '';
+    api.get('/config', { params: merchantId ? { merchant: merchantId } : undefined })
       .then(({ data }) => {
         if (!active) return;
         const value = data?.pageLayouts;
