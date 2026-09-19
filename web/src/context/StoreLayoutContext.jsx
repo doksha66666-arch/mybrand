@@ -32,10 +32,13 @@ export function StoreLayoutProvider({ children }) {
         --store-radius:var(--store-radius-raw);
       }
       body{background:var(--store-bg-raw);color:var(--store-text-raw)}
-      .home-reference,.categories-reference,.product-reference,.cart-reference,.checkout-reference,.orders-reference,.wishlist-reference,.account-reference,.register-app,.app{--store-radius-local:var(--store-radius-raw)}
+      .home-reference,.categories-reference,.product-reference,.cart-reference,.checkout-reference,.orders-reference,.wishlist-reference,.account-reference,.register-app,.app{--store-radius-local:var(--store-radius-raw);background:var(--store-bg-raw)!important;color:var(--store-text-raw)}
+      .home-reference .card,.home-reference header,.categories-reference .categories-header,.product-reference .product-app{border-color:var(--store-border-raw)!important}
+      .home-reference .card,.home-reference header,.categories-reference .categories-header,.product-reference .product-app{background:var(--store-surface-raw)}
       .home-reference .logo,.categories-reference .categories-logo{color:var(--store-accent-raw)!important}
       .home-reference .home-add-cart,.home-reference .bottom-nav .active .trend-circle,.home-reference .bottom-nav .nav-item.active{background:var(--store-accent-raw)!important;color:#fff!important}
       .categories-reference .categories-rail-item.active{border-color:var(--store-accent-raw)!important;color:var(--store-accent-raw)!important}
+      .home-reference .card,.categories-reference .categories-product-card,.categories-reference .category-product-card,.product-reference .variant-panel,.product-reference .seller-card{border-radius:var(--store-radius-raw)}
       .store-customizer-preview-shell{border-radius:var(--store-radius-raw)}
     `;
     document.head.appendChild(style);
