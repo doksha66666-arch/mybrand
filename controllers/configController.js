@@ -25,7 +25,7 @@ exports.getPublicConfig = async (req, res, next) => {
         maintenance: Boolean(settings?.maintenance),
       },
       pageLayouts: settings?.pageLayouts && typeof settings.pageLayouts === 'object' && !Array.isArray(settings.pageLayouts) ? settings.pageLayouts : {},
-      theme: { ...DEFAULT_THEME, ...(settings?.theme || {}) },
+      theme: normalizeTheme(settings?.theme || {}),
       vodafoneCashNumber: process.env.MERCHANT_VODAFONE_CASH_NUMBER || '',
       paymentMethods: {
         cod: true,

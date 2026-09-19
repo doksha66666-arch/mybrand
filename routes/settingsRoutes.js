@@ -72,7 +72,10 @@ router.put('/', protect, adminOnly, async (req, res, next) => {
     if (Object.prototype.hasOwnProperty.call(body, 'lowStock')) payload.lowStock = Boolean(body.lowStock);
     if (Object.prototype.hasOwnProperty.call(body, 'customerMessage')) payload.customerMessage = Boolean(body.customerMessage);
     if (Object.prototype.hasOwnProperty.call(body, 'pageLayouts') && isPlainObject(body.pageLayouts)) payload.pageLayouts = body.pageLayouts;
-    if (Object.prototype.hasOwnProperty.call(body, 'theme') && isPlainObject(body.theme)) payload.theme = normalizeTheme(body.theme);
+    if (Object.prototype.hasOwnProperty.call(body, 'theme') && isPlainObject(body.theme)) {
+      const current = await StoreSettings.findOne({ key: 'global' }).select('theme').lean();
+      payload.theme = normalizeTheme({ ...(current?.theme || {}), ...body.theme });
+    }
 
     if (!Object.keys(payload).length) return res.status(400).json({ message: 'لا توجد إعدادات صالحة للحفظ' });
 
