@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../api/client';
 
 const WishlistContext = createContext(null);
 const STORAGE_KEY = 'mybrand_wishlist_v1';
@@ -24,10 +25,8 @@ export function WishlistProvider({ children }) {
   useEffect(() => {
     if (!previewMode) return undefined;
     let active = true;
-    const url = `${window.location.origin}/api/products?limit=4&page=1`;
-    fetch(url)
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error('preview_catalog_failed')))
-      .then((data) => {
+    api.get('/products', { params: { limit: 4, page: 1 } })
+      .then(({ data }) => {
         if (!active) return;
         const products = Array.isArray(data?.products) ? data.products : Array.isArray(data) ? data : [];
         setProductIds(products.slice(0, 4).map((product) => product._id ?? product.id ?? product.productId).filter(Boolean));
