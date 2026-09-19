@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MERCHANT_DASHBOARD_URL } from '../api/client';
+import { MERCHANT_DASHBOARD_URL, API_ORIGIN } from '../api/client';
 import { GOVERNORATES, getCenters } from '../data/egyptLocations';
 import './RegisterPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
