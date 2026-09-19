@@ -28,7 +28,13 @@ function parsePagination(pageValue, limitValue, defaultLimit = 20) {
   return { page, limit };
 }
 
-const getPublicMerchantFilter = async () => {
+const getPublicMerchantFilter = async (merchantId = '') => {
+  if (merchantId) {
+    if (!mongoose.isValidObjectId(merchantId)) return null;
+    const approved = await Merchant.exists({ _id: merchantId, status: 'approved' });
+    if (!approved) return null;
+    return { merchant: new mongoose.Types.ObjectId(merchantId), status: { $in: PUBLIC_MERCHANT_PRODUCT_STATUSES } };
+  }
   const approvedMerchantIds = await Merchant.find({ status: 'approved' }).distinct('_id');
   return {
     $or: [
@@ -54,7 +60,9 @@ exports.getProducts = async (req, res, next) => {
   try {
     const { category, search, featured } = req.query;
     const { page, limit } = parsePagination(req.query.page, req.query.limit);
-    const merchantFilter = await getPublicMerchantFilter();
+    const merchantId = String(req.query?.merchant || '').trim();
+    const merchantFilter = await getPublicMerchantFilter(merchantId);
+    if (merchantId && !merchantFilter) return res.status(404).json({ message: 'المتجر غير متاح حاليًا' });
     const filter = { isActive: true, $and: [merchantFilter] };
     if (category) filter.category = category;
     if (featured) filter.isFeatured = true;
@@ -72,7 +80,9 @@ exports.getProducts = async (req, res, next) => {
 
 exports.getProductBySlug = async (req, res, next) => {
   try {
-    const merchantFilter = await getPublicMerchantFilter();
+    const merchantId = String(req.query?.merchant || '').trim();
+    const merchantFilter = await getPublicMerchantFilter(merchantId);
+    if (merchantId && !merchantFilter) return res.status(404).json({ message: 'المتجر غير متاح حاليًا' });
     const identifier = String(req.params.slug || '').trim();
     if (!identifier) return res.status(404).json({ message: 'المنتج غير موجود' });
     const identifierFilter = mongoose.isValidObjectId(identifier)
