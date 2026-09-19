@@ -12,6 +12,47 @@ const userPayload = (user) => ({ id: user._id, name: user.name, email: user.emai
 exports.registerMerchant = async (req, res, next) => { try { const { name, password, governorate, center, businessName, storeName, businessPhone, businessDescription, businessAddress } = req.body; const email = String(req.body.email || '').trim().toLowerCase(); const phone = normalizePhone(req.body.phone); if (!name || !email || !password || !phone || !governorate || !center || !businessName || !storeName) return res.status(400).json({ message: 'يرجى اختيار المحافظة والمركز وإدخال جميع البيانات المطلوبة' }); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'يرجى إدخال بريد إلكتروني صحيح' }); if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' }); const [existingEmail, existingPhone] = await Promise.all([User.findOne({ email }).select('_id'), User.findOne({ phone: { $in: phoneCandidates(phone) } }).select('_id')]); if (existingEmail) return res.status(409).json({ message: 'البريد الإلكتروني مستخدم بالفعل' }); if (existingPhone) return res.status(409).json({ message: 'رقم الموبايل مستخدم بالفعل' }); const verificationCode = createVerificationCode(); try { await sendVerificationCode(email, verificationCode); } catch (mailError) { if (mailError?.code === 'SMTP_NOT_CONFIGURED') return res.status(503).json({ message: 'تأكيد البريد الإلكتروني غير مهيأ حاليًا. أضف إعدادات SMTP أولًا.' }); throw mailError; } const user = await User.create({ name: String(name).trim(), email, password, phone, governorate, center, role: 'merchant', isEmailVerified: false, emailVerificationCode: hashVerificationCode(verificationCode), emailVerificationExpires: verificationExpiry() }); const merchant = await Merchant.create({ user: user._id, businessName, storeName, businessPhone, businessDescription, businessAddress, governorate, center, status: 'pending' }); res.status(201).json({ user: userPayload(user), needsVerification: true, email: user.email, merchant, message: 'تم إنشاء طلب التاجر. أرسلنا كود تأكيد إلى بريدك الإلكتروني قبل تفعيل الحساب.' }); } catch (err) { next(err); } };
 exports.getMyMerchantProfile = async (req, res, next) => { try { const stats = await computeMerchantStats(req.merchant._id); res.json({ merchant: req.merchant, stats }); } catch (err) { next(err); } };
 exports.updateMyMerchantProfile = async (req, res, next) => { try { const { businessName, storeName, businessPhone, businessDescription, businessAddress, governorate, center } = req.body; const merchant = await Merchant.findByIdAndUpdate(req.merchant._id, { businessName, storeName, businessPhone, businessDescription, businessAddress, governorate, center }, { new: true, runValidators: true }); res.json({ merchant }); } catch (err) { next(err); } };
+const HOME_STOREFRONT_SECTIONS = new Set(['hero', 'offers', 'categories', 'best', 'featured', 'services']);
+
+const sanitizeStorefront = (value) => {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const rawSections = Array.isArray(source.pageLayouts?.home) ? source.pageLayouts.home : [];
+  const seen = new Set();
+  const pageLayouts = { home: [] };
+  rawSections.forEach((item, index) => {
+    const id = String(item?.id || '').trim();
+    if (!HOME_STOREFRONT_SECTIONS.has(id) || seen.has(id)) return;
+    seen.add(id);
+    pageLayouts.home.push({
+      id,
+      enabled: item?.enabled !== false,
+      order: Number.isFinite(Number(item?.order)) ? Math.max(0, Math.min(50, Number(item.order))) : index,
+    });
+  });
+  return { pageLayouts };
+};
+
+exports.getMyStorefront = async (req, res, next) => {
+  try {
+    const merchant = await Merchant.findById(req.merchant._id).select('businessName storeName businessDescription status storefront').lean();
+    if (!merchant) return res.status(404).json({ message: 'بيانات المتجر غير موجودة' });
+    res.json({ storefront: { ...sanitizeStorefront(merchant.storefront), merchantId: merchant._id, businessName: merchant.businessName, storeName: merchant.storeName, businessDescription: merchant.businessDescription, status: merchant.status } });
+  } catch (err) { next(err); }
+};
+
+exports.updateMyStorefront = async (req, res, next) => {
+  try {
+    const storefront = sanitizeStorefront(req.body?.storefront);
+    const merchant = await Merchant.findByIdAndUpdate(
+      req.merchant._id,
+      { $set: { storefront } },
+      { new: true, runValidators: true }
+    ).select('businessName storeName businessDescription status storefront').lean();
+    if (!merchant) return res.status(404).json({ message: 'بيانات المتجر غير موجودة' });
+    res.json({ message: 'تم حفظ تخصيص المتجر', storefront: { ...sanitizeStorefront(merchant.storefront), merchantId: merchant._id, businessName: merchant.businessName, storeName: merchant.storeName, businessDescription: merchant.businessDescription, status: merchant.status } });
+  } catch (err) { next(err); }
+};
+
 const computeMerchantStats = async (merchantId) => { const [productsCount, pendingProductsCount, salesAgg] = await Promise.all([Product.countDocuments({ merchant: merchantId }), Product.countDocuments({ merchant: merchantId, status: 'pending' }), Order.aggregate([{ $match: { status: { $ne: 'cancelled' }, 'items.merchant': merchantId } }, { $unwind: '$items' }, { $match: { 'items.merchant': merchantId } }, { $group: { _id: null, ordersCount: { $addToSet: '$_id' }, totalSales: { $sum: '$items.lineTotal' }, totalCommission: { $sum: '$items.commissionAmount' }, totalMerchantAmount: { $sum: '$items.merchantAmount' } } }])]); const agg = salesAgg[0]; return { productsCount, pendingProductsCount, ordersCount: agg?.ordersCount?.length || 0, totalSales: agg?.totalSales || 0, totalCommission: agg?.totalCommission || 0, totalMerchantAmount: agg?.totalMerchantAmount || 0 }; };
 exports.listMerchants = async (req, res, next) => { try { const { status } = req.query; const filter = status ? { status } : {}; const merchants = await Merchant.find(filter).populate('user', 'name email phone governorate center isActive isEmailVerified').sort('-createdAt'); res.json({ merchants }); } catch (err) { next(err); } };
 exports.getMerchantOverview = async (req, res, next) => { try { const { status } = req.query; const merchantFilter = status ? { status } : {}; const merchants = await Merchant.find(merchantFilter).populate('user', 'name email phone governorate center isActive isEmailVerified').sort('-createdAt').lean(); const merchantIds = merchants.map((merchant) => merchant._id); const [productAgg, salesAgg] = await Promise.all([Product.aggregate([{ $match: { merchant: { $in: merchantIds } } }, { $group: { _id: '$merchant', productsCount: { $sum: 1 }, pendingProductsCount: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } } } }]), Order.aggregate([{ $match: { status: { $ne: 'cancelled' }, 'items.merchant': { $in: merchantIds } } }, { $unwind: '$items' }, { $match: { 'items.merchant': { $in: merchantIds } } }, { $group: { _id: '$items.merchant', orders: { $addToSet: '$_id' }, totalSales: { $sum: '$items.lineTotal' }, totalCommission: { $sum: '$items.commissionAmount' }, totalMerchantAmount: { $sum: '$items.merchantAmount' } } }])]); const productMap = new Map(productAgg.map(x => [String(x._id), x])); const salesMap = new Map(salesAgg.map(x => [String(x._id), x])); const rows = merchants.map(m => { const key = String(m._id); const p = productMap.get(key) || {}; const s = salesMap.get(key) || {}; return { ...m, stats: { productsCount: p.productsCount || 0, pendingProductsCount: p.pendingProductsCount || 0, ordersCount: s.orders?.length || 0, totalSales: s.totalSales || 0, totalCommission: s.totalCommission || 0, totalMerchantAmount: s.totalMerchantAmount || 0 } }; }); const summary = rows.reduce((a, m) => { a.total += 1; if (m.status === 'approved') a.approved += 1; if (m.status === 'pending') a.pending += 1; if (m.status === 'suspended') a.suspended += 1; a.products += m.stats.productsCount; a.pendingProducts += m.stats.pendingProductsCount; a.orders += m.stats.ordersCount; a.sales += m.stats.totalSales; a.commission += m.stats.totalCommission; a.merchantAmount += m.stats.totalMerchantAmount; return a; }, { total: 0, approved: 0, pending: 0, suspended: 0, products: 0, pendingProducts: 0, orders: 0, sales: 0, commission: 0, merchantAmount: 0 }); res.json({ merchants: rows, summary }); } catch (err) { next(err); } };
