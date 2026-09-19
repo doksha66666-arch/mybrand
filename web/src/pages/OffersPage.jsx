@@ -53,7 +53,7 @@ function ProductCard({ product }) {
     <div className="offer-product-info">
       <div className="offer-product-title">{title}</div>
       <div className="offer-product-price"><strong>{price.toLocaleString('ar-EG')}ج</strong>{old > price && <del>{old.toLocaleString('ar-EG')}ج</del>}</div>
-      <button type="button" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button>
+      <button type="button" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : hasOptions ? 'اختر الخيارات' : 'أضف للسلة'}</button>
     </div>
   </Link>;
 }
