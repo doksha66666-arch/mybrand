@@ -6,7 +6,7 @@ import { GOVERNORATES, getCenters } from '../data/egyptLocations';
 import './RegisterPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
-const API_BASE = String(import.meta.env.VITE_API_BASE_URL || 'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/$/, '');
+const API_BASE = `${API_ORIGIN}/api`;
 const socialLogin = (provider) => { window.location.assign(`${API_BASE}/auth/${provider}`); };
 const strengthText = ['ضعيفة جدًا', 'ضعيفة', 'متوسطة', 'جيدة', 'قوية'];
 function InputWrap({ children, className = '' }) { return <div className={`register-input-wrap ${className}`}>{children}</div>; }
