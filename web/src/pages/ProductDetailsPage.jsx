@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useStoreLayout } from '../context/StoreLayoutContext';
