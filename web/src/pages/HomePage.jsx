@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 import TrendLiveCard from '../components/TrendLiveCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -34,7 +34,8 @@ function ProductCard({ product }) {
   const title = product.nameAr || product.name || 'منتج';
   const price = Number(product.finalPrice ?? product.price ?? 0);
   const old = Number(product.compareAtPrice ?? product.oldPrice ?? 0);
-  const image = product.images?.[0] || product.image || product.imageUrl;
+  const rawImage = product.images?.[0] || product.image || product.imageUrl;
+  const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
   const discount = Number(product.discountAmount || 0);
   const stock = Math.max(0, Number(product.stock ?? product.quantity ?? 0));
   const outOfStock = stock <= 0;
