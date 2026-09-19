@@ -58,10 +58,13 @@ export function StoreLayoutProvider({ children }) {
     api.get('/config')
       .then(({ data }) => {
         if (!active) return;
-        const value = data?.pageLayouts;
-        if (value && typeof value === 'object' && !Array.isArray(value)) setLayouts(value);
-        const remoteTheme = data?.theme;
-        if (remoteTheme && typeof remoteTheme === 'object' && !Array.isArray(remoteTheme)) setTheme({ ...DEFAULT_THEME, ...remoteTheme });
+        const previewMode = new URLSearchParams(window.location.search).get('customizerPreview') === '1';
+        if (!previewMode) {
+          const value = data?.pageLayouts;
+          if (value && typeof value === 'object' && !Array.isArray(value)) setLayouts(value);
+          const remoteTheme = data?.theme;
+          if (remoteTheme && typeof remoteTheme === 'object' && !Array.isArray(remoteTheme)) setTheme({ ...DEFAULT_THEME, ...remoteTheme });
+        }
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
