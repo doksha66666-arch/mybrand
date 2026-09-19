@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import './LoginPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
-const API_BASE = String(import.meta.env.VITE_API_BASE_URL || 'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/$/, '');
+const API_BASE = `${API_ORIGIN}/api`;
 const socialLogin = (provider) => window.location.assign(`${API_BASE}/auth/${provider}`);
 
 export default function LoginPage() {
