@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import './ProductDetailsPage.css';
 import './SellerBadge.css';
 
-const API_ORIGIN = String(import.meta.env.VITE_API_BASE_URL || 'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/api\/?$/, '');
+
 const asArray = (value) => Array.isArray(value) ? value : value ? [value] : [];
 const getProductId = (product) => product?._id ?? product?.id ?? product?.productId ?? null;
 const getProductName = (product) => product?.nameAr || product?.name || product?.nameEn || 'منتج';

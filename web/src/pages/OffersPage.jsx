@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../api/client';
+import { Link, useNavigate } from 'react-router-dom';
+import api, { API_ORIGIN } from '../api/client';
 import { useCart } from '../context/CartContext';
 import './OffersPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
@@ -25,29 +25,35 @@ function getDiscount(product) {
 
 function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const id = product?._id || product?.id;
   const title = product?.nameAr || product?.name || 'منتج';
   const price = Number(product?.finalPrice ?? product?.price ?? 0);
   const old = Number(product?.compareAtPrice ?? product?.oldPrice ?? 0);
-  const image = product?.images?.[0] || product?.image || product?.imageUrl;
+  const rawImage = product?.images?.[0] || product?.image || product?.imageUrl;
+  const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
+  const stock = Math.max(0, Number(product?.stock ?? product?.quantity ?? 0));
+  const outOfStock = stock <= 0;
+  const hasOptions = Array.isArray(product?.variants) && product.variants.length > 0;
   const discount = getDiscount(product);
   const add = (event) => {
     event.preventDefault();
-    if (!id) return;
+    if (!id || outOfStock) return;
     setBusy(true);
+    if (hasOptions) { navigate(`/products/${encodeURIComponent(product?.slug || id)}`); setBusy(false); return; }
     addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1);
     setTimeout(() => setBusy(false), 900);
   };
   return <Link to={`/products/${product?.slug || id}`} className="offer-product-card">
     <div className="offer-product-image">
-      {image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}
+      {image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{outOfStock && <span className="offer-discount">نفد المخزون</span>}
       {discount > 0 && <span className="offer-discount">-{discount}٪</span>}
     </div>
     <div className="offer-product-info">
       <div className="offer-product-title">{title}</div>
       <div className="offer-product-price"><strong>{price.toLocaleString('ar-EG')}ج</strong>{old > price && <del>{old.toLocaleString('ar-EG')}ج</del>}</div>
-      <button type="button" onClick={add}>{busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button>
+      <button type="button" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : hasOptions ? 'اختر الخيارات' : 'أضف للسلة'}</button>
     </div>
   </Link>;
 }

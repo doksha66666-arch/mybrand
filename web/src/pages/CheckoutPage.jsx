@@ -167,6 +167,7 @@ export default function CheckoutPage() {
 
   const submitOrder = async (e) => {
     e.preventDefault(); setError('');
+    if (!user) return navigate('/login', { state: { returnTo: '/checkout', checkoutState: location.state || null } });
     if (!name || !phone || !city || !street) return setError('يرجى تعبئة كل بيانات التوصيل');
     if (paymentMethod === 'vodafone_cash' && !senderPhone) return setError('يرجى إدخال رقم الهاتف الذي حوّلت منه');
     if (!checkoutItems.length) return setError('لا يوجد منتج لإتمام الطلب');

@@ -13,8 +13,16 @@ export default function SocialAuthCallbackPage() {
     if (error) { setMessage(error); setTimeout(() => navigate('/login', { replace: true }), 2200); return; }
     if (!token) { setMessage('تعذر إتمام تسجيل الدخول.'); setTimeout(() => navigate('/login', { replace: true }), 2200); return; }
     localStorage.setItem('mybrand_token', token);
+    let resume = null;
+    try {
+      const raw = localStorage.getItem('mybrand_social_return');
+      if (raw) resume = JSON.parse(raw);
+      localStorage.removeItem('mybrand_social_return');
+    } catch (_) {}
+    const returnTo = typeof resume?.returnTo === 'string' && resume.returnTo.startsWith('/') ? resume.returnTo : '/';
+    const returnState = resume?.checkoutState || undefined;
     api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => navigate('/', { replace: true }))
+      .then(() => navigate(returnTo, { replace: true, state: returnState }))
       .catch(() => { localStorage.removeItem('mybrand_token'); setMessage('تعذر التحقق من جلسة تسجيل الدخول.'); setTimeout(() => navigate('/login', { replace: true }), 2200); });
   }, [navigate, searchParams]);
 

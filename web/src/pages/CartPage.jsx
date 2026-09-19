@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import './CartPage.css';
 
@@ -35,7 +35,7 @@ const lineKey = (item) => {
   const optionText = Object.keys(options).sort().map((key) => `${key}:${options[key]}`).join('|');
   return `${id}:${variantId}:${optionText}`;
 };
-const API_ORIGIN = String(import.meta.env.VITE_API_BASE_URL || 'https://mybrand-app-production-e260.up.railway.app/api').replace(/\/api\/?$/, '');
+
 const imageCandidates = (item) => {
   const values = [item?.image, Array.isArray(item?.images) ? item.images[0] : item?.images, item?.imageUrl, item?.thumbnail, item?.photo];
   return [...new Set(values.flatMap((value) => {
@@ -107,21 +107,35 @@ function CartPage() {
     if (!product) return { stock: Math.max(0, Number(item?.stock ?? item?.quantity ?? 0)), outOptions: new Set(), source: 'fallback' };
     const variants = Array.isArray(product?.variants) ? product.variants : [];
     if (!variants.length) return { stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)), outOptions: new Set(), source: 'product' };
+
+    const options = getOptions(item);
+    const matched = Object.entries(options)
+      .map(([name, value]) => ({ name, value, variant: findVariant(variants, name, value) }))
+      .filter((entry) => entry.variant);
+
+    if (matched.length) {
+      const outOptions = new Set(
+        matched.filter((entry) => Number(entry.variant?.stock ?? 0) <= 0).map((entry) => optionKey(entry.name)),
+      );
+      const stock = Math.min(...matched.map((entry) => Math.max(0, Number(entry.variant?.stock ?? 0))));
+      return { stock, outOptions, source: 'options' };
+    }
+
     if (item?.variantId != null) {
-      const selectedVariant = variants.find((variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId));
+      const selectedVariant = variants.find(
+        (variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId),
+      );
       if (selectedVariant) {
         const stock = Math.max(0, Number(selectedVariant.stock ?? 0));
-        return { stock, outOptions: stock === 0 ? new Set(Object.keys(getOptions(item)).map(optionKey)) : new Set(), source: 'variant' };
+        return { stock, outOptions: stock === 0 ? new Set(['variant']) : new Set(), source: 'variant' };
       }
     }
-    const options = getOptions(item);
-    const matched = Object.entries(options).map(([name, value]) => ({ name, value, variant: findVariant(variants, name, value) })).filter((entry) => entry.variant);
-    if (matched.length) {
-      const outOptions = new Set(matched.filter((entry) => Number(entry.variant?.stock ?? 0) <= 0).map((entry) => optionKey(entry.name)));
-      const stock = Math.min(...matched.map((entry) => Math.max(0, Number(entry.variant?.stock ?? 0))));
-      return { stock, outOptions, source: 'option' };
-    }
-    return { stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)), outOptions: new Set(), source: 'product' };
+
+    return {
+      stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)),
+      outOptions: new Set(),
+      source: 'product',
+    };
   };
   const getCurrentStock = (item) => getVariantStatus(item).stock;
   const invalidSelected = useMemo(() => selectedItems.some((item) => { const stock = getVariantStatus(item).stock; return stock === 0 || (stock != null && stock < item.quantity); }), [selectedItems, liveStock]);
@@ -132,7 +146,7 @@ function CartPage() {
   const goToCheckout = () => { if (!selectedItems.length || invalidSelected) return; navigate('/checkout', { state: { selectedItems: selectedItems.map((item) => ({ ...item })) } }); };
   if (!normalized.length) return <main className="cart-app" dir="rtl"><header className="cart-topbar" style={getStyle('header')}><button type="button" className="cart-back" onClick={() => navigate(-1)} aria-label="رجوع">‹</button><div className="cart-title-wrap"><h1>سلة المشتريات</h1><span>٠ قطعة</span></div><button type="button" className="cart-edit" onClick={() => navigate('/')}>تسوق</button></header><section className="cart-empty"><div className="cart-empty-icon"><Icon /></div><div className="cart-kicker">MYBRAND CART</div><h2>سلتك فاضية حاليًا</h2><p>اكتشف المنتجات وأضف ما يعجبك إلى السلة، وسيظهر هنا مباشرة.</p><button type="button" onClick={() => navigate('/')}>ابدأ التسوق <span>←</span></button></section></main>;
   return <main className="cart-app" dir="rtl">
-    <header className="cart-topbar"><button type="button" className="cart-back" onClick={() => navigate(-1)} aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6 6" /></svg></button><div className="cart-title-wrap"><h1>سلة المشتريات</h1><span>{money(itemsCount)} قطعة</span></div><button type="button" className="cart-edit" onClick={() => setEditing((value) => !value)}>{editing ? 'تم' : 'تعديل'}</button></header>
+    <header className="cart-topbar"><button type="button" className="cart-back" onClick={() => navigate(-1)} aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg></button><div className="cart-title-wrap"><h1>سلة المشتريات</h1><span>{money(itemsCount)} قطعة</span></div><button type="button" className="cart-edit" onClick={() => setEditing((value) => !value)}>{editing ? 'تم' : 'تعديل'}</button></header>
     <section className="select-all-row" style={getStyle('items')}><button type="button" className="select-left" onClick={toggleAll} aria-pressed={allSelected}><Check on={allSelected} /><span>{allSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'}</span></button><div className="select-actions"><span className="selected-count">{money(selectedCount)} قطعة محددة</span>{editing && <><button type="button" className="delete-selected" onClick={removeSelected} disabled={!selectedItems.length}>حذف المحدد</button><button type="button" className="clear-cart" onClick={clearAll}>تفريغ السلة</button></>}</div></section>
     {invalidSelected && <div role="alert" style={{margin:'12px 0 2px',padding:'11px 14px',borderRadius:14,border:'1px solid #fda4af',background:'#fff1f2',color:'#9f1239',fontWeight:900,fontSize:12}}>⚠️ يوجد اختيار نفدت كميته أو أصبحت كميته المتاحة أقل من الكمية الموجودة في السلة. راجع اللون/المقاس المحدد.</div>}
     <div className="cart-selection-note" role="status"><span>✓</span><div><b>{selectedItems.length ? `${money(selectedCount)} قطعة جاهزة للشراء` : 'لم يتم اختيار منتجات'}</b><small>{selectedItems.length ? 'سيتم إرسال المنتجات المحددة فقط إلى صفحة إتمام الشراء.' : 'حدد المنتجات التي تريد شراءها للمتابعة.'}</small></div></div>

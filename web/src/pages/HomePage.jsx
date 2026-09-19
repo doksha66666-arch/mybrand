@@ -1,16 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import api from '../api/client';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import api, { API_ORIGIN } from '../api/client';
 import TrendLiveCard from '../components/TrendLiveCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import './HomePagePremium.css';
-
-const FALLBACK_CATEGORIES = [
-  ['نساء', 'bag', '#FFE5E0'], ['رجال', 'shirt', '#E5EEFF'], ['أطفال', 'cart', '#FFF3D6'],
-  ['تجميل', 'beauty', '#F1E5FF'], ['حقائب', 'bag', '#E0F7EE'], ['أحذية', 'shoe', '#FFE5E0'],
-];
 
 function Icon({ type }) {
   const c = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -28,28 +23,34 @@ function Icon({ type }) {
 }
 
 function Countdown() {
-  const [total, setTotal] = useState(3 * 3600 + 21 * 60 + 9);
-  useEffect(() => { const id = setInterval(() => setTotal((v) => Math.max(0, v - 1)), 1000); return () => clearInterval(id); }, []);
-  return <div className="flash-timer"><span className="box">{String(Math.floor(total / 3600)).padStart(2, '0')}</span>:<span className="box">{String(Math.floor((total % 3600) / 60)).padStart(2, '0')}</span>:<span className="box">{String(total % 60).padStart(2, '0')}</span></div>;
+  return <div className="flash-timer"><span className="box" style={{ width: 'auto', minWidth: '74px', padding: '0 10px', fontSize: '12px' }}>عرض محدود</span></div>;
 }
 
 function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const { productIds, toggleWishlist } = useWishlist();
   const [busy, setBusy] = useState(false);
   const id = product._id || product.id;
   const title = product.nameAr || product.name || 'منتج';
   const price = Number(product.finalPrice ?? product.price ?? 0);
   const old = Number(product.compareAtPrice ?? product.oldPrice ?? 0);
-  const image = product.images?.[0] || product.image || product.imageUrl;
+  const rawImage = product.images?.[0] || product.image || product.imageUrl;
+  const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
   const discount = Number(product.discountAmount || 0);
+  const stock = Math.max(0, Number(product.stock ?? product.quantity ?? 0));
+  const outOfStock = stock <= 0;
+  const hasOptions = Array.isArray(product.variants) && product.variants.length > 0;
   const liked = productIds.includes(id);
   const add = (e) => {
-    e.preventDefault(); setBusy(true);
+    e.preventDefault();
+    if (!id || outOfStock) return;
+    setBusy(true);
+    if (hasOptions) { navigate(`/products/${encodeURIComponent(product.slug || id)}`); setBusy(false); return; }
     addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1);
     setTimeout(() => setBusy(false), 900);
   };
-  return <Link to={`/products/${product.slug || id}`} className="card"><div className="card-img" style={{ background: product.bg || '#F3F4F6' }}>{(discount > 0 || old > price) && <span className="off-tag">-{Math.round(discount || ((old - price) / old * 100))}٪</span>}<button type="button" className={`fav-ic ${liked ? 'liked' : ''}`} onClick={(e) => { e.preventDefault(); toggleWishlist(id); }} aria-label="المفضلة">♥</button>{image ? <img src={image} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span className="mock-product-icon"><Icon type="bag" /></span>}</div><div className="card-info"><div className="card-title">{title}</div><div className="price-line"><span className="price-now">{price.toLocaleString('ar-EG')}ج</span>{old > price && <span className="price-old">{old.toLocaleString('ar-EG')}ج</span>}</div><div className="rating-line">★ {Number(product.rating || 0).toFixed(1)} ({Number(product.reviewsCount || product.reviewCount || 0).toLocaleString('ar-EG')} تقييم)</div><button type="button" className="home-add-cart" onClick={add}>{busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button></div></Link>;
+  return <Link to={`/products/${product.slug || id}`} className="card"><div className="card-img" style={{ background: product.bg || '#F3F4F6' }}>{(discount > 0 || old > price) && <span className="off-tag">-{Math.round(discount || ((old - price) / old * 100))}٪</span>}<button type="button" className={`fav-ic ${liked ? 'liked' : ''}`} onClick={(e) => { e.preventDefault(); toggleWishlist(id); }} aria-label="المفضلة">♥</button>{image ? <img src={image} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span className="mock-product-icon"><Icon type="bag" /></span>}</div><div className="card-info"><div className="card-title">{title}</div><div className="price-line"><span className="price-now">{price.toLocaleString('ar-EG')}ج</span>{old > price && <span className="price-old">{old.toLocaleString('ar-EG')}ج</span>}</div><div className="rating-line">★ {Number(product.rating || 0).toFixed(1)} ({Number(product.reviewsCount || product.reviewCount || 0).toLocaleString('ar-EG')} تقييم)</div><button type="button" className="home-add-cart" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : hasOptions ? 'اختر الخيارات' : 'أضف للسلة'}</button></div></Link>;
 }
 
 function HomeHero() {
@@ -67,7 +68,7 @@ function HomeHero() {
 }
 
 function CategoryImages({ categories }) {
-  return <section className="home-category-images" aria-label="الأقسام"><div className="sec-title"><h2>الأقسام</h2><Link className="more" to="/categories">عرض الكل</Link></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px 10px', padding: '4px 2px 16px' }}>{categories.map((c, i) => { const image = c.image || c.imageUrl || c.coverImage || c.bannerImage || c.thumbnail; const fallback = FALLBACK_CATEGORIES[i % FALLBACK_CATEGORIES.length][2]; const categoryPath = c._id || c.id || c.slug; const categoryTarget = categoryPath ? `/categories?category=${encodeURIComponent(categoryPath)}` : '/categories'; return <Link to={categoryTarget} key={c._id || i} style={{ minWidth: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}><div style={{ width: '72px', height: '72px', margin: '0 auto 8px', borderRadius: '50%', overflow: 'hidden', background: fallback, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.08)', border: '1px solid rgba(0,0,0,.06)' }}>{image ? <img src={image} alt={c.nameAr || c.name || 'قسم'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon type={c.icon || FALLBACK_CATEGORIES[i % FALLBACK_CATEGORIES.length][1]} />}</div><span style={{ display: 'block', fontWeight: 700, fontSize: '13px' }}>{c.nameAr || c.name}</span></Link>; })}</div></section>;
+  return <section className="home-category-images" aria-label="الأقسام"><div className="sec-title"><h2>الأقسام</h2><Link className="more" to="/categories">عرض الكل</Link></div>{categories.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px 10px', padding: '4px 2px 16px' }}>{categories.map((c, i) => { const image = c.image || c.imageUrl || c.coverImage || c.bannerImage || c.thumbnail; const categoryPath = c._id || c.id || c.slug; const categoryTarget = categoryPath ? `/categories?category=${encodeURIComponent(categoryPath)}` : '/categories'; return <Link to={categoryTarget} key={c._id || c.id || i} style={{ minWidth: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}><div style={{ width: '72px', height: '72px', margin: '0 auto 8px', borderRadius: '50%', overflow: 'hidden', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.08)', border: '1px solid rgba(0,0,0,.06)' }}>{image ? <img src={image} alt={c.nameAr || c.name || 'قسم'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon type={c.icon || 'bag'} />}</div><span style={{ display: 'block', fontWeight: 700, fontSize: '13px' }}>{c.nameAr || c.name || 'قسم'}</span></Link>; })}</div> : <div className="category-empty">لا توجد أقسام منشورة حاليًا. ستظهر الأقسام هنا تلقائيًا عند إضافتها.</div>}</section>;
 }
 
 function StoreSection({ id, style, children }) {
@@ -78,12 +79,12 @@ export default function HomePage() {
   const [data, setData] = useState(null); const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams(); const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
   const [searchResults, setSearchResults] = useState([]); const [searching, setSearching] = useState(false); const [searched, setSearched] = useState(Boolean(searchParams.get('q')));
-  const { getStyle, isEnabled } = useStoreLayout('home');
+  const { getStyle } = useStoreLayout('home');
   useEffect(() => { let active = true; api.get('/homepage').then(({ data: result }) => active && setData(result)).catch(() => active && setData({})).finally(() => active && setLoading(false)); return () => { active = false; }; }, []);
   useEffect(() => { const q = searchParams.get('q') || ''; setSearchInput(q); if (!q) { setSearchResults([]); setSearched(false); return; } let active = true; setSearching(true); api.get('/products', { params: { search: q } }).then(({ data: result }) => active && setSearchResults(result.products || [])).catch(() => active && setSearchResults([])).finally(() => active && setSearching(false)); return () => { active = false; }; }, [searchParams]);
   const submitSearch = async (e) => { e.preventDefault(); const q = searchInput.trim(); if (!q) { setSearchParams({}); return; } setSearchParams({ q }); };
   const clearSearch = () => { setSearchInput(''); setSearchParams({}); };
-  const categories = data?.categories?.length ? data.categories : FALLBACK_CATEGORIES.map((x, i) => ({ _id: `fallback-${i}`, nameAr: x[0], icon: x[1] }));
+  const categories = Array.isArray(data?.categories) ? data.categories.filter(Boolean) : [];
   const products = data?.featuredProducts?.length ? data.featuredProducts : (data?.newProducts || []);
   const discounted = data?.discountedProducts || [];
   const section = (id, children) => <StoreSection id={id} style={getStyle(id)}>{children}</StoreSection>;
@@ -91,7 +92,7 @@ export default function HomePage() {
     {(searching || searched) && <section className="home-search-results"><div className="sec-title"><h2>{searching ? 'جاري البحث...' : `نتائج البحث عن «${searchInput}»`}</h2>{searched && !searching && <button type="button" className="more" onClick={clearSearch}>مسح</button>}</div>{!searching && searched && !searchResults.length ? <div className="category-empty">لا توجد منتجات مطابقة. جرّب كلمة أخرى.</div> : !searching && searchResults.length > 0 && <div className="grid">{searchResults.slice(0, 12).map((p) => <ProductCard key={p._id || p.id} product={p}/>)}</div>}</section>}
     <div className="home-layout-sections">
       {section('hero', <HomeHero />)}
-      {section('offers', <><section className="flash"><div className="flash-left"><span className="t1">⚡ فلاش سيل حتى ٧٠٪</span><span className="t2">العرض لفترة محدودة</span></div><Countdown/></section><div className="tile-row"><Link to="/new-arrivals" className="tile tile-dark"><h4>وصل حديثًا</h4><span>تشكيلة الأسبوع</span></Link><Link to="/offers" className="tile tile-sale"><h4>عروض وخصومات</h4><span>قطع مختارة</span></Link></div></>)}
+      {section('offers', <><section className="flash"><div className="flash-left"><span className="t1">⚡ عروض محدودة</span><span className="t2">الخصومات المتاحة تظهر على المنتجات</span></div><Countdown/></section><div className="tile-row"><Link to="/new-arrivals" className="tile tile-dark"><h4>وصل حديثًا</h4><span>تشكيلة الأسبوع</span></Link><Link to="/offers" className="tile tile-sale"><h4>عروض وخصومات</h4><span>قطع مختارة</span></Link></div></>)}
       {section('categories', <CategoryImages categories={categories}/>)}
       {section('best', <><div className="sec-title"><h2>🔥 الأكثر مبيعًا</h2><Link className="more" to="/categories">عرض الكل</Link></div>{loading ? <div className="grid">{Array.from({ length: 6 }).map((_, i) => <div className="card" key={i}><div className="card-img"/><div className="card-info"><div className="card-title">جاري تحميل المنتج...</div></div></div>)}</div> : products.length ? <div className="grid">{products.slice(0, 8).map((p) => <ProductCard key={p._id || p.id} product={p}/>)}</div> : <div className="category-empty">لا توجد منتجات منشورة حاليًا. أضف المنتجات من لوحة الإدارة.</div>}</>)}
       {section('featured', discounted.length > 0 ? <><div className="sec-title"><h2>⚡ عروض اليوم</h2><Link className="more" to="/offers">عرض الكل</Link></div><div className="grid">{discounted.slice(0, 4).map((p) => <ProductCard key={`d-${p._id || p.id}`} product={p}/>)}</div></> : null)}
