@@ -13,10 +13,12 @@ function ProductCard({ product }) {
   const price = Number(product?.finalPrice ?? product?.price ?? 0);
   const old = Number(product?.compareAtPrice ?? product?.oldPrice ?? 0);
   const image = product?.images?.[0] || product?.image || product?.imageUrl;
-  const add = (event) => { event.preventDefault(); if (!id) return; setBusy(true); addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1); setTimeout(() => setBusy(false), 900); };
+  const stock = Math.max(0, Number(product?.stock ?? product?.quantity ?? 0));
+  const outOfStock = stock <= 0;
+  const add = (event) => { event.preventDefault(); if (!id || outOfStock) return; setBusy(true); addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1); setTimeout(() => setBusy(false), 900); };
   return <Link to={`/products/${product?.slug || id}`} className="new-product-card">
     <div className="new-product-image">{image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{old > price && <span className="new-product-discount">-{Math.round((1 - price / old) * 100)}٪</span>}</div>
-    <div className="new-product-info"><div className="new-product-title">{title}</div><div className="new-product-price"><strong>{price.toLocaleString('ar-EG')}ج</strong>{old > price && <del>{old.toLocaleString('ar-EG')}ج</del>}</div><button type="button" onClick={add}>{busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button></div>
+    <div className="new-product-info"><div className="new-product-title">{title}</div><div className="new-product-price"><strong>{price.toLocaleString('ar-EG')}ج</strong>{old > price && <del>{old.toLocaleString('ar-EG')}ج</del>}</div><button type="button" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : 'أضف للسلة'}</button></div>
   </Link>;
 }
 
