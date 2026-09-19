@@ -8,6 +8,10 @@ const DEFAULT_THEME = {
   text: '#111827',
   border: '#E5E7EB',
   radius: 18,
+  buttonRadius: 12,
+  contentWidth: 1200,
+  fontScale: 1,
+  shadow: 1,
 };
 
 exports.getPublicConfig = async (req, res, next) => {
