@@ -13,5 +13,5 @@ export default function BannerPlacement({ placement }) {
     return () => { active = false; };
   }, [placement]);
   if (!banners.length) return null;
-  return <section className="mybrand-page-banners" aria-label="بنرات الصفحة">{banners.map((banner) => <div className="mybrand-page-banner" key={banner._id}>{banner.buttonLink ? <Link to={banner.buttonLink}><img src={normalizeImage(banner.image)} alt={banner.titleAr || 'بانر'} loading="lazy" /></Link> : <img src={banner.image} alt={banner.titleAr || 'بانر'} loading="lazy" />}</div>)}</section>;
+  return <section className="mybrand-page-banners" aria-label="بنرات الصفحة">{banners.map((banner) => <div className="mybrand-page-banner" key={banner._id}>{banner.buttonLink ? <Link to={banner.buttonLink}><img src={normalizeImage(banner.image)} alt={banner.titleAr || 'بانر'} loading="lazy" /></Link> : <img src={normalizeImage(banner.image)} alt={banner.titleAr || 'بانر'} loading="lazy" />}</div>)}</section>;
 }
