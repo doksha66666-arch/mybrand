@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../api/client';
+import api, { API_ORIGIN } from '../api/client';
 import EmptyState from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
 import './OrdersPage.css';
@@ -12,7 +12,8 @@ const PAYMENT = { pending: 'بانتظار الدفع', paid: 'تم الدفع',
 const FILTERS = [['all', 'الكل'], ['active', 'قيد المتابعة'], ['delivered', 'تم التسليم'], ['cancelled', 'ملغاة']];
 const formatDate = (value) => { if (!value) return '—'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '—'; return new Intl.DateTimeFormat('ar-EG', { day: '2-digit', month: 'long', year: 'numeric' }).format(date); };
 const getItems = (order) => Array.isArray(order?.items) ? order.items : [];
-const getItemImage = (item) => item?.imageSnapshot || item?.image || item?.images?.[0] || item?.product?.image || item?.product?.images?.[0] || '';
+const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\\/+/, '')}`; };
+const getItemImage = (item) => normalizeImage(item?.imageSnapshot || item?.image || item?.images?.[0] || item?.product?.image || item?.product?.images?.[0] || '');
 const getItemName = (item) => item?.nameSnapshot || item?.nameAr || item?.name || item?.product?.nameAr || item?.product?.name || 'منتج';
 const sellerInfo = (item) => { const level = item?.sellerLevelSnapshot || item?.sellerLevel || 'beginner'; const names = { beginner: 'بائع مبتدئ', featured: 'بائع مميز', five_star: 'بائع 5 نجوم' }; const stars = { beginner: 1, featured: 3, five_star: 5 }; return { name: item?.merchantNameSnapshot || item?.merchant?.storeName || item?.merchant?.businessName || '', label: names[level] || names.beginner, stars: stars[level] || 1, rating: Number(item?.sellerRatingSnapshot ?? item?.sellerRating ?? 0), reviews: Number(item?.sellerReviewCountSnapshot ?? item?.sellerReviewCount ?? 0) }; };
 const sellerKey = (item) => { const merchant = item?.merchant || item?.product?.merchant; return merchant?._id || merchant?.id || item?.merchantId || item?.merchantNameSnapshot || 'platform'; };
