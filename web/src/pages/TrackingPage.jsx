@@ -17,7 +17,7 @@ const getOptions = (item) => {
   return out;
 };
 const optionEntries = (item) => Object.entries(getOptions(item)).filter(([, value]) => value != null && String(value).trim() !== '');
-const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\\/+/, '')}`; };
+const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\/+/, '')}`; };
 
 export default function TrackingPage() {
   const navigate = useNavigate();
