@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_ORIGIN } from '../api/client';
 import './LoginPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
