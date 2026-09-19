@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useCart } from '../context/CartContext';
 import './OffersPage.css';
@@ -22,7 +22,7 @@ function getDiscount(product) {
   return 0;
 }
 
-function ProductCard({ product }) {
+function ProductCard({ product, merchantId = '' }) {
   const { addToCart } = useCart();
   const [busy, setBusy] = useState(false);
   const id = product?._id || product?.id;
@@ -38,7 +38,8 @@ function ProductCard({ product }) {
     addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1);
     setTimeout(() => setBusy(false), 900);
   };
-  return <Link to={`/products/${product?.slug || id}`} className="offer-product-card">
+  const target = `/products/${product?.slug || id}${merchantId ? `?merchant=${encodeURIComponent(merchantId)}` : ''}`;
+  return <Link to={target} className="offer-product-card">
     <div className="offer-product-image">
       {image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}
       {discount > 0 && <span className="offer-discount">-{discount}٪</span>}
@@ -52,6 +53,8 @@ function ProductCard({ product }) {
 }
 
 export default function OffersPage() {
+  const [searchParams] = useSearchParams();
+  const merchantId = searchParams.get('merchant') || '';
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -59,7 +62,7 @@ export default function OffersPage() {
 
   useEffect(() => {
     let alive = true;
-    api.get('/homepage').then(({ data }) => {
+    api.get('/homepage', { params: merchantId ? { merchant: merchantId } : undefined }).then(({ data }) => {
       if (!alive) return;
       const list = Array.isArray(data?.discountedProducts) ? data.discountedProducts.filter(Boolean) : [];
       setProducts(list.sort((a, b) => getDiscount(b) - getDiscount(a)));
@@ -88,6 +91,6 @@ export default function OffersPage() {
 
     {!loading && !error && <div className="offers-results-line"><strong>{countLabel}</strong> منتج في الاختيار ده</div>}
 
-    {error ? <div className="offers-empty">{error}</div> : loading ? <div className="offers-grid">{Array.from({ length: 8 }).map((_, i) => <div className="offers-skeleton" key={i}/>)}</div> : visibleProducts.length ? <div className="offers-grid">{visibleProducts.map(product => <ProductCard key={product._id || product.id || product.slug} product={product}/>)}</div> : <div className="offers-empty"><strong>مفيش عروض في الاختيار ده 😅</strong><span>جرّب اختيار تاني وشوف أقوى اللقطات.</span><button type="button" onClick={() => setFilter('all')}>🔥 شوف كل العروض</button></div>}
+    {error ? <div className="offers-empty">{error}</div> : loading ? <div className="offers-grid">{Array.from({ length: 8 }).map((_, i) => <div className="offers-skeleton" key={i}/>)}</div> : visibleProducts.length ? <div className="offers-grid">{visibleProducts.map(product => <ProductCard key={product._id || product.id || product.slug} product={product} merchantId={merchantId}/>)}</div> : <div className="offers-empty"><strong>مفيش عروض في الاختيار ده 😅</strong><span>جرّب اختيار تاني وشوف أقوى اللقطات.</span><button type="button" onClick={() => setFilter('all')}>🔥 شوف كل العروض</button></div>}
   </main>;
 }
