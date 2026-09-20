@@ -28,6 +28,9 @@ export default function SearchPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(Boolean(initial));
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const next = params.get('q') || '';
