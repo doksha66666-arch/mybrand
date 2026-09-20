@@ -29,7 +29,7 @@ router.get('/merchant/mine', merchantOnly, approvedMerchantOnly, merchantOrderDa
 router.get('/merchant/sales', merchantOnly, approvedMerchantOnly, getMerchantSales);
 router.get('/merchant/fulfillment', merchantOnly, approvedMerchantOnly, getMerchantFulfillmentOrders);
 router.put('/merchant/fulfillment/:id', merchantOnly, approvedMerchantOnly, updateMerchantFulfillmentStatus);
-router.post('/:id/cancel', cancelOrder);
+router.post('/:id/cancel', customerOrderDataSanitizer, cancelOrder);
 router.get('/reports/daily', adminOnly, getDailyReports);
 router.get('/reports/daily/:date', adminOnly, getDailyReport);
 router.post('/reports/daily/archive', adminOnly, archiveDailyReport);
