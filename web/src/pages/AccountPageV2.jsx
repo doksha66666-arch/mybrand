@@ -12,20 +12,21 @@ export default function AccountPageV2(){
  const{user,logout}=useAuth();
  const { getStyle } = useStoreLayout('account');
  const previewMode=typeof window!=='undefined'&&(window.__MYBRAND_CUSTOMIZER_PREVIEW__===true||new URLSearchParams(window.location.search).get('customizerPreview')==='1');
- const[account,setAccount]=useState(null),[orders,setOrders]=useState([]),[wishlist,setWishlist]=useState([]),[msg,setMsg]=useState('');
+ const[account,setAccount]=useState(null),[orders,setOrders]=useState([]),[wishlist,setWishlist]=useState([]),[couponCount,setCouponCount]=useState(0),[msg,setMsg]=useState('');
  useEffect(()=>{
   if(previewMode){
    setAccount({name:'عميل MYBRAND',phone:'01000000000',points:320,giftBalance:150,coupons:[{},{}]});
+   setCouponCount(2);
    setOrders([{id:'preview-order-a'},{id:'preview-order-b'}]);
    setWishlist(['preview-a','preview-b','preview-c']);
    return;
   }
   if(!user)return;
-  Promise.all([api.get('/account'),api.get('/orders/my'),api.get('/wishlist')]).then(([a,o,w])=>{setAccount(a.data.user);setOrders(o.data.orders||[]);setWishlist(w.data.wishlist?.products||[])}).catch(()=>setMsg('تعذر تحميل بيانات الحساب'));
+  Promise.all([api.get('/account'),api.get('/orders/my'),api.get('/wishlist'),api.get('/coupons/mine').catch(() => ({ data: { coupons: [] } }))]).then(([a,o,w,c])=>{setAccount(a.data.user);setOrders(o.data.orders||[]);setWishlist(w.data.wishlist?.products||[]);setCouponCount(Array.isArray(c.data?.coupons) ? c.data.coupons.length : 0);}).catch(()=>setMsg('تعذر تحميل بيانات الحساب'));
  },[user,previewMode]);
  if(!user&&!previewMode)return <main dir="rtl" className="account-page"><div className="account-login-card"><div className="account-logo">MY<span>BRAND</span></div><h1>حساب MYBRAND</h1><p>سجّل الدخول للوصول إلى حسابك وطلباتك.</p><Link className="account-primary" to="/login">تسجيل الدخول</Link></div></main>;
  const name=account?.name||user?.name||'عضو MYBRAND';
- const points=Number(account?.points||0),gift=Number(account?.giftBalance||0),coupons=account?.coupons?.length||0;
+ const points=Number(account?.points||0),gift=Number(account?.giftBalance||0),coupons=Number(couponCount)||0;
  return <main dir="rtl" className="account-page">
   <section className="account-hero" style={getStyle('profile')}><div className="account-avatar">{name.charAt(0)}</div><div className="account-identity"><h1>{name}</h1><p>{account?.phone||user?.phone||user?.email||''}</p><span>عضو MYBRAND</span></div><Link to="/account/settings" className="account-settings" aria-label="إعدادات الحساب"><Icon type="settings"/></Link></section>
   {msg&&<div className="account-message">{msg}</div>}
