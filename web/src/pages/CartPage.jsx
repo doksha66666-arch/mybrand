@@ -115,12 +115,15 @@ function CartPage() {
     const matched = Object.entries(options)
       .map(([name, value]) => ({ name, value, variant: findVariant(variants, name, value) }))
       .filter((entry) => entry.variant);
-
+    const explicitVariant = item?.variantId != null
+      ? variants.find((variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId))
+      : null;
     const normalizedOptionKeys = Object.keys(options).map(optionKey).filter(Boolean);
-    const missingRequiredOption = [...currentOptionKeys].some((key) => !normalizedOptionKeys.includes(key));
+    const missingRequiredOption = !explicitVariant && [...currentOptionKeys].some((key) => !normalizedOptionKeys.includes(key));
     const unknownStoredOption = normalizedOptionKeys.some((key) => !currentOptionKeys.has(key));
     const invalidOptionValue = Object.entries(options).some(([name, value]) => !findVariant(variants, name, value));
-    const invalidSelection = missingRequiredOption || unknownStoredOption || invalidOptionValue;
+    const mismatchedExplicitVariant = Boolean(explicitVariant && matched.length && !matched.some((entry) => String(entry.variant?._id ?? entry.variant?.id ?? '') === String(explicitVariant._id ?? explicitVariant.id)));
+    const invalidSelection = missingRequiredOption || unknownStoredOption || invalidOptionValue || (item?.variantId != null && !explicitVariant) || mismatchedExplicitVariant;
 
     if (matched.length) {
       const outOptions = new Set(
@@ -130,14 +133,9 @@ function CartPage() {
       return { stock, outOptions, source: 'options', invalidSelection };
     }
 
-    if (item?.variantId != null) {
-      const selectedVariant = variants.find(
-        (variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId),
-      );
-      if (selectedVariant) {
-        const stock = Math.max(0, Number(selectedVariant.stock ?? 0));
-        return { stock, outOptions: stock === 0 ? new Set(['variant']) : new Set(), source: 'variant', invalidSelection };
-      }
+    if (explicitVariant) {
+      const stock = Math.max(0, Number(explicitVariant.stock ?? 0));
+      return { stock, outOptions: stock === 0 ? new Set(['variant']) : new Set(), source: 'variant', invalidSelection };
     }
 
     return {
