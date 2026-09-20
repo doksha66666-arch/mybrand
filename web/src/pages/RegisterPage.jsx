@@ -7,7 +7,19 @@ import './RegisterPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
 const API_BASE = `${API_ORIGIN}/api`;
-const socialLogin = (provider) => { window.location.assign(`${API_BASE}/auth/${provider}`); };
+const socialLogin = (provider, resumeFlow) => {
+  try {
+    if (resumeFlow?.returnTo && resumeFlow.returnTo !== '/') {
+      localStorage.setItem('mybrand_social_return', JSON.stringify({
+        returnTo: resumeFlow.returnTo,
+        checkoutState: resumeFlow.checkoutState || null,
+      }));
+    } else {
+      localStorage.removeItem('mybrand_social_return');
+    }
+  } catch (_) {}
+  window.location.assign(`${API_BASE}/auth/${provider}`);
+};
 const strengthText = ['ضعيفة جدًا', 'ضعيفة', 'متوسطة', 'جيدة', 'قوية'];
 function InputWrap({ children, className = '' }) { return <div className={`register-input-wrap ${className}`}>{children}</div>; }
 function CheckBox({ checked, onClick }) { return <button type="button" className={`register-checkbox ${checked ? 'on' : ''}`} onClick={onClick} aria-pressed={checked}>{checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M5 13l4 4L19 7" /></svg>}</button>; }
@@ -31,7 +43,7 @@ function CustomerRegisterForm({ style, resumeFlow }) {
     <div className="register-check-row"><CheckBox checked={marketing} onClick={() => setMarketing(v => !v)} /><span>أرغب في استقبال العروض والخصومات عبر الرسائل والبريد الإلكتروني</span></div>
     <button className="register-primary-btn" type="submit" disabled={submitting}>{submitting ? 'جارٍ إنشاء الحساب...' : 'إنشاء الحساب'}</button>
     <div className="register-divider"><div className="line" /><span>أو التسجيل عن طريق</span><div className="line" /></div>
-    <div className="register-social-row"><button type="button" className="register-social-btn" onClick={() => socialLogin('google')}>جوجل</button></div>
+    <div className="register-social-row"><button type="button" className="register-social-btn" onClick={() => socialLogin('google', resumeFlow)}>جوجل</button></div>
     <div className="register-login-link">عندك حساب بالفعل؟ <Link to="/login">سجّل دخولك</Link></div>
   </form>;
 }
