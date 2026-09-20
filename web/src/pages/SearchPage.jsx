@@ -58,6 +58,30 @@ export default function SearchPage() {
 
   const title = useMemo(() => submitted ? `نتائج البحث عن «${submitted}»` : 'ابحث عن منتج', [submitted]);
 
+  const loadMore = async () => {
+    const value = submitted.trim();
+    if (!value || loading || loadingMore || page >= pages) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const { data } = await api.get('/products', { params: { search: value, q: value, limit: 40, page: nextPage } });
+      const incoming = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setProducts((current) => {
+        const seen = new Set(current.map((item) => String(item?._id || item?.id || item?.productId || '')));
+        return [...current, ...incoming.filter((item) => {
+          const id = String(item?._id || item?.id || item?.productId || '');
+          return id && !seen.has(id);
+        })];
+      });
+      setPage(nextPage);
+      setPages(Math.max(nextPage, Number(data?.pages) || nextPage));
+    } catch {
+      setError('تعذر تحميل المزيد من نتائج البحث. حاول مرة أخرى.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const submit = (e) => {
     e.preventDefault();
     const value = query.trim();
