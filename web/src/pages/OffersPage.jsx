@@ -47,7 +47,7 @@ function ProductCard({ product }) {
   };
   return <Link to={`/products/${product?.slug || id}`} className="offer-product-card">
     <div className="offer-product-image">
-      {image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{outOfStock && <span className="offer-discount">نفد المخزون</span>}
+      {image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{outOfStock && <span className="offer-stock">نفد المخزون</span>}
       {discount > 0 && <span className="offer-discount">-{discount}٪</span>}
     </div>
     <div className="offer-product-info">
