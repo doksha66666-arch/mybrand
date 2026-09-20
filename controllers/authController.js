@@ -8,8 +8,15 @@ const { createVerificationCode, hashVerificationCode, sendVerificationCode, veri
 const MIN_PASSWORD_LENGTH = 12;
 const signToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
-const normalizePhone = (phone) => { let value = String(phone || '').replace(/\s+/g, '').replace(/[()-]/g, ''); value = value.replace(/^\+20/, '').replace(/^0020/, '').replace(/^0/, ''); return value; };
-const normalizeStoredPhone = (phone) => { const value = normalizePhone(phone); return value ? `0${value}` : ''; };
+const normalizePhone = (phone) => {
+  let value = String(phone || '').trim().replace(/\s+/g, '').replace(/[()-]/g, '');
+  if (value.startsWith('00')) value = `+${value.slice(2)}`;
+  if (value.startsWith('+20')) value = `0${value.slice(3)}`;
+  else if (/^20\d{10}$/.test(value)) value = `0${value.slice(2)}`;
+  else if (/^1\d{9}$/.test(value)) value = `0${value}`;
+  return value;
+};
+const normalizeStoredPhone = (phone) => normalizePhone(phone);
 const phoneCandidates = (phone) => { const raw = String(phone || '').trim(); const normalized = normalizePhone(raw); const stored = normalizeStoredPhone(raw); return [...new Set([raw, normalized, stored].filter(Boolean))]; };
 const userPayload = (user, staff) => ({
   id: user._id, name: user.name, email: user.email, role: user.role, country: user.country,
