@@ -34,6 +34,8 @@ function Countdown() {
   return <div className="flash-timer"><span className="box" style={{ width: 'auto', minWidth: '74px', padding: '0 10px', fontSize: '12px' }}>عرض محدود</span></div>;
 }
 
+const hasPurchasableVariant = (product) => Array.isArray(product?.variants) && product.variants.length > 0 && product.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
+
 function ProductCard({ product }) {
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -47,8 +49,8 @@ function ProductCard({ product }) {
   const image = toImageUrl(rawImage);
   const discount = Number(product.discountAmount || 0);
   const stock = Math.max(0, Number(product.stock ?? product.quantity ?? 0));
-  const outOfStock = stock <= 0;
   const hasOptions = Array.isArray(product.variants) && product.variants.length > 0;
+  const outOfStock = hasOptions ? !hasPurchasableVariant(product) : stock <= 0;
   const liked = productIds.includes(id);
   const add = (e) => {
     e.preventDefault();

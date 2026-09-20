@@ -14,6 +14,8 @@ const FILTERS = [
   ['70', '👑 عروض VIP'],
 ];
 
+const hasPurchasableVariant = (product) => Array.isArray(product?.variants) && product.variants.length > 0 && product.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
+
 function getDiscount(product) {
   const price = Number(product?.finalPrice ?? product?.price ?? 0);
   const old = Number(product?.compareAtPrice ?? product?.oldPrice ?? 0);
@@ -34,8 +36,8 @@ function ProductCard({ product }) {
   const rawImage = product?.images?.[0] || product?.image || product?.imageUrl;
   const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
   const stock = Math.max(0, Number(product?.stock ?? product?.quantity ?? 0));
-  const outOfStock = stock <= 0;
   const hasOptions = Array.isArray(product?.variants) && product.variants.length > 0;
+  const outOfStock = hasOptions ? !hasPurchasableVariant(product) : stock <= 0;
   const discount = getDiscount(product);
   const add = (event) => {
     event.preventDefault();

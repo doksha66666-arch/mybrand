@@ -5,6 +5,8 @@ import { useCart } from '../context/CartContext';
 import './NewArrivalsPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
+const hasPurchasableVariant = (product) => Array.isArray(product?.variants) && product.variants.length > 0 && product.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
+
 function ProductCard({ product }) {
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -16,8 +18,8 @@ function ProductCard({ product }) {
   const rawImage = product?.images?.[0] || product?.image || product?.imageUrl;
   const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
   const stock = Math.max(0, Number(product?.stock ?? product?.quantity ?? 0));
-  const outOfStock = stock <= 0;
   const hasOptions = Array.isArray(product?.variants) && product.variants.length > 0;
+  const outOfStock = hasOptions ? !hasPurchasableVariant(product) : stock <= 0;
   const add = (event) => { event.preventDefault(); if (!id || outOfStock) return; setBusy(true); if (hasOptions) { navigate(`/products/${encodeURIComponent(product?.slug || id)}`); setBusy(false); return; } addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1); setTimeout(() => setBusy(false), 900); };
   return <Link to={`/products/${product?.slug || id}`} className="new-product-card">
     <div className="new-product-image">{image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{old > price && <span className="new-product-discount">-{Math.round((1 - price / old) * 100)}٪</span>}</div>
