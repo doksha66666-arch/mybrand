@@ -136,7 +136,7 @@ function CartPage() {
       );
       if (selectedVariant) {
         const stock = Math.max(0, Number(selectedVariant.stock ?? 0));
-        return { stock, outOptions: stock === 0 ? new Set(['variant']) : new Set(), source: 'variant' };
+        return { stock, outOptions: stock === 0 ? new Set(['variant']) : new Set(), source: 'variant', invalidSelection };
       }
     }
 
