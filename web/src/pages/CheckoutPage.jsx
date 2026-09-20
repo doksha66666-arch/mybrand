@@ -78,12 +78,58 @@ export default function CheckoutPage() {
   const [couponDiscount, setCouponDiscount] = useState(buyNow || selectedItems ? 0 : Number(discount || 0));
   const [couponMessage, setCouponMessage] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0);
+  const [loyaltyConfig, setLoyaltyConfig] = useState(null);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyPreview, setLoyaltyPreview] = useState(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(true);
+  const [loyaltyPreviewLoading, setLoyaltyPreviewLoading] = useState(false);
+  const [loyaltyMessage, setLoyaltyMessage] = useState('');
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [shipping, setShipping] = useState(buyNow ? 'standard' : (shippingFee === 45 ? 'express' : 'standard'));
 
   const selectedAddress = useMemo(() => savedAddresses.find((address) => String(address?._id || '') === String(selectedAddressId)) || null, [savedAddresses, selectedAddressId]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!user) {
+      setLoyaltyBalance(0); setLoyaltyConfig(null); setLoyaltyPoints(0); setLoyaltyPreview(null); setLoyaltyLoading(false);
+      return () => { mounted = false; };
+    }
+    setLoyaltyLoading(true);
+    api.get('/loyalty').then(({ data }) => {
+      if (!mounted) return;
+      setLoyaltyBalance(Math.max(0, Number(data?.points || 0)));
+      setLoyaltyConfig(data?.config || null);
+    }).catch(() => {
+      if (!mounted) return;
+      setLoyaltyBalance(0); setLoyaltyConfig(null);
+    }).finally(() => { if (mounted) setLoyaltyLoading(false); });
+    return () => { mounted = false; };
+  }, [user]);
+
+  useEffect(() => {
+    let timer;
+    const requested = Math.max(0, Math.floor(Number(loyaltyPoints) || 0));
+    if (!user || loyaltyLoading || !loyaltyConfig?.enabled || !requested || !loyaltyBalance || loyaltyMerchandiseAmount <= 0) {
+      setLoyaltyPreview(null); setLoyaltyPreviewLoading(false);
+      return undefined;
+    }
+    timer = setTimeout(async () => {
+      setLoyaltyPreviewLoading(true); setLoyaltyMessage('');
+      try {
+        const { data } = await api.post('/loyalty/preview', { points: requested, merchandiseAmount: loyaltyMerchandiseAmount });
+        setLoyaltyPreview(data || null);
+        setLoyaltyPoints(Math.max(0, Math.floor(Number(data?.acceptedPoints ?? requested) || 0)));
+      } catch (err) {
+        setLoyaltyPreview(null);
+        setLoyaltyMessage(err?.response?.data?.message || 'تعذر احتساب خصم النقاط');
+      } finally { setLoyaltyPreviewLoading(false); }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [user, loyaltyLoading, loyaltyConfig, loyaltyBalance, loyaltyPoints, loyaltyMerchandiseAmount]);
 
   useEffect(() => {
     let mounted = true;
@@ -148,8 +194,10 @@ export default function CheckoutPage() {
   }, [paymentMethodsLoading, availablePaymentOptions.length, currentMethodAvailable, paymentMethods]);
 
   const checkoutDiscount = Math.min(checkoutSubtotal, Math.max(0, Number(couponDiscount) || 0));
+  const loyaltyMerchandiseAmount = Math.max(0, checkoutSubtotal - checkoutDiscount);
+  const loyaltyDiscount = Math.min(loyaltyMerchandiseAmount, Math.max(0, Number(loyaltyPreview?.discount) || 0));
   const checkoutShipping = shipping === 'express' ? 45 : 0;
-  const checkoutTotal = Math.max(0, checkoutSubtotal - checkoutDiscount + checkoutShipping);
+  const checkoutTotal = Math.max(0, checkoutSubtotal - checkoutDiscount - loyaltyDiscount + checkoutShipping);
   const chooseShipping = (value) => { setShipping(value); setShippingFee(value === 'express' ? 45 : 0); };
 
   const applyCoupon = async (code = promoCode) => {
@@ -202,6 +250,7 @@ export default function CheckoutPage() {
         paymentMethod,
         couponCode: coupon?.code || null,
         shippingMethod: shipping,
+        loyaltyPoints: Math.max(0, Math.floor(Number(loyaltyPreview?.acceptedPoints || 0))),
         vodafoneCashInfo: paymentMethod === 'vodafone_cash' ? { senderPhone, transactionRef } : undefined,
       });
       if (buyNow) {} else if (selectedItems) removeItems(selectedItems); else clearCart();
@@ -226,7 +275,18 @@ export default function CheckoutPage() {
         <section className="block" style={getStyle('payment')}><div className="block-title">طريقة الدفع</div>{paymentMethodsLoading ? <div className="coupon-message">جارٍ تحميل طرق الدفع...</div> : availablePaymentOptions.length === 0 ? <div className="coupon-message">لا توجد طرق دفع مفعّلة حاليًا</div> : availablePaymentOptions.map((method) => { const target = method.key === 'cards' ? 'card' : method.key === 'vodafone' ? 'vodafone_cash' : method.key === 'instapay' ? 'wallet' : method.key; const selected = paymentMethod === target; const icon = method.key === 'cod' ? 'CASH' : method.key === 'cards' ? 'VISA' : method.key === 'vodafone' ? '💳' : method.key === 'instapay' ? 'IP' : 'PAY'; return <button type="button" className="pay-opt" key={method._id || method.key} onClick={() => setPaymentMethod(target)}><div className={`radio ${selected ? 'on' : ''}`} /><div className="pay-icon">{icon}</div><div className="pay-label">{method.nameAr}<span>{method.descriptionAr || method.nameEn}</span></div></button>; })}{paymentMethod === 'vodafone_cash' && configured.vodafone && <div className="vodafone-fields"><div className="vodafone-number"><span>حوّل المبلغ إلى</span><b>{configured.vodafone.displayValue || vodafoneNumber}</b></div><input value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="رقم الهاتف الذي حوّلت منه" inputMode="tel" /><input value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)} placeholder="رقم العملية (اختياري)" /><small>{configured.vodafone.instructionsAr || 'سيتم تأكيد الطلب بعد مراجعة التحويل.'}</small></div>}{paymentMethod === 'wallet' && configured.instapay && <div className="vodafone-fields"><div className="vodafone-number"><span>{configured.instapay.nameAr}</span><b>{configured.instapay.displayValue}</b></div><input value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)} placeholder="رقم العملية (اختياري)" /><small>{configured.instapay.instructionsAr || 'سيتم تأكيد الطلب بعد مراجعة التحويل.'}</small></div>}</section>
         <section className="block" style={getStyle('products')}><div className="block-title">المنتجات ({checkoutItems.length.toLocaleString('ar-EG')})</div>{checkoutItems.slice(0, 10).map((item, index) => { const color = getOption(item, 'color'); const size = getOption(item, 'size'); return <div className="order-item" key={`${lineKey(item)}-${index}`}><div className="oi-img">{item.image && <img src={item.image} alt="" />}</div><div className="oi-body"><div className="oi-title">{item.nameAr || item.name || item.nameEn || 'منتج'}</div><div className="oi-attrs">{color ? `اللون: ${color}` : 'متنوع'}{size ? ` · المقاس: ${size}` : ''}</div><div className="oi-price">{money(Number(item.price || 0) * Number(item.quantity || 0))}ج</div></div><div className="oi-qty">×{item.quantity}</div></div>; })}</section>
         <section className="block" style={getStyle('coupon')}><div className="block-title">كود الخصم</div>{coupon ? <div className="applied-coupon"><span>{coupon.code} — خصم {money(couponDiscount)}ج</span><button type="button" onClick={removeCoupon}>إلغاء</button></div> : <><div className="promo-row"><input className="promo-input" value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="أدخل كود الخصم" /><button type="button" className="promo-apply" onClick={() => applyCoupon()} disabled={couponLoading}>{couponLoading ? '...' : 'تطبيق'}</button></div>{availableCoupons.slice(0, 4).map((c) => <button type="button" key={c._id} onClick={() => { setPromoCode(c.code); applyCoupon(c.code); }}>{c.code}</button>)}</>}{couponMessage && <div className="coupon-message">{couponMessage}</div>}</section>
-        <section className="block" style={getStyle('summary')}><div className="block-title">ملخص الطلب</div><div className="sum-row"><span>سعر المنتجات</span><span>{money(checkoutSubtotal)}ج</span></div><div className="sum-row"><span>الخصم</span><span>-{money(checkoutDiscount)}ج</span></div><div className="sum-row"><span>الشحن</span><span>{checkoutShipping ? `${money(checkoutShipping)}ج` : 'مجاني'}</span></div><div className="sum-row total"><span>الإجمالي</span><b>{money(checkoutTotal)}ج</b></div></section>
+        {user && !loyaltyLoading && loyaltyConfig?.enabled && loyaltyBalance > 0 && <section className="block" style={getStyle('loyalty')}>
+          <div className="block-title">نقاط الولاء</div>
+          <div style={{display:'grid',gap:8}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center'}}><span>رصيدك المتاح</span><b>{loyaltyBalance.toLocaleString('ar-EG')} نقطة</b></div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}><input value={loyaltyPoints || ''} onChange={(e)=>{setLoyaltyPoints(Math.min(loyaltyBalance,Math.max(0,Math.floor(Number(e.target.value.replace(/\\D/g,''))||0))));setLoyaltyMessage('')}} inputMode="numeric" min="0" max={loyaltyBalance} placeholder="عدد النقاط" aria-label="عدد نقاط الولاء" style={{flex:1,padding:'11px 12px',border:'1px solid #dbe1e8',borderRadius:9,fontSize:13}}/><button type="button" onClick={()=>{const percent=Math.min(100,Math.max(0,Number(loyaltyConfig.maxRedeemPercent||0)));const value=Math.max(0,Number(loyaltyConfig.pointValue||0));const max=value?Math.min(loyaltyBalance,Math.floor((loyaltyMerchandiseAmount*percent/100)/value)):0;setLoyaltyPoints(max)}} style={{padding:'11px 12px',border:0,borderRadius:9,background:'#111',color:'#fff',fontWeight:800}}>الحد الأقصى</button></div>
+            <small style={{color:'#64748b'}}>كل نقطة = {Number(loyaltyConfig.pointValue || 0).toLocaleString('ar-EG')} ج.م — الحد الأقصى للاستبدال {Number(loyaltyConfig.maxRedeemPercent || 0).toLocaleString('ar-EG')}% من قيمة المنتجات بعد الخصم.</small>
+            {loyaltyPreviewLoading&&<div className="coupon-message">جارٍ احتساب خصم النقاط...</div>}
+            {loyaltyPreview?.acceptedPoints > 0&&<div className="applied-coupon"><span>{Number(loyaltyPreview.acceptedPoints).toLocaleString('ar-EG')} نقطة — خصم {money(loyaltyDiscount)}ج</span><button type="button" onClick={()=>{setLoyaltyPoints(0);setLoyaltyPreview(null);setLoyaltyMessage('تم إلغاء استخدام النقاط')}}>إلغاء</button></div>}
+            {loyaltyMessage&&<div className="coupon-message">{loyaltyMessage}</div>}
+          </div>
+        </section>}
+        <section className="block" style={getStyle('summary')}><div className="block-title">ملخص الطلب</div><div className="sum-row"><span>سعر المنتجات</span><span>{money(checkoutSubtotal)}ج</span></div><div className="sum-row"><span>الخصم</span><span>-{money(checkoutDiscount)}ج</span></div><div className="sum-row"><span>خصم نقاط الولاء</span><span>-{money(loyaltyDiscount)}ج</span></div><div className="sum-row"><span>الشحن</span><span>{checkoutShipping ? `${money(checkoutShipping)}ج` : 'مجاني'}</span></div><div className="sum-row total"><span>الإجمالي</span><b>{money(checkoutTotal)}ج</b></div></section>
         {error && <div className="checkout-error">⚠️ {error}</div>}
         <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
       </div>
