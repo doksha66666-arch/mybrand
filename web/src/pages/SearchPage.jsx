@@ -125,6 +125,7 @@ export default function SearchPage() {
           </article>;
         })}
       </section>}
+      {!loading && !error && submitted && pages > page && <div className="search-more-wrap"><button type="button" className="search-load-more" onClick={loadMore} disabled={loadingMore}>{loadingMore ? 'جاري تحميل المزيد...' : `عرض المزيد — ${page} من ${pages}`}</button></div>}
     </div>
   </main>;
 }
