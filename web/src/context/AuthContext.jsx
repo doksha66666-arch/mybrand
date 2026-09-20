@@ -62,12 +62,21 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const refreshUser = async () => {
+    const token = localStorage.getItem('mybrand_token');
+    if (!token) { setUser(null); setMerchant(null); return null; }
+    const { data } = await api.get('/auth/me');
+    setUser(data.user);
+    await loadMerchantIfNeeded(data.user);
+    return data.user;
+  };
+
   const logout = async () => {
     try { await api.post('/auth/logout'); } catch {}
     localStorage.removeItem('mybrand_token');
     setUser(null); setMerchant(null);
   };
 
-  return <AuthContext.Provider value={{ user, merchant, loading, login, register, registerMerchant, verifyEmail, resendVerificationCode, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, merchant, loading, login, register, registerMerchant, verifyEmail, resendVerificationCode, refreshUser, logout }}>{children}</AuthContext.Provider>;
 }
 export const useAuth = () => useContext(AuthContext);

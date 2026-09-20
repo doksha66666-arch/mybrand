@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 const redirectToLoginWithError = (navigate, message) => {
   const safeMessage = String(message || 'تعذر إتمام تسجيل الدخول.');
@@ -11,6 +12,7 @@ export default function SocialAuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState('جارٍ إتمام تسجيل الدخول...');
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -36,7 +38,10 @@ export default function SocialAuthCallbackPage() {
     const returnTo = typeof resume?.returnTo === 'string' && resume.returnTo.startsWith('/') ? resume.returnTo : '/';
     const returnState = resume?.checkoutState || undefined;
     api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => navigate(returnTo, { replace: true, state: returnState }))
+      .then(async () => {
+        await refreshUser();
+        navigate(returnTo, { replace: true, state: returnState });
+      })
       .catch(() => {
         localStorage.removeItem('mybrand_token');
         setMessage('تعذر التحقق من جلسة تسجيل الدخول.');
