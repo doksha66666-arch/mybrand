@@ -92,6 +92,8 @@ export default function CheckoutPage() {
 
   const selectedAddress = useMemo(() => savedAddresses.find((address) => String(address?._id || '') === String(selectedAddressId)) || null, [savedAddresses, selectedAddressId]);
 
+  const loyaltyMerchandiseAmount = Math.max(0, checkoutSubtotal - checkoutDiscount);
+  const loyaltyDiscount = Math.min(loyaltyMerchandiseAmount, Math.max(0, Number(loyaltyPreview?.discount) || 0));
   useEffect(() => {
     let mounted = true;
     if (!user) {
@@ -194,8 +196,6 @@ export default function CheckoutPage() {
   }, [paymentMethodsLoading, availablePaymentOptions.length, currentMethodAvailable, paymentMethods]);
 
   const checkoutDiscount = Math.min(checkoutSubtotal, Math.max(0, Number(couponDiscount) || 0));
-  const loyaltyMerchandiseAmount = Math.max(0, checkoutSubtotal - checkoutDiscount);
-  const loyaltyDiscount = Math.min(loyaltyMerchandiseAmount, Math.max(0, Number(loyaltyPreview?.discount) || 0));
   const checkoutShipping = shipping === 'express' ? 45 : 0;
   const checkoutTotal = Math.max(0, checkoutSubtotal - checkoutDiscount - loyaltyDiscount + checkoutShipping);
   const chooseShipping = (value) => { setShipping(value); setShippingFee(value === 'express' ? 45 : 0); };
