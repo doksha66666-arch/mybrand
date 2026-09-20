@@ -11,13 +11,23 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [resume, setResume] = useState(null);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem('mybrand_reset_return');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.returnTo && String(parsed.returnTo).startsWith('/')) setResume(parsed);
+      }
+    } catch (_) {}
+  }, []);
   const submit = async (e) => {
     e.preventDefault(); setError(''); setMessage('');
     if (!token) return setError('رابط إعادة التعيين غير صالح.');
     if (password.length < 12) return setError('كلمة المرور يجب أن تكون 12 حرفًا على الأقل.');
     if (password !== confirm) return setError('كلمتا المرور غير متطابقتين.');
     setLoading(true);
-    try { const { data } = await api.post('/auth/reset-password', { token, password }); setMessage(data.message); setTimeout(()=>navigate('/login'), 1200); }
+    try { const { data } = await api.post('/auth/reset-password', { token, password }); setMessage(data.message); setTimeout(()=>{ try { localStorage.removeItem('mybrand_reset_return'); } catch (_) {} navigate(resume?.returnTo || '/login', { replace: true, state: resume?.checkoutState || undefined }); }, 1200); }
     catch (err) { setError(err?.response?.data?.message || 'تعذر تغيير كلمة المرور'); }
     finally { setLoading(false); }
   };
