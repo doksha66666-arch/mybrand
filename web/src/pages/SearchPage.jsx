@@ -81,7 +81,9 @@ export default function SearchPage() {
           const image = imageOf(p);
           const price = Number(p.finalPrice ?? p.price ?? 0);
           const old = Number(p.compareAtPrice ?? p.oldPrice ?? 0);
-          const out = Number(p.stock ?? p.quantity ?? 0) <= 0;
+          const out = Array.isArray(p.variants) && p.variants.length > 0
+    ? !hasPurchasableVariant(p)
+    : Number(p.stock ?? p.quantity ?? 0) <= 0;
           const liked = id != null && isWishlisted(id);
           const hasOptions = Array.isArray(p.variants) && p.variants.length > 0;
           return <article className="search-card" key={id}>
