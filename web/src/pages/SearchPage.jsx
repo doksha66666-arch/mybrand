@@ -6,6 +6,8 @@ import { useWishlist } from '../context/WishlistContext';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 import './SearchPage.css';
 
+const hasPurchasableVariant = (p) => Array.isArray(p?.variants) && p.variants.length > 0 && p.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
+
 const imageOf = (p) => {
   const value = p?.images?.[0] || p?.image || p?.imageUrl || p?.thumbnail || '';
   if (!value) return '';
