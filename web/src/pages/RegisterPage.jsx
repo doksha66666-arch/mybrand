@@ -45,7 +45,7 @@ function CustomerRegisterForm({ style, resumeFlow }) {
     <button className="register-primary-btn" type="submit" disabled={submitting}>{submitting ? 'جارٍ إنشاء الحساب...' : 'إنشاء الحساب'}</button>
     <div className="register-divider"><div className="line" /><span>أو التسجيل عن طريق</span><div className="line" /></div>
     <div className="register-social-row"><button type="button" className="register-social-btn" onClick={() => socialLogin('google', resumeFlow)}>جوجل</button></div>
-    <div className="register-login-link">عندك حساب بالفعل؟ <Link to="/login">سجّل دخولك</Link></div>
+    <div className="register-login-link">عندك حساب بالفعل؟ <Link to="/login" state={resumeFlow || undefined}>سجّل دخولك</Link></div>
   </form>;
 }
 
