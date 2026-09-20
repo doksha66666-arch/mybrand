@@ -7,7 +7,7 @@ import './CheckoutPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
 const money = (value) => Number(value || 0).toLocaleString('ar-EG');
-const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\\/+/, '')}`; };
+const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\/+/, '')}`; };
 const getOptions = (item) => {
   if (item?.selectedOptions && typeof item.selectedOptions === 'object' && !Array.isArray(item.selectedOptions)) return item.selectedOptions;
   const out = {};
