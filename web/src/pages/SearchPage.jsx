@@ -28,6 +28,9 @@ export default function SearchPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(Boolean(initial));
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const next = params.get('q') || '';
@@ -38,13 +41,15 @@ export default function SearchPage() {
   useEffect(() => {
     let active = true;
     const value = submitted.trim();
-    if (!value) { setProducts([]); setLoading(false); setError(''); return undefined; }
-    setLoading(true); setError('');
+    if (!value) { setProducts([]); setPage(1); setPages(1); setLoading(false); setError(''); return undefined; }
+    setLoading(true); setLoadingMore(false); setPage(1); setPages(1); setProducts([]); setError('');
     api.get('/products', { params: { search: value, q: value, limit: 40, page: 1 } })
       .then(({ data }) => {
         if (!active) return;
         const list = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
         setProducts(list);
+        setPage(1);
+        setPages(Math.max(1, Number(data?.pages) || 1));
       })
       .catch(() => active && setError('تعذر تحميل نتائج البحث. حاول مرة أخرى.'))
       .finally(() => active && setLoading(false));
@@ -52,6 +57,30 @@ export default function SearchPage() {
   }, [submitted]);
 
   const title = useMemo(() => submitted ? `نتائج البحث عن «${submitted}»` : 'ابحث عن منتج', [submitted]);
+
+  const loadMore = async () => {
+    const value = submitted.trim();
+    if (!value || loading || loadingMore || page >= pages) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const { data } = await api.get('/products', { params: { search: value, q: value, limit: 40, page: nextPage } });
+      const incoming = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setProducts((current) => {
+        const seen = new Set(current.map((item) => String(item?._id || item?.id || item?.productId || '')));
+        return [...current, ...incoming.filter((item) => {
+          const id = String(item?._id || item?.id || item?.productId || '');
+          return id && !seen.has(id);
+        })];
+      });
+      setPage(nextPage);
+      setPages(Math.max(nextPage, Number(data?.pages) || nextPage));
+    } catch {
+      setError('تعذر تحميل المزيد من نتائج البحث. حاول مرة أخرى.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -96,6 +125,7 @@ export default function SearchPage() {
           </article>;
         })}
       </section>}
+      {!loading && !error && submitted && pages > page && <div className="search-more-wrap"><button type="button" className="search-load-more" onClick={loadMore} disabled={loadingMore}>{loadingMore ? 'جاري تحميل المزيد...' : `عرض المزيد — ${page} من ${pages}`}</button></div>}
     </div>
   </main>;
 }
