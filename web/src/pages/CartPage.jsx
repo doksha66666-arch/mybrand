@@ -106,19 +106,28 @@ function CartPage() {
     const product = liveStock[lineKey(item)];
     if (!product) return { stock: Math.max(0, Number(item?.stock ?? item?.quantity ?? 0)), outOptions: new Set(), source: 'fallback' };
     const variants = Array.isArray(product?.variants) ? product.variants : [];
-    if (!variants.length) return { stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)), outOptions: new Set(), source: 'product' };
+    if (!variants.length) return { stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)), outOptions: new Set(), source: 'product', invalidSelection: false };
 
     const options = getOptions(item);
+    const currentOptionKeys = new Set(
+      variants.map((variant) => optionKey(variant?.name ?? variant?.optionName)).filter(Boolean),
+    );
     const matched = Object.entries(options)
       .map(([name, value]) => ({ name, value, variant: findVariant(variants, name, value) }))
       .filter((entry) => entry.variant);
+
+    const normalizedOptionKeys = Object.keys(options).map(optionKey).filter(Boolean);
+    const missingRequiredOption = [...currentOptionKeys].some((key) => !normalizedOptionKeys.includes(key));
+    const unknownStoredOption = normalizedOptionKeys.some((key) => !currentOptionKeys.has(key));
+    const invalidOptionValue = Object.entries(options).some(([name, value]) => !findVariant(variants, name, value));
+    const invalidSelection = missingRequiredOption || unknownStoredOption || invalidOptionValue;
 
     if (matched.length) {
       const outOptions = new Set(
         matched.filter((entry) => Number(entry.variant?.stock ?? 0) <= 0).map((entry) => optionKey(entry.name)),
       );
       const stock = Math.min(...matched.map((entry) => Math.max(0, Number(entry.variant?.stock ?? 0))));
-      return { stock, outOptions, source: 'options' };
+      return { stock, outOptions, source: 'options', invalidSelection };
     }
 
     if (item?.variantId != null) {
@@ -135,10 +144,14 @@ function CartPage() {
       stock: Math.max(0, Number(product?.stock ?? product?.quantity ?? item?.stock ?? 0)),
       outOptions: new Set(),
       source: 'product',
+      invalidSelection: Boolean(currentOptionKeys.size),
     };
   };
   const getCurrentStock = (item) => getVariantStatus(item).stock;
-  const invalidSelected = useMemo(() => selectedItems.some((item) => { const stock = getVariantStatus(item).stock; return stock === 0 || (stock != null && stock < item.quantity); }), [selectedItems, liveStock]);
+  const invalidSelected = useMemo(() => selectedItems.some((item) => {
+    const status = getVariantStatus(item);
+    return status.invalidSelection || status.stock === 0 || (status.stock != null && status.stock < item.quantity);
+  }), [selectedItems, liveStock]);
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(normalized.filter((item) => getCurrentStock(item) !== 0).map(lineKey)));
   const remove = (item) => { removeFromCart(item.id, item.variantId ?? null, getOptions(item)); setSelected((prev) => { const next = new Set(prev); next.delete(lineKey(item)); return next; }); };
   const removeSelected = () => { if (!selectedItems.length) return; removeItems(selectedItems); setSelected(new Set()); };
@@ -148,7 +161,7 @@ function CartPage() {
   return <main className="cart-app" dir="rtl">
     <header className="cart-topbar"><button type="button" className="cart-back" onClick={() => navigate(-1)} aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg></button><div className="cart-title-wrap"><h1>سلة المشتريات</h1><span>{money(itemsCount)} قطعة</span></div><button type="button" className="cart-edit" onClick={() => setEditing((value) => !value)}>{editing ? 'تم' : 'تعديل'}</button></header>
     <section className="select-all-row" style={getStyle('items')}><button type="button" className="select-left" onClick={toggleAll} aria-pressed={allSelected}><Check on={allSelected} /><span>{allSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'}</span></button><div className="select-actions"><span className="selected-count">{money(selectedCount)} قطعة محددة</span>{editing && <><button type="button" className="delete-selected" onClick={removeSelected} disabled={!selectedItems.length}>حذف المحدد</button><button type="button" className="clear-cart" onClick={clearAll}>تفريغ السلة</button></>}</div></section>
-    {invalidSelected && <div role="alert" style={{margin:'12px 0 2px',padding:'11px 14px',borderRadius:14,border:'1px solid #fda4af',background:'#fff1f2',color:'#9f1239',fontWeight:900,fontSize:12}}>⚠️ يوجد اختيار نفدت كميته أو أصبحت كميته المتاحة أقل من الكمية الموجودة في السلة. راجع اللون/المقاس المحدد.</div>}
+    {invalidSelected && <div role="alert" style={{margin:'12px 0 2px',padding:'11px 14px',borderRadius:14,border:'1px solid #fda4af',background:'#fff1f2',color:'#9f1239',fontWeight:900,fontSize:12}}>⚠️ يوجد منتج تغيّرت خياراته أو نفدت كميته. راجع اللون/المقاس المحدد قبل إتمام الشراء.</div>}
     <div className="cart-selection-note" role="status"><span>✓</span><div><b>{selectedItems.length ? `${money(selectedCount)} قطعة جاهزة للشراء` : 'لم يتم اختيار منتجات'}</b><small>{selectedItems.length ? 'سيتم إرسال المنتجات المحددة فقط إلى صفحة إتمام الشراء.' : 'حدد المنتجات التي تريد شراءها للمتابعة.'}</small></div></div>
     {groups.map(([store, group]) => <section className="shop-group" key={store} style={getStyle('items')}><div className="shop-head"><span>🛍️ {storeName(store)}</span><small>{money(group.reduce((sum, item) => sum + item.quantity, 0))} قطعة</small></div>{group.map((item) => {
       const key = lineKey(item); const isSelected = selected.has(key); const color = getOption(item, 'color'); const size = getOption(item, 'size'); const options = getOptions(item); const optionEntries = Object.entries(options); const lineTotal = item.price * item.quantity; const productIdentifier = getProductIdentifier(item); const canOpenProduct = productIdentifier != null && String(productIdentifier).trim() !== ''; const status = getVariantStatus(item); const currentStock = status.stock; const isOutOfStock = currentStock === 0; const lowStock = currentStock != null && currentStock > 0 && currentStock < item.quantity; const stockLabel = currentStock == null ? 'المخزون غير متاح' : `المتاح حاليًا: ${money(currentStock)} قطعة`;
@@ -161,7 +174,7 @@ function CartPage() {
       {(isOutOfStock || lowStock) && <div className="stock-warning" role="alert" style={{display:'flex',alignItems:'center',gap:8,padding:'9px 11px',borderRadius:12,border:'1px solid #fda4af',background:'#fff1f2',color:'#9f1239',fontSize:12,fontWeight:900}}><span>⚠</span><b>{isOutOfStock ? 'تم نفاذ الكمية من الاختيار المحدد' : `المتاح الآن ${money(currentStock)} فقط`}</b></div>}
       <div className="item-bottom"><div className="item-price"><span className="now">{money(item.price)} ج</span><small>سعر الوحدة</small></div><div className="qty-box"><button type="button" onClick={(event) => { event.stopPropagation(); decreaseQuantity(item.id, item.variantId ?? null, getOptions(item)); }} disabled={item.quantity <= 1} aria-label="تقليل الكمية">−</button><span aria-live="polite">{money(item.quantity)}</span><button type="button" onClick={(event) => { event.stopPropagation(); if (!isOutOfStock && (currentStock == null || item.quantity < currentStock)) increaseQuantity(item.id, item.variantId ?? null, getOptions(item)); }} disabled={isOutOfStock || lowStock || (currentStock != null && item.quantity >= currentStock)} aria-label="زيادة الكمية">+</button></div></div></div>
     </article>; })}</section>)}
-    <div className="checkout-bar" style={getStyle('checkoutBar')}><div className="total-row"><button type="button" className="total-left" onClick={toggleAll}><Check on={allSelected} /><span>إجمالي المنتجات المحددة</span></button><div className="total-price"><b>{money(selectedTotal)} ج</b><small>الشحن والخصم يظهران بالتفصيل عند إتمام الطلب</small></div></div><button type="button" className="checkout-btn" disabled={!selectedItems.length || invalidSelected} onClick={goToCheckout}>{invalidSelected ? 'راجع المخزون أولاً' : `إتمام الشراء (${money(selectedCount)})`}<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></div>
+    <div className="checkout-bar" style={getStyle('checkoutBar')}><div className="total-row"><button type="button" className="total-left" onClick={toggleAll}><Check on={allSelected} /><span>إجمالي المنتجات المحددة</span></button><div className="total-price"><b>{money(selectedTotal)} ج</b><small>الشحن والخصم يظهران بالتفصيل عند إتمام الطلب</small></div></div><button type="button" className="checkout-btn" disabled={!selectedItems.length || invalidSelected} onClick={goToCheckout}>{invalidSelected ? 'راجع الخيارات والمخزون' : `إتمام الشراء (${money(selectedCount)})`}<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></div>
   </main>;
 }
 export default CartPage;
