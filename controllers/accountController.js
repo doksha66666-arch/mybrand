@@ -1,9 +1,12 @@
 const User = require('../models/User');
 
 const normalizePhone = (phone) => {
-  let value = String(phone || '').replace(/\s+/g, '').replace(/[()-]/g, '');
-  value = value.replace(/^\+20/, '').replace(/^0020/, '').replace(/^0/, '');
-  return value ? `0${value}` : '';
+  let value = String(phone || '').trim().replace(/\s+/g, '').replace(/[()-]/g, '');
+  if (value.startsWith('00')) value = `+${value.slice(2)}`;
+  if (value.startsWith('+20')) value = `0${value.slice(3)}`;
+  else if (/^20\d{10}$/.test(value)) value = `0${value.slice(2)}`;
+  else if (/^1\d{9}$/.test(value)) value = `0${value}`;
+  return value;
 };
 
 const publicUser = (user) => ({
@@ -37,7 +40,7 @@ exports.updateProfile = async (req, res, next) => {
     if (phone !== undefined) {
       const normalizedPhone = normalizePhone(phone);
       if (!normalizedPhone) return res.status(400).json({ message: 'رقم الهاتف مطلوب' });
-      if (!/^01\d{9}$/.test(normalizedPhone)) return res.status(400).json({ message: 'رقم الهاتف غير صحيح' });
+      if (!/^(?:01\d{9}|\+[1-9]\d{7,14}|\d{7,15})$/.test(normalizedPhone)) return res.status(400).json({ message: 'رقم الهاتف غير صحيح' });
       if (normalizedPhone !== normalizePhone(user.phone)) { const phoneOwner = await User.findOne({ phone: normalizedPhone, _id: { $ne: user._id } }).select('_id'); if (phoneOwner) return res.status(409).json({ message: 'رقم الهاتف مستخدم بالفعل' }); }
       user.phone = normalizedPhone;
     }
