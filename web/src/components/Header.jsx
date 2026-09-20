@@ -21,6 +21,7 @@ export default function Header() {
   const { user, merchant, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isHome = location.pathname === '/';
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [openNotifications, setOpenNotifications] = useState(false);
@@ -44,6 +45,7 @@ export default function Header() {
       </div>
       <div className="mobile-header"><div className="mobile-topbar"><button className="mobile-icon-btn" onClick={() => navigate('/categories')} aria-label="القائمة">☰</button><Link to="/" className="mobile-logo">MYBRAND</Link>{user?.role === 'customer' && <button className="mobile-icon-btn" onClick={() => setOpenNotifications((value) => !value)} aria-label="الإشعارات">🔔{unreadCount > 0 && <span>{unreadCount > 99 ? '99+' : unreadCount}</span>}</button>}<Link to="/cart" className="mobile-icon-btn cart-icon" aria-label="السلة">🛒{itemsCount > 0 && <span>{itemsCount > 99 ? '99+' : itemsCount}</span>}</Link></div>{user?.role === 'customer' && openNotifications && <div style={styles.mobileNotificationPanel}>{notificationList(true)}</div>}<Link to="/search" className="mobile-search"><span>⌕</span> ابحث عن منتج أو قسم أو علامة...</Link></div>
     </header>
+    {isHome && (
     <nav className="mobile-bottom-nav" aria-label="التنقل الرئيسي">
       {navItems.map(([to, icon, label]) => {
         const active = to === '/' ? location.pathname === '/' : location.pathname === to || location.pathname.startsWith(`${to}/`);
@@ -56,6 +58,7 @@ export default function Header() {
         <span>♙</span><small>{user ? 'حسابي' : 'دخول'}</small>
       </Link>
     </nav>
+    )}
   </>);
 }
 
