@@ -37,7 +37,7 @@ export default function CustomerSupportPage(){
    <Link to="/account" style={s.back}>← العودة إلى الحساب</Link>
    <div style={s.hero}><div style={s.heroIcon}>{cfg.icon}</div><div><span style={s.kicker}>MYBRAND CARE</span><h1 style={s.h1}>{cfg.title}</h1><p style={s.desc}>{cfg.desc}</p></div></div>
    {!sent?<form onSubmit={submit} style={s.form}>
-    <label style={s.label}>رقم الطلب <span>(اختياري لكن يُفضّل للطلبات)</span><input style={s.input} value={orderNumber} onChange={e=>setOrderNumber(e.target.value)} placeholder="مثال: MB-10025" /></label>
+    <label style={s.label}>رقم الطلب <span>(اختياري لكن يُفضّل للطلبات)</span><input dir="ltr" style={{...s.input,textAlign:"left"}} value={orderNumber} onChange={e=>setOrderNumber(e.target.value)} placeholder="مثال: MB-10025" /></label>
     <label style={s.label}>التفاصيل<textarea style={{...s.input,minHeight:130,resize:'vertical'}} value={details} onChange={e=>setDetails(e.target.value)} placeholder="اكتب المشكلة أو طلبك بالتفصيل..." required/></label>
     {error&&<div style={s.error}>{error}</div>}
     <button disabled={busy||!details.trim()} style={s.button}>{busy?'جارٍ الإرسال...':'إرسال إلى خدمة العملاء'}</button>
