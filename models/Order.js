@@ -30,7 +30,7 @@ const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [orderItemSchema],
   customer: { name: String, phone: String, email: String },
-  shippingAddress: { country: String, city: String, street: String, building: String, notes: String },
+  shippingAddress: { country: String, governorate: String, center: String, city: String, street: String, building: String, postalCode: String, notes: String },
   subtotal: { type: Number, required: true }, discount: { type: Number, default: 0 },
   loyaltyPointsRedeemed: { type: Number, default: 0, min: 0 }, loyaltyDiscount: { type: Number, default: 0, min: 0 },
   shippingFee: { type: Number, default: 0 }, total: { type: Number, required: true },
