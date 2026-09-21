@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../api/client';
 import { useAuth } from './AuthContext';
 
@@ -31,6 +31,7 @@ export function WishlistProvider({ children }) {
   const previewMode = isCustomizerPreview();
   const { user } = useAuth();
   const customerUserId = user?.role === 'customer' ? String(user?._id || user?.id || '') : '';
+  const previousCustomerUserId = useRef(null);
   const [productIds, setProductIds] = useState(() => {
     if (previewMode) return [];
     return readStoredWishlist(GUEST_STORAGE_KEY);
@@ -46,6 +47,13 @@ export function WishlistProvider({ children }) {
 
   useEffect(() => {
     if (previewMode) return;
+    // Never persist the previous account's in-memory list into the new
+    // account or guest storage during an auth transition. The account-sync
+    // effect below replaces the list from the correct scoped storage first.
+    if (previousCustomerUserId.current !== customerUserId) {
+      previousCustomerUserId.current = customerUserId;
+      return;
+    }
     const storageKey = customerUserId ? getUserStorageKey(customerUserId) : GUEST_STORAGE_KEY;
     writeStoredWishlist(storageKey, productIds);
   }, [productIds, customerUserId, previewMode]);
