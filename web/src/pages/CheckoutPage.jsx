@@ -20,6 +20,31 @@ const getOption = (item, key) => {
   const entry = Object.entries(options).find(([name]) => wanted.includes(String(name).trim().toLowerCase()));
   return entry ? entry[1] : '';
 };
+const optionKeyForPrice = (name) => {
+  const key = String(name || '').trim().toLowerCase();
+  if (['color', 'colour', 'اللون', 'لون'].includes(key)) return 'color';
+  if (['size', 'المقاس', 'مقاس'].includes(key)) return 'size';
+  return key || 'option';
+};
+const normalizePriceOption = (value) => String(value ?? '').trim().toLocaleLowerCase('ar-EG');
+const findMatchingPriceVariant = (variants, name, value) => variants.find((variant) =>
+  optionKeyForPrice(variant?.name ?? variant?.optionName) === optionKeyForPrice(name) &&
+  normalizePriceOption(variant?.value ?? variant?.label ?? variant?.name) === normalizePriceOption(value)
+);
+const effectiveUnitPrice = (item, product) => {
+  const fallback = Math.max(0, Number(item?.price) || 0);
+  if (!product) return fallback;
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  const options = getOptions(item);
+  const selectedVariants = Object.entries(options).map(([name, value]) => findMatchingPriceVariant(variants, name, value)).filter(Boolean);
+  const explicitVariant = item?.variantId != null
+    ? variants.find((variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId))
+    : null;
+  const pricedVariants = selectedVariants.length ? selectedVariants : (explicitVariant ? [explicitVariant] : []);
+  const modifier = pricedVariants.reduce((sum, variant) => sum + Number(variant?.priceModifier || 0), 0);
+  const base = Math.max(0, Number(product?.finalPrice ?? product?.price ?? fallback) || 0);
+  return Math.max(0, base + modifier);
+};
 const lineKey = (item) => {
   const options = getOptions(item);
   const optionKey = Object.keys(options).sort().map((name) => `${name}:${options[name]}`).join('|');
@@ -55,9 +80,20 @@ export default function CheckoutPage() {
     if (selectedItems) return selectedItems.map(item => ({ ...item, quantity: Number(item.quantity || 1) }));
     return items;
   }, [buyNow, selectedItems, items]);
-  const checkoutSubtotal = useMemo(
-    () => checkoutItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0),
+  const checkoutItemIds = useMemo(
+    () => [...new Set(checkoutItems.map((item) => String(item?.id ?? item?._id ?? '').trim()).filter(Boolean))],
     [checkoutItems],
+  );
+  const pricedCheckoutItems = useMemo(
+    () => checkoutItems.map((item) => ({
+      ...item,
+      price: effectiveUnitPrice(item, liveProducts[String(item?.id ?? item?._id ?? '').trim()]),
+    })),
+    [checkoutItems, liveProducts],
+  );
+  const checkoutSubtotal = useMemo(
+    () => pricedCheckoutItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0),
+    [pricedCheckoutItems],
   );
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -89,8 +125,34 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [shipping, setShipping] = useState(buyNow ? 'standard' : (shippingFee === 45 ? 'express' : 'standard'));
+  const [liveProducts, setLiveProducts] = useState({});
+  const [pricingLoading, setPricingLoading] = useState(Boolean(checkoutItems.length));
+  const checkoutItemSignature = useMemo(() => checkoutItemIds.join('|'), [checkoutItemIds]);
 
   const selectedAddress = useMemo(() => savedAddresses.find((address) => String(address?._id || '') === String(selectedAddressId)) || null, [savedAddresses, selectedAddressId]);
+  useEffect(() => {
+    let active = true;
+    if (!checkoutItemIds.length) {
+      setLiveProducts({});
+      setPricingLoading(false);
+      return undefined;
+    }
+    setPricingLoading(true);
+    Promise.all(checkoutItemIds.map(async (id) => {
+      try {
+        const { data } = await api.get(`/products/${encodeURIComponent(id)}`, { params: { pricing: 1 } });
+        return [id, data?.product || data?.data || data || null];
+      } catch (_) {
+        return [id, null];
+      }
+    })).then((entries) => {
+      if (!active) return;
+      setLiveProducts(Object.fromEntries(entries.filter(([, product]) => product)));
+    }).finally(() => {
+      if (active) setPricingLoading(false);
+    });
+    return () => { active = false; };
+  }, [checkoutItemSignature]);
 
   const checkoutDiscount = Math.min(checkoutSubtotal, Math.max(0, Number(couponDiscount) || 0));
   const loyaltyMerchandiseAmount = Math.max(0, checkoutSubtotal - checkoutDiscount);
@@ -239,13 +301,14 @@ export default function CheckoutPage() {
   const submitOrder = async (e) => {
     e.preventDefault(); setError('');
     if (!user) return navigate('/login', { state: { returnTo: '/checkout', checkoutState: location.state || null } });
+    if (pricingLoading) return setError('جارٍ تحديث أسعار المنتجات، حاول تأكيد الطلب بعد اكتمال التحديث.');
     if (!name || !phone || !city || !street) return setError('يرجى تعبئة كل بيانات التوصيل');
     if (paymentMethod === 'vodafone_cash' && !senderPhone) return setError('يرجى إدخال رقم الهاتف الذي حوّلت منه');
     if (!checkoutItems.length) return setError('لا يوجد منتج لإتمام الطلب');
     setSubmitting(true);
     try {
       const { data } = await api.post('/orders', {
-        items: checkoutItems.map((i) => ({ productId: i.id || i._id, variantId: i.variantId || null, selectedOptions: getOptions(i), quantity: Number(i.quantity || 1) })),
+        items: pricedCheckoutItems.map((i) => ({ productId: i.id || i._id, variantId: i.variantId || null, selectedOptions: getOptions(i), quantity: Number(i.quantity || 1) })),
         customer: { name, phone, email: user?.email },
         shippingAddress: { country: country.trim(), city: city.trim(), street: street.trim(), building: building.trim() },
         paymentMethod,
@@ -274,7 +337,7 @@ export default function CheckoutPage() {
         <section className="block address-block" style={getStyle('address')}><div className="addr-row"><div className="addr-body"><div className="addr-name-row"><b>{name || 'بيانات العميل'}</b><span className="addr-tag">{selectedAddress?.label || 'عنوان الشحن'}</span></div><div className="addr-phone">{phone || '01xxxxxxxxx'}</div><div className="addr-text">{street || 'أدخل عنوان التوصيل'}{building ? ` — ${building}` : ''}{city ? ` — ${city}` : ''}{country ? ` — ${country}` : ''}</div></div></div>{savedAddresses.length > 0 && <div className="saved-address-row"><label>استخدم عنوانًا محفوظًا<select value={selectedAddressId} onChange={(e) => { const id = e.target.value; setSelectedAddressId(id); const address = savedAddresses.find((item) => String(item?._id || '') === String(id)); if (!address) return; setName(address.fullName || ''); setPhone(address.phone || ''); setCountry(address.country || 'مصر'); setCity(address.city || ''); setStreet(address.street || ''); setBuilding(address.building || ''); }}><option value="">اختيار عنوان محفوظ</option>{savedAddresses.map((address) => <option key={address._id} value={address._id}>{address.label || 'عنوان'} — {address.city || 'مدينة غير محددة'}{address.isDefault ? ' (افتراضي)' : ''}</option>)}</select></label></div>}<div className="address-fields"><label>الاسم الكامل<input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم الكامل" autoComplete="name" /></label><label>رقم الهاتف<input dir="ltr" inputMode="tel" style={{textAlign:"left"}} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label><label>الدولة<input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="الدولة" autoComplete="country-name" /></label><label>المدينة<input value={city} onChange={(e) => setCity(e.target.value)} placeholder="المدينة" autoComplete="address-level2" /></label><label>العنوان بالتفصيل<input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="الشارع" autoComplete="address-line1" /></label><label>رقم المبنى / الدور<input value={building} onChange={(e) => setBuilding(e.target.value)} placeholder="رقم المنزل، الدور، الشقة" autoComplete="address-line2" /></label></div></section>
         <section className="block" style={getStyle('delivery')}><div className="block-title">طريقة الشحن</div><button type="button" className={`delivery-opt ${shipping === 'standard' ? 'selected' : ''}`} onClick={() => chooseShipping('standard')}><div className="delivery-left"><div className={`radio ${shipping === 'standard' ? 'on' : ''}`} /><div className="delivery-info"><b>شحن قياسي</b><span>يصل خلال 3-5 أيام عمل</span></div></div><span className="delivery-price free">مجاني</span></button><button type="button" className={`delivery-opt ${shipping === 'express' ? 'selected' : ''}`} onClick={() => chooseShipping('express')}><div className="delivery-left"><div className={`radio ${shipping === 'express' ? 'on' : ''}`} /><div className="delivery-info"><b>شحن سريع</b><span>يصل خلال 24-48 ساعة</span></div></div><span className="delivery-price">٤٥ج</span></button></section>
         <section className="block" style={getStyle('payment')}><div className="block-title">طريقة الدفع</div>{paymentMethodsLoading ? <div className="coupon-message">جارٍ تحميل طرق الدفع...</div> : availablePaymentOptions.length === 0 ? <div className="coupon-message">لا توجد طرق دفع مفعّلة حاليًا</div> : availablePaymentOptions.map((method) => { const target = method.key === 'cards' ? 'card' : method.key === 'vodafone' ? 'vodafone_cash' : method.key === 'instapay' ? 'wallet' : method.key; const selected = paymentMethod === target; const icon = method.key === 'cod' ? 'CASH' : method.key === 'cards' ? 'VISA' : method.key === 'vodafone' ? '💳' : method.key === 'instapay' ? 'IP' : 'PAY'; return <button type="button" className="pay-opt" key={method._id || method.key} onClick={() => setPaymentMethod(target)}><div className={`radio ${selected ? 'on' : ''}`} /><div className="pay-icon">{icon}</div><div className="pay-label">{method.nameAr}<span>{method.descriptionAr || method.nameEn}</span></div></button>; })}{paymentMethod === 'vodafone_cash' && configured.vodafone && <div className="vodafone-fields"><div className="vodafone-number"><span>حوّل المبلغ إلى</span><b>{configured.vodafone.displayValue || vodafoneNumber}</b></div><input dir="ltr" inputMode="tel" style={{textAlign:"left"}} value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="رقم الهاتف الذي حوّلت منه" /><input value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)} placeholder="رقم العملية (اختياري)" /><small>{configured.vodafone.instructionsAr || 'سيتم تأكيد الطلب بعد مراجعة التحويل.'}</small></div>}{paymentMethod === 'wallet' && configured.instapay && <div className="vodafone-fields"><div className="vodafone-number"><span>{configured.instapay.nameAr}</span><b>{configured.instapay.displayValue}</b></div><input value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)} placeholder="رقم العملية (اختياري)" /><small>{configured.instapay.instructionsAr || 'سيتم تأكيد الطلب بعد مراجعة التحويل.'}</small></div>}</section>
-        <section className="block" style={getStyle('products')}><div className="block-title">المنتجات ({checkoutItems.length.toLocaleString('ar-EG')})</div>{checkoutItems.slice(0, 10).map((item, index) => { const color = getOption(item, 'color'); const size = getOption(item, 'size'); return <div className="order-item" key={`${lineKey(item)}-${index}`}><div className="oi-img">{item.image && <img src={item.image} alt="" />}</div><div className="oi-body"><div className="oi-title">{item.nameAr || item.name || item.nameEn || 'منتج'}</div><div className="oi-attrs">{color ? `اللون: ${color}` : 'متنوع'}{size ? ` · المقاس: ${size}` : ''}</div><div className="oi-price">{money(Number(item.price || 0) * Number(item.quantity || 0))}ج</div></div><div className="oi-qty">×{item.quantity}</div></div>; })}</section>
+        <section className="block" style={getStyle('products')}><div className="block-title">المنتجات ({checkoutItems.length.toLocaleString('ar-EG')})</div>{pricedCheckoutItems.slice(0, 10).map((item, index) => { const color = getOption(item, 'color'); const size = getOption(item, 'size'); return <div className="order-item" key={`${lineKey(item)}-${index}`}><div className="oi-img">{item.image && <img src={item.image} alt="" />}</div><div className="oi-body"><div className="oi-title">{item.nameAr || item.name || item.nameEn || 'منتج'}</div><div className="oi-attrs">{color ? `اللون: ${color}` : 'متنوع'}{size ? ` · المقاس: ${size}` : ''}</div><div className="oi-price">{money(Number(item.price || 0) * Number(item.quantity || 0))}ج</div></div><div className="oi-qty">×{item.quantity}</div></div>; })}</section>
         <section className="block" style={getStyle('coupon')}><div className="block-title">كود الخصم</div>{coupon ? <div className="applied-coupon"><span>{coupon.code} — خصم {money(couponDiscount)}ج</span><button type="button" onClick={removeCoupon}>إلغاء</button></div> : <><div className="promo-row"><input className="promo-input" value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="أدخل كود الخصم" /><button type="button" className="promo-apply" onClick={() => applyCoupon()} disabled={couponLoading}>{couponLoading ? '...' : 'تطبيق'}</button></div>{availableCoupons.slice(0, 4).map((c) => <button type="button" key={c._id} onClick={() => { setPromoCode(c.code); applyCoupon(c.code); }}>{c.code}</button>)}</>}{couponMessage && <div className="coupon-message">{couponMessage}</div>}</section>
         {user && !loyaltyLoading && loyaltyConfig?.enabled && loyaltyBalance > 0 && <section className="block" style={getStyle('loyalty')}>
           <div className="block-title">نقاط الولاء</div>
@@ -289,7 +352,7 @@ export default function CheckoutPage() {
         </section>}
         <section className="block" style={getStyle('summary')}><div className="block-title">ملخص الطلب</div><div className="sum-row"><span>سعر المنتجات</span><span>{money(checkoutSubtotal)}ج</span></div><div className="sum-row"><span>الخصم</span><span>-{money(checkoutDiscount)}ج</span></div><div className="sum-row"><span>خصم نقاط الولاء</span><span>-{money(loyaltyDiscount)}ج</span></div><div className="sum-row"><span>الشحن</span><span>{checkoutShipping ? `${money(checkoutShipping)}ج` : 'مجاني'}</span></div><div className="sum-row total"><span>الإجمالي</span><b>{money(checkoutTotal)}ج</b></div></section>
         {error && <div className="checkout-error">⚠️ {error}</div>}
-        <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
+        <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || pricingLoading || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
       </div>
     </form>
   );
