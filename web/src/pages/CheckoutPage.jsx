@@ -86,6 +86,7 @@ export default function CheckoutPage() {
   );
   const [liveProducts, setLiveProducts] = useState({});
   const [pricingLoading, setPricingLoading] = useState(Boolean(checkoutItems.length));
+  const [pricingError, setPricingError] = useState('');
   const pricedCheckoutItems = useMemo(
     () => checkoutItems.map((item) => ({
       ...item,
@@ -139,10 +140,12 @@ export default function CheckoutPage() {
     let active = true;
     if (!checkoutItemIds.length) {
       setLiveProducts({});
+      setPricingError('');
       setPricingLoading(false);
       return undefined;
     }
     setPricingLoading(true);
+    setPricingError('');
     Promise.all(checkoutItemIds.map(async (id) => {
       try {
         const { data } = await api.get(`/products/${encodeURIComponent(id)}`, { params: { pricing: 1 } });
@@ -152,7 +155,10 @@ export default function CheckoutPage() {
       }
     })).then((entries) => {
       if (!active) return;
-      setLiveProducts(Object.fromEntries(entries.filter(([, product]) => product)));
+      const successful = Object.fromEntries(entries.filter(([, product]) => product));
+      const failed = entries.filter(([, product]) => !product).map(([id]) => id);
+      setLiveProducts(successful);
+      setPricingError(failed.length ? 'تعذر تحديث سعر أحد المنتجات حاليًا. أعد المحاولة قبل تأكيد الطلب.' : '');
     }).finally(() => {
       if (active) setPricingLoading(false);
     });
@@ -338,6 +344,7 @@ export default function CheckoutPage() {
     e.preventDefault(); setError('');
     if (!user) return navigate('/login', { state: { returnTo: '/checkout', checkoutState: location.state || null } });
     if (pricingLoading) return setError('جارٍ تحديث أسعار المنتجات، حاول تأكيد الطلب بعد اكتمال التحديث.');
+    if (pricingError) return setError(pricingError);
     if (!name || !phone || !city || !street) return setError('يرجى تعبئة كل بيانات التوصيل');
     if (paymentMethod === 'vodafone_cash' && !senderPhone) return setError('يرجى إدخال رقم الهاتف الذي حوّلت منه');
     if (!checkoutItems.length) return setError('لا يوجد منتج لإتمام الطلب');
@@ -387,8 +394,8 @@ export default function CheckoutPage() {
           </div>
         </section>}
         <section className="block" style={getStyle('summary')}><div className="block-title">ملخص الطلب</div><div className="sum-row"><span>سعر المنتجات</span><span>{money(checkoutSubtotal)}ج</span></div><div className="sum-row"><span>الخصم</span><span>-{money(checkoutDiscount)}ج</span></div><div className="sum-row"><span>خصم نقاط الولاء</span><span>-{money(loyaltyDiscount)}ج</span></div><div className="sum-row"><span>الشحن</span><span>{checkoutShipping ? `${money(checkoutShipping)}ج` : 'مجاني'}</span></div><div className="sum-row total"><span>الإجمالي</span><b>{money(checkoutTotal)}ج</b></div></section>
-        {error && <div className="checkout-error">⚠️ {error}</div>}
-        <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || pricingLoading || loyaltyPreviewLoading || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
+        {(pricingError || error) && <div className="checkout-error">⚠️ {pricingError || error}</div>}
+        <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || pricingLoading || Boolean(pricingError) || loyaltyPreviewLoading || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
       </div>
     </form>
   );
