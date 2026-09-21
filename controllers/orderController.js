@@ -198,7 +198,7 @@ exports.createOrder = async (req, res, next) => {
       user: req.user._id,
       items,
       customer: { name: customer?.name || req.user.name, email: req.user.email, phone: customer?.phone || req.user.phone },
-      shippingAddress: { country: shippingAddress.country || '', city: shippingAddress.city, street: shippingAddress.street, building: shippingAddress.building || '', notes: shippingAddress.notes || '' },
+      shippingAddress: { country: String(shippingAddress.country || '').trim(), governorate: String(shippingAddress.governorate || '').trim(), center: String(shippingAddress.center || '').trim(), city: String(shippingAddress.city || '').trim(), street: String(shippingAddress.street || '').trim(), building: String(shippingAddress.building || '').trim(), postalCode: String(shippingAddress.postalCode || '').trim(), notes: String(shippingAddress.notes || '').trim() },
       subtotal,
       discount,
       shippingFee,
