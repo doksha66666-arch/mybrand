@@ -46,7 +46,11 @@ function statusMessage(status) {
 
 exports.listForCustomer = async (req, res, next) => {
   try {
-    const coupons = await Coupon.find({ isActive: true, $or: [{ assignedTo: req.user._id }, { assignedTo: { $size: 0 } }] }).sort({ endDate: 1 }).lean();
+    const [coupons, user] = await Promise.all([
+      Coupon.find({ isActive: true, $or: [{ assignedTo: req.user._id }, { assignedTo: { $size: 0 } }] }).sort({ endDate: 1 }).lean(),
+      User.findById(req.user._id).select('earnedCoupons').lean(),
+    ]);
+    const redeemedIds = new Set((user?.earnedCoupons || []).map((id) => String(id)));
     const safeCoupons = coupons.filter(usable).map((coupon) => ({
       _id: coupon._id,
       code: coupon.code,
@@ -58,7 +62,7 @@ exports.listForCustomer = async (req, res, next) => {
       maxDiscountAmount: coupon.maxDiscountAmount,
       endDate: coupon.endDate,
       rewardOnly: Boolean(coupon.rewardOnly),
-      redeemed: Array.isArray(coupon.assignedTo) && coupon.assignedTo.some((id) => String(id) === String(req.user._id)),
+      redeemed: redeemedIds.has(String(coupon._id)),
     }));
     res.json({ coupons: safeCoupons });
   } catch (e) { next(e); }
@@ -129,9 +133,13 @@ exports.redeem = async (req, res, next) => {
     if (status !== 'active') return res.status(400).json({ message: statusMessage(status) });
     if (!coupon.rewardOnly) return res.status(400).json({ message: 'هذه القسيمة تستخدم مباشرة عند الدفع' });
     if (coupon.assignedTo.length && !coupon.assignedTo.some(id => String(id) === String(req.user._id))) return res.status(403).json({ message: 'هذه القسيمة ليست لحسابك' });
-    if (!coupon.assignedTo.some(id => String(id) === String(req.user._id))) coupon.assignedTo.push(req.user._id);
-    await coupon.save();
-    await User.findByIdAndUpdate(req.user._id, { $addToSet: { earnedCoupons: coupon._id } });
-    res.json({ message: 'تمت إضافة القسيمة إلى حسابك', coupon });
+    const userUpdated = await User.findOneAndUpdate(
+      { _id: req.user._id, earnedCoupons: { $ne: coupon._id } },
+      { $addToSet: { earnedCoupons: coupon._id } },
+      { new: true },
+    ).select('_id');
+    if (!userUpdated) return res.status(409).json({ message: 'تم استرداد هذه المكافأة بالفعل' });
+    await Coupon.updateOne({ _id: coupon._id }, { $addToSet: { assignedTo: req.user._id } });
+    res.json({ message: 'تمت إضافة القسيمة إلى حسابك', coupon: { ...coupon.toObject(), assignedTo: [...(coupon.assignedTo || []), req.user._id] } });
   } catch (e) { next(e); }
 };
