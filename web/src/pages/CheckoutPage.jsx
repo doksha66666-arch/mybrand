@@ -148,7 +148,7 @@ export default function CheckoutPage() {
       if (mounted) setPaymentMethodsLoading(false);
     });
     if (user) {
-      api.get('/coupons/mine').then(({ data }) => setAvailableCoupons(Array.isArray(data?.coupons) ? data.coupons : [])).catch(() => {});
+      api.get('/coupons/mine').then(({ data }) => setAvailableCoupons(Array.isArray(data?.coupons) ? data.coupons.filter((coupon) => !coupon?.rewardOnly) : [])).catch(() => {});
       api.get('/account').then(({ data }) => {
         const addresses = Array.isArray(data?.user?.addresses) ? data.user.addresses.filter(Boolean) : [];
         setSavedAddresses(addresses);
