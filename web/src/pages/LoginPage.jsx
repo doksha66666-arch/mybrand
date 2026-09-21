@@ -6,6 +6,7 @@ import './LoginPage.css';
 import { useStoreLayout } from '../context/StoreLayoutContext';
 
 const API_BASE = `${API_ORIGIN}/api`;
+const readStoredReturn = (key) => { if (typeof window === 'undefined') return null; try { const raw = localStorage.getItem(key); const parsed = raw ? JSON.parse(raw) : null; return parsed && typeof parsed === 'object' ? parsed : null; } catch (_) { return null; } };
 const socialLogin = (provider, returnTo, returnState) => {
   try {
     if (returnTo && returnTo !== '/') localStorage.setItem('mybrand_social_return', JSON.stringify({ returnTo, checkoutState: returnState || null }));
@@ -18,11 +19,13 @@ export default function LoginPage() {
   const { getStyle } = useStoreLayout('login');
   const { login } = useAuth(); const navigate = useNavigate(); const location = useLocation(); const [searchParams] = useSearchParams();
   const socialError = searchParams.get('social_error');
-  const storedSocialReturn = (() => { if (!socialError || typeof window === 'undefined') return null; try { const raw = localStorage.getItem('mybrand_social_return'); return raw ? JSON.parse(raw) : null; } catch (_) { return null; } })();
-  const returnTo = location.state?.returnTo || storedSocialReturn?.returnTo || '/'; const returnState = location.state?.checkoutState || storedSocialReturn?.checkoutState || undefined;
+  const storedSocialReturn = readStoredReturn('mybrand_social_return');
+  const storedResetReturn = readStoredReturn('mybrand_reset_return');
+  const returnTo = location.state?.returnTo || storedSocialReturn?.returnTo || storedResetReturn?.returnTo || '/';
+  const returnState = location.state?.checkoutState || storedSocialReturn?.checkoutState || storedResetReturn?.checkoutState || undefined;
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false); const [error, setError] = useState(''); const [submitting, setSubmitting] = useState(false);
   useEffect(() => { if (socialError) setError(socialError); }, [socialError]);
-  const submit = async (e) => { e.preventDefault(); setError(''); setSubmitting(true); try { await login(email, password); navigate(returnTo, { replace: true, state: returnState }); } catch (err) { if (err?.response?.data?.needsVerification) { navigate(`/verify-email?email=${encodeURIComponent(err.response.data.email || email)}`, { state: { returnTo, checkoutState: returnState } }); return; } setError(err?.response?.data?.message || 'تعذر تسجيل الدخول'); } finally { setSubmitting(false); } };
+  const submit = async (e) => { e.preventDefault(); setError(''); setSubmitting(true); try { await login(email, password); try { localStorage.removeItem('mybrand_reset_return'); } catch (_) {} navigate(returnTo, { replace: true, state: returnState }); } catch (err) { if (err?.response?.data?.needsVerification) { navigate(`/verify-email?email=${encodeURIComponent(err.response.data.email || email)}`, { state: { returnTo, checkoutState: returnState } }); return; } setError(err?.response?.data?.message || 'تعذر تسجيل الدخول'); } finally { setSubmitting(false); } };
 
   return <div className="app">
     <div className="topbar" style={getStyle('topbar')}><button type="button" className="back-btn" onClick={() => navigate(-1)} aria-label="رجوع"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.2"><path d="M15 18l-6-6 6-6" /></svg></button><button type="button" className="skip-link" onClick={() => navigate('/')}>تخطي</button></div>
