@@ -64,7 +64,7 @@ export default function SearchPage() {
     const nextPage = page + 1;
     setLoadingMore(true);
     try {
-      const { data } = await api.get('/products', { params: { search: value, q: value, limit: 40, page: nextPage } });
+      const { data } = await api.get('/products', { params: { search: value, q: value, limit: 40, page: nextPage, pricing: 1 } });
       const incoming = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       setProducts((current) => {
         const seen = new Set(current.map((item) => String(item?._id || item?.id || item?.productId || '')));
