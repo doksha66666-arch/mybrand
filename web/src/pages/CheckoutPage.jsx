@@ -84,6 +84,8 @@ export default function CheckoutPage() {
     () => [...new Set(checkoutItems.map((item) => String(item?.id ?? item?._id ?? '').trim()).filter(Boolean))],
     [checkoutItems],
   );
+  const [liveProducts, setLiveProducts] = useState({});
+  const [pricingLoading, setPricingLoading] = useState(Boolean(checkoutItems.length));
   const pricedCheckoutItems = useMemo(
     () => checkoutItems.map((item) => ({
       ...item,
@@ -125,9 +127,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [shipping, setShipping] = useState(buyNow ? 'standard' : (shippingFee === 45 ? 'express' : 'standard'));
-  const [liveProducts, setLiveProducts] = useState({});
-  const [pricingLoading, setPricingLoading] = useState(Boolean(checkoutItems.length));
-    const checkoutItemSignature = useMemo(() => checkoutItemIds.join('|'), [checkoutItemIds]);
+  const checkoutItemSignature = useMemo(() => checkoutItemIds.join('|'), [checkoutItemIds]);
 
   const selectedAddress = useMemo(() => savedAddresses.find((address) => String(address?._id || '') === String(selectedAddressId)) || null, [savedAddresses, selectedAddressId]);
   useEffect(() => {
