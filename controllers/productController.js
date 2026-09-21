@@ -84,7 +84,8 @@ exports.getProductBySlug = async (req, res, next) => {
       Product.findOne({ isActive: true, $and: [merchantFilter, identifierFilter] })
     );
     if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
-    res.json({ product });
+    const responseProduct = req.query.pricing === '1' ? (await attachPricing([product]))[0] : product;
+    res.json({ product: responseProduct });
   } catch (err) {
     next(err);
   }

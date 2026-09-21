@@ -43,7 +43,7 @@ export default function SearchPage() {
     const value = submitted.trim();
     if (!value) { setProducts([]); setPage(1); setPages(1); setLoading(false); setError(''); return undefined; }
     setLoading(true); setLoadingMore(false); setPage(1); setPages(1); setProducts([]); setError('');
-    api.get('/products', { params: { search: value, q: value, limit: 40, page: 1 } })
+    api.get('/products', { params: { search: value, q: value, limit: 40, page: 1, pricing: 1 } })
       .then(({ data }) => {
         if (!active) return;
         const list = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
@@ -64,7 +64,7 @@ export default function SearchPage() {
     const nextPage = page + 1;
     setLoadingMore(true);
     try {
-      const { data } = await api.get('/products', { params: { search: value, q: value, limit: 40, page: nextPage } });
+      const { data } = await api.get('/products', { params: { search: value, q: value, limit: 40, page: nextPage, pricing: 1 } });
       const incoming = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       setProducts((current) => {
         const seen = new Set(current.map((item) => String(item?._id || item?.id || item?.productId || '')));

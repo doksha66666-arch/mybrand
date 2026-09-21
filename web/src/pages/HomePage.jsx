@@ -91,7 +91,7 @@ export default function HomePage() {
   const [searchResults, setSearchResults] = useState([]); const [searching, setSearching] = useState(false); const [searched, setSearched] = useState(Boolean(searchParams.get('q')));
   const { getStyle } = useStoreLayout('home');
   useEffect(() => { let active = true; api.get('/homepage').then(({ data: result }) => active && setData(result)).catch(() => active && setData({})).finally(() => active && setLoading(false)); return () => { active = false; }; }, []);
-  useEffect(() => { const q = searchParams.get('q') || ''; setSearchInput(q); if (!q) { setSearchResults([]); setSearched(false); return; } let active = true; setSearching(true); api.get('/products', { params: { search: q } }).then(({ data: result }) => active && setSearchResults(result.products || [])).catch(() => active && setSearchResults([])).finally(() => active && setSearching(false)); return () => { active = false; }; }, [searchParams]);
+  useEffect(() => { const q = searchParams.get('q') || ''; setSearchInput(q); if (!q) { setSearchResults([]); setSearched(false); return; } let active = true; setSearching(true); api.get('/products', { params: { search: q, pricing: 1 } }).then(({ data: result }) => active && setSearchResults(result.products || [])).catch(() => active && setSearchResults([])).finally(() => active && setSearching(false)); return () => { active = false; }; }, [searchParams]);
   const submitSearch = async (e) => { e.preventDefault(); const q = searchInput.trim(); if (!q) { setSearchParams({}); return; } setSearchParams({ q }); };
   const clearSearch = () => { setSearchInput(''); setSearchParams({}); };
   const categories = Array.isArray(data?.categories) ? data.categories.filter(Boolean) : [];

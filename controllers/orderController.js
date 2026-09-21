@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Merchant = require('../models/Merchant');
+const { getEffectivePrice } = require('../utils/pricing');
 const Coupon = require('../models/Coupon');
 const PaymentSettings = require('../models/PaymentSettings');
 
@@ -82,7 +83,7 @@ exports.createOrder = async (req, res, next) => {
     if (!shippingAddress?.city || !shippingAddress?.street) return res.status(400).json({ message: 'يرجى إدخال المدينة والعنوان' });
     if (paymentMethod === 'vodafone_cash' && !vodafoneCashInfo?.senderPhone) return res.status(400).json({ message: 'يرجى إدخال رقم الهاتف الذي تم التحويل منه' });
 
-    const productCache = new Map(); const stockBuckets = new Map(); const items = [];
+    const productCache = new Map(); const pricingCache = new Map(); const stockBuckets = new Map(); const items = [];
     for (const raw of rawItems) {
       if (!raw?.productId || !mongoose.isValidObjectId(raw.productId)) return res.status(400).json({ message: 'يوجد منتج بمعرف غير صالح في السلة' });
       const quantity = Number(raw.quantity);
@@ -115,7 +116,13 @@ exports.createOrder = async (req, res, next) => {
       if (!selectedVariants.length && !explicitVariant && Number(product.stock ?? 0) < quantity) return res.status(409).json({ message: `المخزون غير كافٍ للمنتج "${product.nameAr}"` });
 
       const modifier = selectedVariants.reduce((sum, v) => sum + Number(v?.priceModifier || 0), 0);
-      const unitPrice = Number(product.price) + modifier;
+      let effectivePricing = pricingCache.get(String(product._id));
+      if (!effectivePricing) {
+        effectivePricing = await getEffectivePrice(product);
+        pricingCache.set(String(product._id), effectivePricing);
+      }
+      const effectiveBasePrice = Number(effectivePricing?.finalPrice ?? product.price);
+      const unitPrice = effectiveBasePrice + modifier;
       if (!Number.isFinite(unitPrice) || unitPrice < 0) return res.status(400).json({ message: 'سعر المنتج غير صالح' });
       const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
       let commissionRate = 0; let merchantId = null;
