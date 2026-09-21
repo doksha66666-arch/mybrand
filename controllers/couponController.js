@@ -46,8 +46,21 @@ function statusMessage(status) {
 
 exports.listForCustomer = async (req, res, next) => {
   try {
-    const coupons = await Coupon.find({ isActive: true, $or: [{ assignedTo: req.user._id }, { assignedTo: { $size: 0 } }] }).sort({ endDate: 1 });
-    res.json({ coupons: coupons.filter(usable) });
+    const coupons = await Coupon.find({ isActive: true, $or: [{ assignedTo: req.user._id }, { assignedTo: { $size: 0 } }] }).sort({ endDate: 1 }).lean();
+    const safeCoupons = coupons.filter(usable).map((coupon) => ({
+      _id: coupon._id,
+      code: coupon.code,
+      titleAr: coupon.titleAr,
+      descriptionAr: coupon.descriptionAr,
+      discountType: coupon.discountType,
+      discountValue: coupon.discountValue,
+      minOrderAmount: coupon.minOrderAmount,
+      maxDiscountAmount: coupon.maxDiscountAmount,
+      endDate: coupon.endDate,
+      rewardOnly: Boolean(coupon.rewardOnly),
+      redeemed: Array.isArray(coupon.assignedTo) && coupon.assignedTo.some((id) => String(id) === String(req.user._id)),
+    }));
+    res.json({ coupons: safeCoupons });
   } catch (e) { next(e); }
 };
 
