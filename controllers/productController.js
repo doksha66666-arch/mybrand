@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Merchant = require('../models/Merchant');
 const { notifyCustomersAboutNewProduct } = require('../services/notificationService');
+const { attachPricing } = require('../utils/pricing');
 
 // A product is public when it is active and either:
 // 1) it is a legacy/non-merchant product with an approved/empty status, or
@@ -64,7 +65,8 @@ exports.getProducts = async (req, res, next) => {
       .limit(limit)
       .sort('-createdAt');
     const total = await Product.countDocuments(filter);
-    res.json({ products, total, page, pages: Math.ceil(total / limit) });
+    const responseProducts = req.query.pricing === '1' ? await attachPricing(products) : products;
+    res.json({ products: responseProducts, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
   }
