@@ -43,7 +43,7 @@ export default function SearchPage() {
     const value = submitted.trim();
     if (!value) { setProducts([]); setPage(1); setPages(1); setLoading(false); setError(''); return undefined; }
     setLoading(true); setLoadingMore(false); setPage(1); setPages(1); setProducts([]); setError('');
-    api.get('/products', { params: { search: value, q: value, limit: 40, page: 1 } })
+    api.get('/products', { params: { search: value, q: value, limit: 40, page: 1, pricing: 1 } })
       .then(({ data }) => {
         if (!active) return;
         const list = Array.isArray(data?.products) ? data.products : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
