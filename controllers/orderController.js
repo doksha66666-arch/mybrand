@@ -151,6 +151,7 @@ exports.createOrder = async (req, res, next) => {
       const couponStatus = getCouponStatus(coupon);
       if (couponStatus !== 'active') return res.status(400).json({ message: couponStatus === 'expired' ? 'انتهت صلاحية القسيمة' : couponStatus === 'limit_reached' ? 'تم الوصول إلى حد استخدام القسيمة' : 'القسيمة غير صالحة' });
       if (coupon.assignedTo.length && !coupon.assignedTo.some((id) => String(id) === String(req.user._id))) return res.status(403).json({ message: 'هذه القسيمة مخصصة لحساب آخر' });
+      if (coupon.rewardOnly) return res.status(409).json({ message: 'هذه المكافأة تُسترد من قسم القسائم ولا تُستخدم مباشرة عند الدفع' });
       discount = calculateCouponDiscount(coupon, subtotal);
       if (!discount) return res.status(400).json({ message: `الحد الأدنى للطلب ${coupon.minOrderAmount} ج.م` });
       const reservedCoupon = await Coupon.findOneAndUpdate({ _id: coupon._id, isActive: true, $or: [{ usageLimit: null }, { $expr: { $lt: ['$usedCount', '$usageLimit'] } }] }, { $inc: { usedCount: 1 } }, { new: true });

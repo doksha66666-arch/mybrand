@@ -61,6 +61,7 @@ exports.validate = async (req, res, next) => {
     const status = couponStatus(coupon);
     if (status !== 'active') return res.status(400).json({ message: statusMessage(status) });
     if (coupon.assignedTo.length && !coupon.assignedTo.some(id => String(id) === String(req.user._id))) return res.status(403).json({ message: 'هذه القسيمة مخصصة لحساب آخر' });
+    if (coupon.rewardOnly) return res.status(409).json({ message: 'هذه المكافأة تُسترد من قسم القسائم ولا تُستخدم مباشرة عند الدفع' });
     const discount = calculateDiscount(coupon, amount);
     if (!discount) return res.status(400).json({ message: `الحد الأدنى للطلب ${coupon.minOrderAmount} ج.م` });
     res.json({ valid: true, coupon: { id: coupon._id, code: coupon.code, titleAr: coupon.titleAr, discountType: coupon.discountType, discountValue: coupon.discountValue }, discount });
