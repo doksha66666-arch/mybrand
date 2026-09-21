@@ -241,6 +241,26 @@ export default function CheckoutPage() {
     setCouponDiscount(Number(discount || 0));
   }, [buyNow, selectedItems, cartCoupon, discount]);
 
+  useEffect(() => {
+    if (buyNow || selectedItems || pricingLoading || !cartCoupon?.code || checkoutSubtotal <= 0) return undefined;
+    let active = true;
+    api.post('/coupons/validate', { code: cartCoupon.code, orderAmount: checkoutSubtotal })
+      .then(({ data }) => {
+        if (!active) return;
+        setCoupon(data?.coupon || cartCoupon);
+        setCouponDiscount(Math.max(0, Number(data?.discount) || 0));
+        setCouponMessage('');
+      })
+      .catch(() => {
+        if (!active) return;
+        setCoupon(null);
+        setPromoCode('');
+        setCouponDiscount(0);
+        setCouponMessage('تم تحديث أسعار السلة، لذلك أُعيد التحقق من الكوبون.');
+      });
+    return () => { active = false; };
+  }, [buyNow, selectedItems, pricingLoading, cartCoupon?.code, checkoutSubtotal]);
+
   const configured = paymentConfig(paymentMethods);
   const availablePaymentOptions = [configured.cod, configured.card, configured.vodafone, configured.instapay].filter(Boolean);
   const currentMethodAvailable = availablePaymentOptions.some((method) => {
