@@ -11,6 +11,7 @@ export default function CouponsPage(){
   const [coupons,setCoupons]=useState([]);
   const [message,setMessage]=useState('');
   const [loading,setLoading]=useState(Boolean(user));
+  const [redeeming,setRedeeming]=useState('');
 
   useEffect(()=>{
     let active=true;
@@ -46,13 +47,28 @@ export default function CouponsPage(){
     </main>;
   }
 
+  const redeem = async (coupon) => {
+    if (!coupon?.rewardOnly || coupon?.redeemed || redeeming) return;
+    setRedeeming(coupon._id);
+    setMessage('');
+    try {
+      await api.post('/coupons/redeem', { code: coupon.code });
+      setCoupons((current) => current.map((item) => item._id === coupon._id ? { ...item, redeemed: true } : item));
+      setMessage(`تم استرداد المكافأة ${coupon.code} بنجاح.`);
+    } catch (err) {
+      setMessage(err?.response?.data?.message || 'تعذر استرداد المكافأة');
+    } finally {
+      setRedeeming('');
+    }
+  };
+
   return <div dir="rtl" style={styles.page}>
     <Link to="/account" style={styles.back}>← الحساب</Link>
     <div style={{...styles.hero,...getStyle('hero')}}><span style={styles.kicker}>MYBRAND REWARDS</span><h1>قسائمك ومكافآتك</h1><p>استفد من الخصومات التي حصلت عليها وأدخل رمزك عند الدفع.</p></div>
     {message&&<div style={styles.message}>{message}</div>}
     {loading
       ? <div style={{...styles.empty,...styles.loading}}>جارٍ تحميل قسائمك...</div>
-      : <div style={{...styles.grid,...getStyle('products')}}>{coupons.length?coupons.map(c=><article key={c._id} style={styles.card}><small>{c.rewardOnly?'🎁 مكافأة':'🏷️ قسيمة خصم'}</small><h2>{c.titleAr}</h2><p>{c.descriptionAr}</p><div style={styles.code}>{c.code}</div><strong>{c.discountType==='percentage' ? c.discountValue+'% خصم' : 'خصم '+c.discountValue+' ج.م'}</strong><small>صالحة حتى {new Date(c.endDate).toLocaleDateString('ar-EG')}</small></article>):<div style={styles.empty}>لا توجد قسائم متاحة حاليًا. تابع العروض لتحصل على مكافآت جديدة.</div>}</div>}
+      : <div style={{...styles.grid,...getStyle('products')}}>{coupons.length?coupons.map(c=><article key={c._id} style={styles.card}><small>{c.rewardOnly?'🎁 مكافأة':'🏷️ قسيمة خصم'}</small><h2>{c.titleAr}</h2><p>{c.descriptionAr}</p><div style={styles.code}>{c.code}</div><strong>{c.discountType==='percentage' ? c.discountValue+'% خصم' : 'خصم '+c.discountValue+' ج.م'}</strong><small>{c.rewardOnly?'استرد هذه المكافأة لإضافتها إلى حسابك.':'استخدم الرمز عند إتمام الطلب.'}</small><small>صالحة حتى {new Date(c.endDate).toLocaleDateString('ar-EG')}</small>{c.rewardOnly&&<button type="button" style={styles.primaryButton} onClick={()=>redeem(c)} disabled={c.redeemed||redeeming===c._id}>{c.redeemed?'✓ تم الاسترداد':redeeming===c._id?'جارٍ الاسترداد...':'استرداد المكافأة'}</button>}</article>):<div style={styles.empty}>لا توجد قسائم متاحة حاليًا. تابع العروض لتحصل على مكافآت جديدة.</div>}</div>}
   </div>;
 }
 
