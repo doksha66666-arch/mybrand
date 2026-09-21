@@ -84,6 +84,8 @@ export default function CheckoutPage() {
     () => [...new Set(checkoutItems.map((item) => String(item?.id ?? item?._id ?? '').trim()).filter(Boolean))],
     [checkoutItems],
   );
+  const [liveProducts, setLiveProducts] = useState({});
+  const [pricingLoading, setPricingLoading] = useState(Boolean(checkoutItems.length));
   const pricedCheckoutItems = useMemo(
     () => checkoutItems.map((item) => ({
       ...item,
@@ -125,8 +127,6 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [shipping, setShipping] = useState(buyNow ? 'standard' : (shippingFee === 45 ? 'express' : 'standard'));
-  const [liveProducts, setLiveProducts] = useState({});
-  const [pricingLoading, setPricingLoading] = useState(Boolean(checkoutItems.length));
   const checkoutItemSignature = useMemo(() => checkoutItemIds.join('|'), [checkoutItemIds]);
 
   const selectedAddress = useMemo(() => savedAddresses.find((address) => String(address?._id || '') === String(selectedAddressId)) || null, [savedAddresses, selectedAddressId]);
@@ -372,7 +372,7 @@ export default function CheckoutPage() {
         </section>}
         <section className="block" style={getStyle('summary')}><div className="block-title">ملخص الطلب</div><div className="sum-row"><span>سعر المنتجات</span><span>{money(checkoutSubtotal)}ج</span></div><div className="sum-row"><span>الخصم</span><span>-{money(checkoutDiscount)}ج</span></div><div className="sum-row"><span>خصم نقاط الولاء</span><span>-{money(loyaltyDiscount)}ج</span></div><div className="sum-row"><span>الشحن</span><span>{checkoutShipping ? `${money(checkoutShipping)}ج` : 'مجاني'}</span></div><div className="sum-row total"><span>الإجمالي</span><b>{money(checkoutTotal)}ج</b></div></section>
         {error && <div className="checkout-error">⚠️ {error}</div>}
-        <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || pricingLoading || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
+        <div className="checkout-bar" style={getStyle('actions')}><button className="place-order" type="submit" disabled={submitting || pricingLoading || loyaltyPreviewLoading || !checkoutItems.length || paymentMethodsLoading || availablePaymentOptions.length === 0}>{submitting ? 'جارٍ تأكيد الطلب...' : `تأكيد الطلب — ${money(checkoutTotal)}ج`}</button><div className="secure-note">🔒 بيانات الطلب محمية أثناء الإرسال</div></div>
       </div>
     </form>
   );
