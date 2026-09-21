@@ -4,7 +4,6 @@ const Product = require('../models/Product');
 const Merchant = require('../models/Merchant');
 const { getEffectivePrice } = require('../utils/pricing');
 const Coupon = require('../models/Coupon');
-const PaymentSettings = require('../models/PaymentSettings');
 
 const generateOrderNumber = () => {
   const date = new Date();
@@ -169,18 +168,6 @@ exports.createOrder = async (req, res, next) => {
     discount = Math.min(Math.max(0, discount), subtotal);
     const shippingFee = shippingMethod === 'express' ? 45 : 0;
     const total = Math.max(0, Math.round((subtotal - discount + shippingFee) * 100) / 100);
-
-    if (paymentMethod === 'cod') {
-      const paymentSettings = await PaymentSettings.findOne({ key: 'global' }).lean();
-      if (paymentSettings?.codLimitEnabled) {
-        const rawLimit = String(paymentSettings.codLimit ?? '').replace(/,/g, '').trim();
-        const codLimit = Number(rawLimit);
-        if (Number.isFinite(codLimit) && codLimit > 0 && total > codLimit) {
-          await rollbackCoupon();
-          return res.status(409).json({ message: `الحد الأقصى للدفع عند الاستلام هو ${codLimit} ج.م` });
-        }
-      }
-    }
 
     const totalCommissionAmount = Math.round(items.reduce((s, i) => s + i.commissionAmount, 0) * 100) / 100;
     const totalMerchantAmount = Math.round(items.reduce((s, i) => s + i.merchantAmount, 0) * 100) / 100;
