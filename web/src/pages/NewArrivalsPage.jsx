@@ -38,7 +38,7 @@ export default function NewArrivalsPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true); setPage(1); setPages(1); setProducts([]); setError('');
-    api.get('/products', { params: { limit: 40, page: 1 } })
+    api.get('/products', { params: { limit: 40, page: 1, pricing: 1 } })
       .then(({ data }) => {
         if (!alive) return;
         const list = Array.isArray(data?.products) ? data.products.filter(Boolean) : [];
@@ -55,7 +55,7 @@ export default function NewArrivalsPage() {
     const nextPage = page + 1;
     setLoadingMore(true);
     try {
-      const { data } = await api.get('/products', { params: { limit: 40, page: nextPage } });
+      const { data } = await api.get('/products', { params: { limit: 40, page: nextPage, pricing: 1 } });
       const incoming = Array.isArray(data?.products) ? data.products.filter(Boolean) : [];
       setProducts((current) => {
         const seen = new Set(current.map((item) => String(item?._id || item?.id || item?.slug || '')));
