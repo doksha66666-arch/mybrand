@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Merchant = require('../models/Merchant');
+const { getEffectivePrice } = require('../utils/pricing');
 const Coupon = require('../models/Coupon');
 const PaymentSettings = require('../models/PaymentSettings');
 
