@@ -103,6 +103,10 @@ export default function CheckoutPage() {
   const [city, setCity] = useState('');
   const [street, setStreet] = useState('');
   const [building, setBuilding] = useState('');
+  const [governorate, setGovernorate] = useState('');
+  const [center, setCenter] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [addressNotes, setAddressNotes] = useState('');
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cod');
