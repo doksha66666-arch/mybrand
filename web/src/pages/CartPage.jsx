@@ -35,13 +35,18 @@ const lineKey = (item) => {
   const optionText = Object.keys(options).sort().map((key) => `${key}:${options[key]}`).join('|');
   return `${id}:${variantId}:${optionText}`;
 };
+const findMatchingVariant = (variants, name, value) => variants.find((variant) =>
+  optionKey(variant?.name ?? variant?.optionName) === optionKey(name) &&
+  normalizeValue(variant?.value ?? variant?.label ?? variant?.name) === normalizeValue(value)
+);
+
 const getEffectiveUnitPrice = (item, product) => {
   const fallback = Math.max(0, Number(item?.price) || 0);
   if (!product) return fallback;
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   const options = getOptions(item);
   const selectedVariants = Object.entries(options)
-    .map(([name, value]) => findVariant(variants, name, value))
+    .map(([name, value]) => findMatchingVariant(variants, name, value))
     .filter(Boolean);
   const explicitVariant = item?.variantId != null
     ? variants.find((variant) => String(variant?._id ?? variant?.id ?? '') === String(item.variantId))
