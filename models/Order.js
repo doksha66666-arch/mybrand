@@ -76,5 +76,27 @@ orderSchema.pre('save', async function loyaltyBeforeSave() {
 });
 orderSchema.post('save', async function loyaltyAfterSave() { if (this.$locals.loyaltyReservationId) { try { await finalizeRedemption(this.$locals.loyaltyReservationId, this._id); } catch (error) { console.error('Failed to finalize loyalty redemption:', error); } } });
 orderSchema.post('save', async function loyaltySaveError(error, _doc, next) { if (error && this?.$locals?.loyaltyReservationId) { try { await releaseRedemption(this.$locals.loyaltyReservationId, 'فشل حفظ الطلب وإعادة نقاط الولاء'); } catch (releaseError) { console.error('Failed to release loyalty reservation:', releaseError); } } next(error); });
-orderSchema.pre('validate', async function enforceCodLimit() { if (this.paymentMethod !== 'cod' || !Number.isFinite(Number(this.total))) return; const settings = await PaymentSettings.findOne({ key: 'global' }).lean(); if (!settings?.codLimitEnabled) return; const rawLimit = String(settings.codLimit ?? '').trim().replace(/,/g, ''); const codLimit = Number(rawLimit); if (!Number.isFinite(codLimit) || codLimit <= 0) return; if (Number(this.total) > codLimit) { const error = new Error(`الحد الأقصى للدفع عند الاستلام هو ${codLimit} ج.م`); error.statusCode = 409; error.code = 'COD_LIMIT_EXCEEDED'; throw error; } });
+orderSchema.pre('save', async function enforceCodLimitAfterLoyalty() {
+  if (this.paymentMethod !== 'cod' || !Number.isFinite(Number(this.total))) return;
+  const settings = await PaymentSettings.findOne({ key: 'global' }).lean();
+  if (!settings?.codLimitEnabled) return;
+  const rawLimit = String(settings.codLimit ?? '').trim().replace(/,/g, '');
+  const codLimit = Number(rawLimit);
+  if (!Number.isFinite(codLimit) || codLimit <= 0 || Number(this.total) <= codLimit) return;
+
+  const reservationId = this.$locals.loyaltyReservationId;
+  if (reservationId) {
+    try {
+      await releaseRedemption(reservationId, 'تجاوز الحد الأقصى للدفع عند الاستلام');
+    } catch (releaseError) {
+      console.error('Failed to release loyalty reservation after COD limit rejection:', releaseError);
+    }
+    this.$locals.loyaltyReservationId = null;
+  }
+
+  const error = new Error(`الحد الأقصى للدفع عند الاستلام هو ${codLimit} ج.م`);
+  error.statusCode = 409;
+  error.code = 'COD_LIMIT_EXCEEDED';
+  throw error;
+});
 module.exports = mongoose.model('Order', orderSchema);
