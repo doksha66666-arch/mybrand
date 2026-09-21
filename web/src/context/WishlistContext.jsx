@@ -3,12 +3,17 @@ import api from '../api/client';
 import { useAuth } from './AuthContext';
 
 const WishlistContext = createContext(null);
-const STORAGE_KEY = 'mybrand_wishlist_v1';
+const GUEST_STORAGE_KEY = 'mybrand_wishlist_guest_v1';
+const USER_STORAGE_PREFIX = 'mybrand_wishlist_user_v1:';
+const LEGACY_STORAGE_KEY = 'mybrand_wishlist_v1';
+
 const isCustomizerPreview = () => typeof window !== 'undefined' && (window.__MYBRAND_CUSTOMIZER_PREVIEW__ === true || new URLSearchParams(window.location.search).get('customizerPreview') === '1');
 
-const readStoredWishlist = () => {
+const getUserStorageKey = (userId) => `${USER_STORAGE_PREFIX}${encodeURIComponent(String(userId || ''))}`;
+
+const readStoredWishlist = (key = GUEST_STORAGE_KEY) => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
   } catch {
@@ -16,13 +21,10 @@ const readStoredWishlist = () => {
   }
 };
 
-const localIdsNeedSync = (raw, remoteIds) => {
+const writeStoredWishlist = (key, ids) => {
   try {
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) && parsed.some((id) => !remoteIds.some((remoteId) => String(remoteId) === String(id)));
-  } catch {
-    return false;
-  }
+    localStorage.setItem(key, JSON.stringify([...new Set((ids || []).filter(Boolean))]));
+  } catch (_) {}
 };
 
 export function WishlistProvider({ children }) {
@@ -31,24 +33,41 @@ export function WishlistProvider({ children }) {
   const customerUserId = user?.role === 'customer' ? String(user?._id || user?.id || '') : '';
   const [productIds, setProductIds] = useState(() => {
     if (previewMode) return [];
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-    } catch {
-      return [];
-    }
+    return readStoredWishlist(GUEST_STORAGE_KEY);
   });
+
+  // The previous unscoped key could contain another customer's wishlist.
+  // Never migrate it into an authenticated account; remove it when a customer
+  // session is present so it cannot leak across accounts.
+  useEffect(() => {
+    if (previewMode || !customerUserId) return;
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch (_) {}
+  }, [customerUserId, previewMode]);
 
   useEffect(() => {
     if (previewMode) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(productIds));
-  }, [productIds, previewMode]);
+    const storageKey = customerUserId ? getUserStorageKey(customerUserId) : GUEST_STORAGE_KEY;
+    writeStoredWishlist(storageKey, productIds);
+  }, [productIds, customerUserId, previewMode]);
 
   useEffect(() => {
     if (previewMode) return undefined;
-    if (!customerUserId) return undefined;
     let active = true;
+    const guestIds = readStoredWishlist(GUEST_STORAGE_KEY);
+    const storageKey = customerUserId ? getUserStorageKey(customerUserId) : GUEST_STORAGE_KEY;
+
+    // Switching accounts must replace the in-memory list immediately with the
+    // new account's scoped list plus intentional guest items. This prevents
+    // account A's in-memory state from being merged into account B.
+    if (!customerUserId) {
+      setProductIds(guestIds);
+      return undefined;
+    }
+
+    const scopedIds = readStoredWishlist(storageKey);
+    const initialIds = [...new Set([...scopedIds, ...guestIds])];
+    setProductIds(initialIds);
+
     const loadAccountWishlist = async () => {
       try {
         const { data } = await api.get('/wishlist');
@@ -57,14 +76,18 @@ export function WishlistProvider({ children }) {
           ? remote.map((product) => product?._id ?? product?.id ?? product).filter(Boolean)
           : [];
         if (!active) return;
-        setProductIds((localIds) => [...new Set([...localIds, ...remoteIds])]);
-        if (localIdsNeedSync(localStorage.getItem(STORAGE_KEY), remoteIds)) {
-          const localIds = readStoredWishlist();
-          const missing = localIds.filter((id) => !remoteIds.some((remoteId) => String(remoteId) === String(id)));
+
+        const mergedIds = [...new Set([...initialIds, ...remoteIds])];
+        setProductIds(mergedIds);
+
+        const missing = initialIds.filter((id) => !remoteIds.some((remoteId) => String(remoteId) === String(id)));
+        if (missing.length) {
           await Promise.all(missing.map((productId) => api.post('/wishlist/toggle', { productId })));
         }
+        if (active) writeStoredWishlist(storageKey, mergedIds);
       } catch (_) {}
     };
+
     loadAccountWishlist();
     return () => { active = false; };
   }, [customerUserId, previewMode]);
@@ -100,6 +123,7 @@ export function WishlistProvider({ children }) {
       return next;
     });
   }, [customerUserId, previewMode]);
+
   const isWishlisted = useCallback((id) => productIds.includes(id), [productIds]);
 
   return (
