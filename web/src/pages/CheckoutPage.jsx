@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -122,6 +122,7 @@ export default function CheckoutPage() {
   const [loyaltyPreview, setLoyaltyPreview] = useState(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(true);
   const [loyaltyPreviewLoading, setLoyaltyPreviewLoading] = useState(false);
+  const loyaltyPreviewRequestRef = useRef(0);
   const [loyaltyMessage, setLoyaltyMessage] = useState('');
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [error, setError] = useState('');
@@ -178,21 +179,28 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     let timer;
+    const requestId = ++loyaltyPreviewRequestRef.current;
     const requested = Math.max(0, Math.floor(Number(loyaltyPoints) || 0));
     if (!user || loyaltyLoading || !loyaltyConfig?.enabled || !requested || !loyaltyBalance || loyaltyMerchandiseAmount <= 0) {
       setLoyaltyPreview(null); setLoyaltyPreviewLoading(false);
       return undefined;
     }
+    setLoyaltyPreview(null);
+    setLoyaltyMessage('');
+    setLoyaltyPreviewLoading(true);
     timer = setTimeout(async () => {
-      setLoyaltyPreviewLoading(true); setLoyaltyMessage('');
       try {
         const { data } = await api.post('/loyalty/preview', { points: requested, merchandiseAmount: loyaltyMerchandiseAmount });
+        if (requestId !== loyaltyPreviewRequestRef.current) return;
         setLoyaltyPreview(data || null);
         setLoyaltyPoints(Math.max(0, Math.floor(Number(data?.acceptedPoints ?? requested) || 0)));
       } catch (err) {
+        if (requestId !== loyaltyPreviewRequestRef.current) return;
         setLoyaltyPreview(null);
         setLoyaltyMessage(err?.response?.data?.message || 'تعذر احتساب خصم النقاط');
-      } finally { setLoyaltyPreviewLoading(false); }
+      } finally {
+        if (requestId === loyaltyPreviewRequestRef.current) setLoyaltyPreviewLoading(false);
+      }
     }, 250);
     return () => clearTimeout(timer);
   }, [user, loyaltyLoading, loyaltyConfig, loyaltyBalance, loyaltyPoints, loyaltyMerchandiseAmount]);
