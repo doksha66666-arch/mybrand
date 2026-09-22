@@ -66,8 +66,11 @@ export default function LivePage() {
         heartbeatRef.current = setInterval(async () => {
           if (!viewerIdRef.current || cancelled) return;
           try {
-            const r = await api.post(`/live/${active.id}/heartbeat/${viewerIdRef.current}`);
-            if (!cancelled) setViewerCount(r.data.viewerCount || 0);
+            const r = await api.post(`/live/${active.id}/heartbeat/${viewerIdRef.current}`, { viewerKey: viewerKeyRef.current });
+            if (!cancelled) {
+              if (r.data?.viewerId) viewerIdRef.current = r.data.viewerId;
+              setViewerCount(r.data?.viewerCount || 0);
+            }
           } catch (e) {
             const status = e?.response?.status;
             if (status === 404 || status === 410) {
