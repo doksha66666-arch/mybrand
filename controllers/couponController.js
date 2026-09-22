@@ -21,7 +21,7 @@ function couponStatus(coupon) {
   const now = new Date();
   if (!coupon || !coupon.isActive) return 'inactive';
   if (!(coupon.startDate instanceof Date) || Number.isNaN(coupon.startDate.getTime())) return 'invalid';
-  if (!(coupon.endDate instanceof Date) || Number.isNaN(coupon.endDate.getTime())) return 'expired';
+  if (!(coupon.endDate instanceof Date) || Number.isNaN(coupon.endDate.getTime())) return 'invalid';
   if (coupon.startDate > now) return 'not_started';
   if (coupon.endDate < now) return 'expired';
   if (coupon.usageLimit != null && coupon.usedCount >= coupon.usageLimit) return 'limit_reached';
