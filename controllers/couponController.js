@@ -1,5 +1,6 @@
 const Coupon = require('../models/Coupon');
 const User = require('../models/User');
+const Order = require('../models/Order');
 
 const COUPON_FIELDS = ['code', 'titleAr', 'descriptionAr', 'discountType', 'discountValue', 'minOrderAmount', 'maxDiscountAmount', 'usageLimit', 'perUserLimit', 'startDate', 'endDate', 'isActive', 'assignedTo', 'rewardOnly'];
 
@@ -36,6 +37,10 @@ function calculateDiscount(coupon, amount) {
   return Math.min(Math.max(0, discount), amount);
 }
 
+async function customerCouponUsage(userId, code) {
+  return Order.countDocuments({ user: userId, couponCode: code });
+}
+
 function statusMessage(status) {
   if (status === 'expired') return 'انتهت صلاحية القسيمة';
   if (status === 'not_started') return 'القسيمة لم تبدأ بعد';
@@ -63,6 +68,7 @@ exports.listForCustomer = async (req, res, next) => {
       endDate: coupon.endDate,
       rewardOnly: Boolean(coupon.rewardOnly),
       redeemed: redeemedIds.has(String(coupon._id)),
+      perUserLimit: Number(coupon.perUserLimit || 1),
     }));
     res.json({ coupons: safeCoupons });
   } catch (e) { next(e); }
@@ -79,6 +85,12 @@ exports.validate = async (req, res, next) => {
     if (status !== 'active') return res.status(400).json({ message: statusMessage(status) });
     if (coupon.assignedTo.length && !coupon.assignedTo.some(id => String(id) === String(req.user._id))) return res.status(403).json({ message: 'هذه القسيمة مخصصة لحساب آخر' });
     if (coupon.rewardOnly) return res.status(409).json({ message: 'هذه المكافأة تُسترد من قسم القسائم ولا تُستخدم مباشرة عند الدفع' });
+    if (coupon.perUserLimit != null) {
+      const usageCount = await customerCouponUsage(req.user._id, coupon.code);
+      if (usageCount >= Number(coupon.perUserLimit)) {
+        return res.status(409).json({ message: 'لقد استخدمت هذه القسيمة الحد الأقصى المسموح به لهذا الحساب' });
+      }
+    }
     const discount = calculateDiscount(coupon, amount);
     if (!discount) return res.status(400).json({ message: `الحد الأدنى للطلب ${coupon.minOrderAmount} ج.م` });
     res.json({ valid: true, coupon: { id: coupon._id, code: coupon.code, titleAr: coupon.titleAr, discountType: coupon.discountType, discountValue: coupon.discountValue }, discount });
