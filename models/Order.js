@@ -46,6 +46,7 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 orderSchema.index({ user: 1, idempotencyKey: 1 }, { unique: true, sparse: true });
+orderSchema.index({ user: 1, createdAt: -1, _id: -1 });
 
 // Main admin list: filter active orders and return newest first without a collection scan.
 orderSchema.index({ isArchived: 1, createdAt: -1 });
