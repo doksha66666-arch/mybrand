@@ -73,7 +73,9 @@ export default function LivePage() {
             if (status === 404 || status === 410) {
               stopHeartbeat();
               viewerIdRef.current = null;
-              if (!cancelled) loadStreams();
+              if (!cancelled) {
+                await join();
+              }
             }
           }
         }, 15000);
