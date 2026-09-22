@@ -8,31 +8,49 @@ import BottomNav from './components/BottomNav';
 import BannerPlacement from './components/BannerPlacement';
 import StorefrontMaintenanceGate from './components/StorefrontMaintenanceGate';
 import HomePage from './pages/HomePage';
-const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
-const SearchPage = lazy(() => import('./pages/SearchPage'));
-const NewArrivalsPage = lazy(() => import('./pages/NewArrivalsPage'));
-const OffersPage = lazy(() => import('./pages/OffersPage'));
-const ProductDetailsPage = lazy(() => import('./pages/ProductDetailsPage'));
-const CartPage = lazy(() => import('./pages/CartPage'));
-const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
-const OrdersPage = lazy(() => import('./pages/OrdersPage'));
-const WishlistPage = lazy(() => import('./pages/WishlistPage'));
-const AccountPage = lazy(() => import('./pages/AccountPageV2'));
-const AccountFeaturePage = lazy(() => import('./pages/AccountFeaturePage'));
-const AddressesPage = lazy(() => import('./pages/AddressesPage'));
-const ReturnRequestsPage = lazy(() => import('./pages/ReturnRequestsPage'));
-const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'));
-const CouponsPage = lazy(() => import('./pages/CouponsPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
-const SocialAuthCallbackPage = lazy(() => import('./pages/SocialAuthCallbackPage'));
-const TrendWithActiveStoriesPage = lazy(() => import('./pages/TrendWithActiveStoriesPage'));
-const TrackingPage = lazy(() => import('./pages/TrackingPage'));
-const LivePage = lazy(() => import('./pages/LivePage'));
-const CustomerSupportPage = lazy(() => import('./pages/CustomerSupportPage'));
+const ChunkLoadFallback = () => <div dir="rtl" style={{minHeight:'45vh',display:'grid',placeItems:'center',padding:24,color:'#64748b',textAlign:'center',gap:10}}><div><strong>تعذر تحميل الصفحة حاليًا</strong><p style={{margin:'8px 0 14px'}}>حدث تحديث للمتجر أثناء فتح الصفحة.</p><button type="button" onClick={() => window.location.reload()} style={{border:0,borderRadius:10,padding:'10px 16px',background:'#111827',color:'#fff',fontWeight:800,cursor:'pointer'}}>إعادة المحاولة</button></div></div>;
+const lazyWithRetry = (importer, chunkKey) => lazy(async () => {
+  const retryKey = `mybrand_chunk_retry:${chunkKey}`;
+  try {
+    const module = await importer();
+    try { sessionStorage.removeItem(retryKey); } catch (_) {}
+    return module;
+  } catch (error) {
+    try {
+      if (typeof window !== 'undefined' && !sessionStorage.getItem(retryKey)) {
+        sessionStorage.setItem(retryKey, '1');
+        window.location.reload();
+        await new Promise(() => {});
+      }
+    } catch (_) {}
+    return { default: ChunkLoadFallback };
+  }
+});
+const CategoriesPage = lazyWithRetry(() => import('./pages/CategoriesPage'), 'CategoriesPage');
+const SearchPage = lazyWithRetry(() => import('./pages/SearchPage'), 'SearchPage');
+const NewArrivalsPage = lazyWithRetry(() => import('./pages/NewArrivalsPage'), 'NewArrivalsPage');
+const OffersPage = lazyWithRetry(() => import('./pages/OffersPage'), 'OffersPage');
+const ProductDetailsPage = lazyWithRetry(() => import('./pages/ProductDetailsPage'), 'ProductDetailsPage');
+const CartPage = lazyWithRetry(() => import('./pages/CartPage'), 'CartPage');
+const CheckoutPage = lazyWithRetry(() => import('./pages/CheckoutPage'), 'CheckoutPage');
+const OrdersPage = lazyWithRetry(() => import('./pages/OrdersPage'), 'OrdersPage');
+const WishlistPage = lazyWithRetry(() => import('./pages/WishlistPage'), 'WishlistPage');
+const AccountPage = lazyWithRetry(() => import('./pages/AccountPageV2'), 'AccountPage');
+const AccountFeaturePage = lazyWithRetry(() => import('./pages/AccountFeaturePage'), 'AccountFeaturePage');
+const AddressesPage = lazyWithRetry(() => import('./pages/AddressesPage'), 'AddressesPage');
+const ReturnRequestsPage = lazyWithRetry(() => import('./pages/ReturnRequestsPage'), 'ReturnRequestsPage');
+const HelpCenterPage = lazyWithRetry(() => import('./pages/HelpCenterPage'), 'HelpCenterPage');
+const CouponsPage = lazyWithRetry(() => import('./pages/CouponsPage'), 'CouponsPage');
+const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'), 'LoginPage');
+const RegisterPage = lazyWithRetry(() => import('./pages/RegisterPage'), 'RegisterPage');
+const VerifyEmailPage = lazyWithRetry(() => import('./pages/VerifyEmailPage'), 'VerifyEmailPage');
+const ForgotPasswordPage = lazyWithRetry(() => import('./pages/ForgotPasswordPage'), 'ForgotPasswordPage');
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage'), 'ResetPasswordPage');
+const SocialAuthCallbackPage = lazyWithRetry(() => import('./pages/SocialAuthCallbackPage'), 'SocialAuthCallbackPage');
+const TrendWithActiveStoriesPage = lazyWithRetry(() => import('./pages/TrendWithActiveStoriesPage'), 'TrendWithActiveStoriesPage');
+const TrackingPage = lazyWithRetry(() => import('./pages/TrackingPage'), 'TrackingPage');
+const LivePage = lazyWithRetry(() => import('./pages/LivePage'), 'LivePage');
+const CustomerSupportPage = lazyWithRetry(() => import('./pages/CustomerSupportPage'), 'CustomerSupportPage');
 import './account-care-overrides.css';
 
 const InfoPage=({title,intro,sections})=><div dir="rtl" style={{maxWidth:850,margin:'0 auto',padding:'8px 0 40px'}}><h1>{title}</h1><p style={{color:'#64748B',lineHeight:1.9}}>{intro}</p><div style={{display:'grid',gap:12,marginTop:22}}>{sections.map(([heading,text])=><section key={heading} style={{background:'#fff',border:'1px solid #E2E8F0',borderRadius:14,padding:'16px 18px'}}><h2 style={{fontSize:18}}>{heading}</h2><p style={{color:'#475569',lineHeight:1.9}}>{text}</p></section>)}</div></div>;
