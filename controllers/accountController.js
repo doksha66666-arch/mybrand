@@ -67,7 +67,10 @@ exports.changePassword = async (req, res, next) => {
     if (String(newPassword).length < 12) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 12 حرفًا على الأقل' });
     const user = await User.findById(req.user._id).select('+password');
     if (!user || !(await user.comparePassword(currentPassword))) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة' });
-    user.password = newPassword; await user.save(); res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
+    user.password = newPassword;
+    user.sessionVersion = Number(user.sessionVersion || 0) + 1;
+    await user.save();
+    res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
   } catch (err) { next(err); }
 };
 
