@@ -4,11 +4,13 @@ import{useAuth}from'../context/AuthContext';
 import api from'../api/client';
 
 const empty={label:'',fullName:'',phone:'',street:'',city:'',governorate:'',country:'مصر',postalCode:'',isDefault:false};
+const normalizeAddressPhone=phone=>{let value=String(phone||'').trim().replace(/\s+/g,'').replace(/[()-]/g,'');if(value.startsWith('00'))value=`+${value.slice(2)}`;if(value.startsWith('+20'))value=`0${value.slice(3)}`;else if(/^20\d{10}$/.test(value))value=`0${value.slice(2)}`;else if(/^1\d{9}$/.test(value))value=`0${value}`;return value;};
+const isValidAddressPhone=phone=>/^(?:01\d{9}|\+[1-9]\d{7,14}|\d{7,15})$/.test(phone);
 export default function AddressesPage(){const{user}=useAuth();const[items,setItems]=useState([]),[form,setForm]=useState(empty),[editing,setEditing]=useState(null),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[msg,setMsg]=useState('');
 const load=async()=>{setLoading(true);try{const r=await api.get('/account');setItems(r.data.user?.addresses||[])}catch(e){setMsg('تعذر تحميل العناوين')}finally{setLoading(false)}};
 useEffect(()=>{if(!user){setLoading(false);return}load()},[user]);
 const change=e=>setForm({...form,[e.target.name]:e.target.value});
-const save=async e=>{e.preventDefault();setSaving(true);setMsg('');try{if(editing)await api.put(`/account/addresses/${editing}`,form);else await api.post('/account/addresses',form);setForm(empty);setEditing(null);await load()}catch(e){setMsg(e.response?.data?.message||'تعذر حفظ العنوان')}finally{setSaving(false)}};
+const save=async e=>{e.preventDefault();setSaving(true);setMsg('');const normalizedPhone=normalizeAddressPhone(form.phone);if(!isValidAddressPhone(normalizedPhone)){setSaving(false);setMsg('رقم الهاتف غير صحيح');return;}const payload={...form,phone:normalizedPhone};setForm(prev=>({...prev,phone:normalizedPhone}));try{if(editing)await api.put(`/account/addresses/${editing}`,payload);else await api.post('/account/addresses',payload);setForm(empty);setEditing(null);await load()}catch(e){setMsg(e.response?.data?.message||'تعذر حفظ العنوان')}finally{setSaving(false)}};
 const edit=a=>{setEditing(a._id);setForm({...empty,...a})};
 const remove=async id=>{if(!window.confirm('هل تريد حذف هذا العنوان؟'))return;try{await api.delete(`/account/addresses/${id}`);await load()}catch(e){setMsg(e.response?.data?.message||'تعذر حذف العنوان')}};
 const makeDefault=async id=>{try{await api.put(`/account/addresses/${id}`,{isDefault:true});await load()}catch(e){setMsg(e.response?.data?.message||'تعذر تعيين العنوان الافتراضي')}};
