@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const Merchant = require('../models/Merchant');
 const { getEffectivePrice } = require('../utils/pricing');
 const Coupon = require('../models/Coupon');
+const PaymentMethod = require('../models/PaymentMethod');
 
 const generateOrderNumber = () => {
   const date = new Date();
@@ -57,6 +58,12 @@ const normalizeSelectedOptions = (value) => {
   }, {});
 };
 
+const checkoutPaymentMethodKeys = { cod: 'cod', card: 'cards', wallet: 'instapay', vodafone_cash: 'vodafone' };
+const isCheckoutPaymentMethodReady = (method) => (
+  Boolean(method?.isActive) &&
+  (method.type === 'cod' || (method.type === 'manual_transfer' && String(method.displayValue || '').trim()))
+);
+
 exports.createOrder = async (req, res, next) => {
   const reservations = [];
   let couponReserved = null;
@@ -77,6 +84,16 @@ exports.createOrder = async (req, res, next) => {
     const { items: rawItems, shippingAddress, customer, paymentMethod = 'cod', vodafoneCashInfo, couponCode, shippingMethod = 'standard' } = req.body;
     const allowedPaymentMethods = ['cod', 'card', 'wallet', 'vodafone_cash'];
     if (!allowedPaymentMethods.includes(paymentMethod)) return res.status(400).json({ message: 'طريقة دفع غير صالحة' });
+
+    const configuredPaymentKey = checkoutPaymentMethodKeys[paymentMethod];
+    const configuredPaymentMethod = await PaymentMethod.findOne({ key: configuredPaymentKey }).lean();
+    // COD remains available on a fresh database before payment settings are initialized.
+    if (configuredPaymentMethod && !isCheckoutPaymentMethodReady(configuredPaymentMethod)) {
+      return res.status(409).json({ message: 'طريقة الدفع المحددة غير متاحة حاليًا' });
+    }
+    if (!configuredPaymentMethod && paymentMethod !== 'cod') {
+      return res.status(409).json({ message: 'طريقة الدفع المحددة غير متاحة حاليًا' });
+    }
     if (!['standard', 'express'].includes(shippingMethod)) return res.status(400).json({ message: 'طريقة الشحن غير صالحة' });
     if (!Array.isArray(rawItems) || rawItems.length === 0) return res.status(400).json({ message: 'السلة فارغة' });
     if (!shippingAddress?.city || !shippingAddress?.street) return res.status(400).json({ message: 'يرجى إدخال المدينة والعنوان' });
