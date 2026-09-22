@@ -2,6 +2,14 @@
 module.exports = (err, req, res, next) => {
   console.error(err.stack || err.message || err);
 
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    return res.status(413).json({ success: false, message: 'حجم البيانات المرسلة أكبر من الحد المسموح' });
+  }
+
+  if (err instanceof SyntaxError && err.status === 400 && err.body) {
+    return res.status(400).json({ success: false, message: 'صيغة البيانات المرسلة غير صالحة' });
+  }
+
   if (err.name === 'MulterError') {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ success: false, message: 'حجم الملف أكبر من الحد المسموح' });

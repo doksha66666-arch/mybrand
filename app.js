@@ -45,8 +45,10 @@ const { apiLimiter, liveLimiter } = require('./middleware/rateLimiters');
 const app = express();
 
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:', 'https://images.unsplash.com', 'https://res.cloudinary.com'], 'media-src': ["'self'", 'blob:', 'https:', 'https://res.cloudinary.com'] } } }));
-app.use(express.json({ limit: '32mb' }));
+app.use(express.json({ limit: '4mb', strict: true }));
+app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 app.use(sanitizeInput);
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim().replace(/\/$/, '')).filter(Boolean);
 const railwayFrontendOrigins = ['https://enchanting-miracle-production-a5d2.up.railway.app','https://lovely-serenity-production.up.railway.app','https://independent-flow-production.up.railway.app'];
