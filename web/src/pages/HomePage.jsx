@@ -36,6 +36,13 @@ function Countdown() {
 
 const hasPurchasableVariant = (product) => Array.isArray(product?.variants) && product.variants.length > 0 && product.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
 
+function ImageWithFallback({ src, alt }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+  if (!src || failed) return <span className="mock-product-icon"><Icon type="bag" /></span>;
+  return <img src={src} alt={alt} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setFailed(true)} />;
+}
+
 function ProductCard({ product }) {
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -60,7 +67,7 @@ function ProductCard({ product }) {
     addToCart({ id, name: title, price, oldPrice: old, image, color: '', size: '', store: 'MYBRAND' }, 1);
     setTimeout(() => setBusy(false), 900);
   };
-  return <Link to={`/products/${product.slug || id}`} className="card"><div className="card-img" style={{ background: product.bg || '#F3F4F6' }}>{(discount > 0 || old > price) && <span className="off-tag">-{Math.round(discount || ((old - price) / old * 100))}٪</span>}<button type="button" className={`fav-ic ${liked ? 'liked' : ''}`} onClick={(e) => { e.preventDefault(); toggleWishlist(id); }} aria-label="المفضلة">♥</button>{image ? <img src={image} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span className="mock-product-icon"><Icon type="bag" /></span>}</div><div className="card-info"><div className="card-title">{title}</div><div className="price-line"><span className="price-now">{price.toLocaleString('ar-EG')}ج</span>{old > price && <span className="price-old">{old.toLocaleString('ar-EG')}ج</span>}</div><div className="rating-line">★ {Number(product.rating || 0).toFixed(1)} ({Number(product.reviewsCount || product.reviewCount || 0).toLocaleString('ar-EG')} تقييم)</div><button type="button" className="home-add-cart" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : hasOptions ? 'اختر الخيارات' : 'أضف للسلة'}</button></div></Link>;
+  return <Link to={`/products/${product.slug || id}`} className="card"><div className="card-img" style={{ background: product.bg || '#F3F4F6' }}>{(discount > 0 || old > price) && <span className="off-tag">-{Math.round(discount || ((old - price) / old * 100))}٪</span>}<button type="button" className={`fav-ic ${liked ? 'liked' : ''}`} onClick={(e) => { e.preventDefault(); toggleWishlist(id); }} aria-label="المفضلة">♥</button><ImageWithFallback src={image} alt={title} /></div><div className="card-info"><div className="card-title">{title}</div><div className="price-line"><span className="price-now">{price.toLocaleString('ar-EG')}ج</span>{old > price && <span className="price-old">{old.toLocaleString('ar-EG')}ج</span>}</div><div className="rating-line">★ {Number(product.rating || 0).toFixed(1)} ({Number(product.reviewsCount || product.reviewCount || 0).toLocaleString('ar-EG')} تقييم)</div><button type="button" className="home-add-cart" disabled={outOfStock} onClick={add}>{outOfStock ? 'نفد المخزون' : busy ? 'تمت الإضافة ✓' : hasOptions ? 'اختر الخيارات' : 'أضف للسلة'}</button></div></Link>;
 }
 
 function HomeHero() {
@@ -78,7 +85,7 @@ function HomeHero() {
 }
 
 function CategoryImages({ categories }) {
-  return <section className="home-category-images" aria-label="الأقسام"><div className="sec-title"><h2>الأقسام</h2><Link className="more" to="/categories">عرض الكل</Link></div>{categories.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px 10px', padding: '4px 2px 16px' }}>{categories.map((c, i) => { const image = toImageUrl(c.image || c.imageUrl || c.coverImage || c.bannerImage || c.thumbnail); const categoryPath = c._id || c.id || c.slug; const categoryTarget = categoryPath ? `/categories?category=${encodeURIComponent(categoryPath)}` : '/categories'; return <Link to={categoryTarget} key={c._id || c.id || i} style={{ minWidth: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}><div style={{ width: '72px', height: '72px', margin: '0 auto 8px', borderRadius: '50%', overflow: 'hidden', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.08)', border: '1px solid rgba(0,0,0,.06)' }}>{image ? <img src={image} alt={c.nameAr || c.name || 'قسم'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon type={c.icon || 'bag'} />}</div><span style={{ display: 'block', fontWeight: 700, fontSize: '13px' }}>{c.nameAr || c.name || 'قسم'}</span></Link>; })}</div> : <div className="category-empty">لا توجد أقسام منشورة حاليًا. ستظهر الأقسام هنا تلقائيًا عند إضافتها.</div>}</section>;
+  return <section className="home-category-images" aria-label="الأقسام"><div className="sec-title"><h2>الأقسام</h2><Link className="more" to="/categories">عرض الكل</Link></div>{categories.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px 10px', padding: '4px 2px 16px' }}>{categories.map((c, i) => { const image = toImageUrl(c.image || c.imageUrl || c.coverImage || c.bannerImage || c.thumbnail); const categoryPath = c._id || c.id || c.slug; const categoryTarget = categoryPath ? `/categories?category=${encodeURIComponent(categoryPath)}` : '/categories'; return <Link to={categoryTarget} key={c._id || c.id || i} style={{ minWidth: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}><div style={{ width: '72px', height: '72px', margin: '0 auto 8px', borderRadius: '50%', overflow: 'hidden', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.08)', border: '1px solid rgba(0,0,0,.06)' }}><ImageWithFallback src={image} alt={c.nameAr || c.name || 'قسم'} /></div><span style={{ display: 'block', fontWeight: 700, fontSize: '13px' }}>{c.nameAr || c.name || 'قسم'}</span></Link>; })}</div> : <div className="category-empty">لا توجد أقسام منشورة حاليًا. ستظهر الأقسام هنا تلقائيًا عند إضافتها.</div>}</section>;
 }
 
 function StoreSection({ id, style, children }) {
