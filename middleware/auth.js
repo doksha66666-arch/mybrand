@@ -65,7 +65,9 @@ exports.protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user || !user.isActive) return res.status(401).json({ message: 'المستخدم غير موجود أو غير نشط' });
+    if (!user) return res.status(401).json({ message: 'المستخدم غير موجود أو غير نشط' });
+    if (Number(decoded.sv ?? 0) !== Number(user.sessionVersion || 0)) return res.status(401).json({ message: 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجددًا' });
+    if (!user.isActive) return res.status(401).json({ message: 'المستخدم غير موجود أو غير نشط' });
     req.user = user;
     if (user.role === 'staff') {
       req.staff = await StaffMember.findOne({ email: user.email, isActive: true }).lean();
