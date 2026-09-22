@@ -66,18 +66,53 @@ export default function OffersPage() {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    api.get('/homepage').then(({ data }) => {
-      if (!alive) return;
-      const list = Array.isArray(data?.discountedProducts) ? data.discountedProducts.filter(Boolean) : [];
-      setProducts(list.sort((a, b) => getDiscount(b) - getDiscount(a)));
-    }).catch(() => alive && setError('تعذر تحميل العروض حاليًا.')).finally(() => alive && setLoading(false));
+    setLoading(true); setPage(1); setPages(1); setProducts([]); setError('');
+    api.get('/products', { params: { limit: 40, page: 1, pricing: 1 } })
+      .then(({ data }) => {
+        if (!alive) return;
+        const list = Array.isArray(data?.products) ? data.products.filter(Boolean) : [];
+        setProducts(list);
+        setPage(1);
+        setPages(Math.max(1, Number(data?.pages) || 1));
+      })
+      .catch(() => alive && setError('تعذر تحميل العروض حاليًا.'))
+      .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, []);
 
-  const visibleProducts = useMemo(() => filter === 'all' ? products : products.filter(product => getDiscount(product) >= Number(filter)), [products, filter]);
+  const loadMore = async () => {
+    if (loading || loadingMore || page >= pages) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const { data } = await api.get('/products', { params: { limit: 40, page: nextPage, pricing: 1 } });
+      const incoming = Array.isArray(data?.products) ? data.products.filter(Boolean) : [];
+      setProducts((current) => {
+        const seen = new Set(current.map((item) => String(item?._id || item?.id || item?.slug || '')));
+        return [...current, ...incoming.filter((item) => {
+          const id = String(item?._id || item?.id || item?.slug || '');
+          return id && !seen.has(id);
+        })];
+      });
+      setPage(nextPage);
+      setPages(Math.max(nextPage, Number(data?.pages) || nextPage));
+    } catch {
+      setError('تعذر تحميل المزيد من المنتجات. حاول مرة أخرى.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const visibleProducts = useMemo(() => {
+    const filtered = filter === 'all' ? products : products.filter(product => getDiscount(product) >= Number(filter));
+    return [...filtered].sort((a, b) => getDiscount(b) - getDiscount(a));
+  }, [products, filter]);
   const countLabel = visibleProducts.length.toLocaleString('ar-EG');
 
   return <main className="offers-page" dir="rtl">
@@ -89,7 +124,7 @@ export default function OffersPage() {
 
     <section className="offers-hero" style={getStyle('hero')}>
       <div><span className="offers-kicker">🔥 لفترة محدودة</span><h1>عروض وخصومات</h1><p>لقطات حلوة وأسعار أقوى — اختار عرضك وخد أفضل سعر على MYBRAND.</p></div>
-      {!loading && !error && <strong className="offers-count">{products.length.toLocaleString('ar-EG')} عرض</strong>}
+      {!loading && !error && <strong className="offers-count">{products.length.toLocaleString('ar-EG')} منتج تم فحصه</strong>}
     </section>
 
     <div className="offers-filters" style={getStyle('filters')} aria-label="تصنيفات العروض">
@@ -98,6 +133,6 @@ export default function OffersPage() {
 
     {!loading && !error && <div className="offers-results-line"><strong>{countLabel}</strong> منتج في الاختيار ده</div>}
 
-    {error ? <div className="offers-empty">{error}</div> : loading ? <div className="offers-grid" style={getStyle('products')}>{Array.from({ length: 8 }).map((_, i) => <div className="offers-skeleton" key={i}/>)}</div> : visibleProducts.length ? <div className="offers-grid" style={getStyle('products')}>{visibleProducts.map(product => <ProductCard key={product._id || product.id || product.slug} product={product}/>)}</div> : <div className="offers-empty"><strong>مفيش عروض في الاختيار ده 😅</strong><span>جرّب اختيار تاني وشوف أقوى اللقطات.</span><button type="button" onClick={() => setFilter('all')}>🔥 شوف كل العروض</button></div>}
+    {error ? <div className="offers-empty">{error}</div> : loading ? <div className="offers-grid" style={getStyle('products')}>{Array.from({ length: 8 }).map((_, i) => <div className="offers-skeleton" key={i}/>)}</div> : visibleProducts.length ? <><div className="offers-grid" style={getStyle('products')}>{visibleProducts.map(product => <ProductCard key={product._id || product.id || product.slug} product={product}/>)}</div>{pages > page && <div className="offers-empty" style={{ marginTop: 14 }}><button type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? 'جاري تحميل المزيد...' : `عرض المزيد — ${page} من ${pages}`}</button></div>}</> : <div className="offers-empty"><strong>مفيش عروض في الاختيار ده 😅</strong><span>{pages > page ? 'لسه فيه منتجات إضافية، اعرض المزيد للبحث عن عروض أخرى.' : 'جرّب اختيار تاني وشوف أقوى اللقطات.'}</span>{pages > page ? <button type="button" onClick={loadMore} disabled={loadingMore}>{loadingMore ? 'جاري تحميل المزيد...' : '🔎 تحميل المزيد من المنتجات'}</button> : <button type="button" onClick={() => setFilter('all')}>🔥 شوف كل العروض</button>}</div>}
   </main>;
 }
