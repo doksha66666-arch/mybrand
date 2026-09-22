@@ -17,11 +17,11 @@ const FILTERS = [
 const hasPurchasableVariant = (product) => Array.isArray(product?.variants) && product.variants.length > 0 && product.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
 
 function getDiscount(product) {
-  const price = Number(product?.finalPrice ?? product?.price ?? 0);
-  const old = Number(product?.compareAtPrice ?? product?.oldPrice ?? 0);
+  const finalPrice = Number(product?.finalPrice ?? product?.price ?? 0);
+  const basePrice = Number(product?.price ?? 0);
   const direct = Number(product?.discountAmount ?? 0);
-  if (direct > 0) return Math.max(0, Math.round(direct));
-  if (old > price && old > 0) return Math.max(0, Math.round((1 - price / old) * 100));
+  if (direct > 0 && basePrice > 0) return Math.max(0, Math.round((direct / basePrice) * 100));
+  if (basePrice > finalPrice && basePrice > 0) return Math.max(0, Math.round((1 - finalPrice / basePrice) * 100));
   return 0;
 }
 
@@ -110,7 +110,10 @@ export default function OffersPage() {
   };
 
   const visibleProducts = useMemo(() => {
-    const filtered = filter === 'all' ? products : products.filter(product => getDiscount(product) >= Number(filter));
+    const filtered = products.filter((product) => {
+      const discount = getDiscount(product);
+      return filter === 'all' ? discount > 0 : discount >= Number(filter);
+    });
     return [...filtered].sort((a, b) => getDiscount(b) - getDiscount(a));
   }, [products, filter]);
   const countLabel = visibleProducts.length.toLocaleString('ar-EG');
