@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api, { API_ORIGIN } from '../api/client';
 import './BannerPlacement.css';
 
-const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\\/+/, '')}`; };
+const normalizeImage = (value) => { if (!value) return ''; const text = String(value).trim(); if (/^(data:image|https?:|blob:|file:)/i.test(text)) return text; if (text.startsWith('//')) return `https:${text}`; return `${API_ORIGIN}/${text.replace(/^\/+/, '')}`; };
 const isExternalLink = (value) => /^(https?:|mailto:|tel:|sms:)/i.test(String(value || '').trim());
 
 export default function BannerPlacement({ placement }) {
