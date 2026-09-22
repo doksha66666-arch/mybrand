@@ -27,6 +27,7 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema({
   orderNumber: { type: String, required: true, unique: true },
+  idempotencyKey: { type: String, trim: true, select: false },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [orderItemSchema],
   customer: { name: String, phone: String, email: String },
@@ -43,6 +44,8 @@ const orderSchema = new mongoose.Schema({
   isArchived: { type: Boolean, default: false, index: true }, archivedAt: { type: Date, default: null },
   dailyReport: { type: mongoose.Schema.Types.ObjectId, ref: 'DailyOrderReport', default: null },
 }, { timestamps: true });
+
+orderSchema.index({ user: 1, idempotencyKey: 1 }, { unique: true, sparse: true });
 
 // Main admin list: filter active orders and return newest first without a collection scan.
 orderSchema.index({ isArchived: 1, createdAt: -1 });
