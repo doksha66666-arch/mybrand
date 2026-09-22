@@ -8,6 +8,13 @@ import './SearchPage.css';
 
 const hasPurchasableVariant = (p) => Array.isArray(p?.variants) && p.variants.length > 0 && p.variants.some((variant) => Number(variant?.stock ?? 0) > 0);
 
+function ImageWithFallback({ src, alt }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+  if (!src || failed) return <span>MYBRAND</span>;
+  return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+}
+
 const imageOf = (p) => {
   const value = p?.images?.[0] || p?.image || p?.imageUrl || p?.thumbnail || '';
   if (!value) return '';
@@ -116,7 +123,7 @@ export default function SearchPage() {
           const liked = id != null && isWishlisted(id);
           const hasOptions = Array.isArray(p.variants) && p.variants.length > 0;
           return <article className="search-card" key={id}>
-            <Link to={`/products/${encodeURIComponent(slug)}`} className="search-image">{image ? <img src={image} alt={p.nameAr || p.name || 'منتج'} loading="lazy" /> : <span>MYBRAND</span>}{out && <b>نفد المخزون</b>}</Link>
+            <Link to={`/products/${encodeURIComponent(slug)}`} className="search-image"><ImageWithFallback src={image} alt={p.nameAr || p.name || 'منتج'} />{out && <b>نفد المخزون</b>}</Link>
             <div className="search-info">
               <div className="search-card-top"><Link to={`/products/${encodeURIComponent(slug)}`} className="search-name">{p.nameAr || p.name || p.nameEn || 'منتج'}</Link><button type="button" className={liked ? 'liked' : ''} onClick={() => id != null && toggleWishlist(id)} aria-label={liked ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}>{liked ? '♥' : '♡'}</button></div>
               <div className="search-price">{price.toLocaleString('ar-EG')} ج{old > price && <del>{old.toLocaleString('ar-EG')} ج</del>}</div>

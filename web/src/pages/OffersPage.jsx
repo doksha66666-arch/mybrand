@@ -35,6 +35,7 @@ function ProductCard({ product }) {
   const old = Number(product?.compareAtPrice ?? product?.oldPrice ?? 0);
   const rawImage = product?.images?.[0] || product?.image || product?.imageUrl;
   const image = rawImage && !/^(https?:|data:|blob:|file:)/i.test(String(rawImage)) ? `${API_ORIGIN}/${String(rawImage).replace(/^\/+/, '')}` : rawImage;
+  const [imageFailed, setImageFailed] = useState(false);
   const stock = Math.max(0, Number(product?.stock ?? product?.quantity ?? 0));
   const hasOptions = Array.isArray(product?.variants) && product.variants.length > 0;
   const outOfStock = hasOptions ? !hasPurchasableVariant(product) : stock <= 0;
@@ -49,7 +50,7 @@ function ProductCard({ product }) {
   };
   return <Link to={`/products/${product?.slug || id}`} className="offer-product-card">
     <div className="offer-product-image">
-      {image ? <img src={image} alt={title} loading="lazy"/> : <span>MY</span>}{outOfStock && <span className="offer-stock">نفد المخزون</span>}
+      {image && !imageFailed ? <img src={image} alt={title} loading="lazy" onError={() => setImageFailed(true)}/> : <span>MYBRAND</span>}{outOfStock && <span className="offer-stock">نفد المخزون</span>}
       {discount > 0 && <span className="offer-discount">-{discount}٪</span>}
     </div>
     <div className="offer-product-info">
