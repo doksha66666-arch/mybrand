@@ -15,6 +15,12 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
+    const handleSessionInvalidated = () => { setUser(null); setMerchant(null); };
+    window.addEventListener('mybrand:auth-invalidated', handleSessionInvalidated);
+    return () => window.removeEventListener('mybrand:auth-invalidated', handleSessionInvalidated);
+  }, []);
+
+  useEffect(() => {
     const token = localStorage.getItem('mybrand_token');
     if (!token) return setLoading(false);
     api.get('/auth/me').then(async ({ data }) => { setUser(data.user); await loadMerchantIfNeeded(data.user); }).catch(() => localStorage.removeItem('mybrand_token')).finally(() => setLoading(false));

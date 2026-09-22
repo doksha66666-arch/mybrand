@@ -43,6 +43,15 @@ api.interceptors.response.use((response) => {
     window.dispatchEvent(new Event('mybrand:loyalty-cleared'));
   }
   return response;
+}, (error) => {
+  const status = Number(error?.response?.status || 0);
+  const token = localStorage.getItem('mybrand_token');
+  const authHeader = error?.config?.headers?.Authorization;
+  if (status === 401 && token && authHeader) {
+    localStorage.removeItem('mybrand_token');
+    window.dispatchEvent(new Event('mybrand:auth-invalidated'));
+  }
+  return Promise.reject(error);
 });
 
 export default api;
