@@ -288,10 +288,29 @@ router.post('/:streamId/heartbeat/:viewerId', async (req, res, next) => {
   try {
     const stream = await getStream(req, res);
     if (!stream) return;
-    const viewer = sessionFor(stream._id).viewers.get(req.params.viewerId);
-    if (!viewer) return res.status(404).json({ message: 'جلسة المشاهدة غير موجودة' });
+    const session = sessionFor(stream._id);
+    let viewer = session.viewers.get(req.params.viewerId);
+    if (!viewer) {
+      const viewerKey = String(req.body?.viewerKey || '').trim().slice(0, 120);
+      if (!viewerKey) return res.status(404).json({ message: 'جلسة المشاهدة غير موجودة' });
+
+      for (const [existingId, existingViewer] of session.viewers.entries()) {
+        if (existingViewer.viewerKey === viewerKey) {
+          viewer = existingViewer;
+          viewer.lastSeenAt = Date.now();
+          return res.json({ ok: true, viewerId: existingId, viewerCount: session.viewers.size, recovered: true });
+        }
+      }
+
+      if (session.viewers.size >= MAX_VIEWERS) return res.status(503).json({ message: 'العرض ممتلئ حاليًا. جرّب بعد قليل.' });
+      const replacementId = makeId('viewer');
+      viewer = { viewerKey, lastSeenAt: Date.now() };
+      session.viewers.set(replacementId, viewer);
+      return res.json({ ok: true, viewerId: replacementId, viewerCount: session.viewers.size, recovered: true });
+    }
+
     viewer.lastSeenAt = Date.now();
-    return res.json({ ok: true, viewerCount: sessionFor(stream._id).viewers.size });
+    return res.json({ ok: true, viewerId: req.params.viewerId, viewerCount: session.viewers.size });
   } catch (error) { return next(error); }
 });
 
