@@ -8,7 +8,10 @@ const normalizeOptionValue = (value) => String(value ?? '').trim().toLocaleLower
 const getSelectedOptions = (item) => {
   if (item?.selectedOptions && typeof item.selectedOptions === 'object' && !Array.isArray(item.selectedOptions)) return item.selectedOptions;
   if (Array.isArray(item?.selectedOptions)) return item.selectedOptions.reduce((out, option) => { const name = option?.name ?? option?.optionName; const value = option?.value ?? option?.label; if (name && value != null) out[String(name)] = value; return out; }, {});
-  return {};
+  const out = {};
+  if (item?.color != null && String(item.color).trim()) out['اللون'] = item.color;
+  if (item?.size != null && String(item.size).trim()) out['المقاس'] = item.size;
+  return out;
 };
 const cartLineKey = (item) => {
   const id = String(item?.id ?? item?._id ?? '');
