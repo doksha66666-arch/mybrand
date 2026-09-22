@@ -252,7 +252,64 @@ exports.createOrder = async (req, res, next) => {
   } catch (err) { await rollbackReservations(); await rollbackCoupon(); next(err); }
 };
 
-exports.getMyOrders = async (req, res, next) => { try { const orders = await Order.find({ user: req.user._id }).sort('-createdAt'); res.json({ orders: orders.map(sanitizeCustomerOrder) }); } catch (err) { next(err); } };
+exports.getMyOrders = async (req, res, next) => {
+  try {
+    const requestedPage = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+    const requestedStatus = String(req.query.status || '').trim().toLowerCase();
+    const query = { user: req.user._id };
+    if (requestedStatus === 'delivered' || requestedStatus === 'cancelled') query.status = requestedStatus;
+    else if (requestedStatus === 'active') query.status = { $nin: ['delivered', 'cancelled'] };
+    else if (requestedStatus && requestedStatus !== 'all') return res.status(400).json({ message: 'فلتر الطلبات غير صالح' });
+
+    const [orders, total, statusCounts] = await Promise.all([
+      Order.find(query).sort({ createdAt: -1, _id: -1 }).skip((requestedPage - 1) * limit).limit(limit),
+      Order.countDocuments(query),
+      Order.aggregate([
+        { $match: { user: req.user._id } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const counts = statusCounts.reduce((out, item) => {
+      out[item._id] = Number(item.count || 0);
+      return out;
+    }, {});
+    const summary = {
+      total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+      active: Object.entries(counts).reduce((sum, [status, count]) => (
+        ['delivered', 'cancelled'].includes(status) ? sum : sum + count
+      ), 0),
+      delivered: counts.delivered || 0,
+      cancelled: counts.cancelled || 0,
+    };
+    const pages = Math.max(1, Math.ceil(total / limit));
+    const page = Math.min(requestedPage, pages);
+
+    if (requestedPage > pages && total > 0) {
+      const lastPageOrders = await Order.find(query).sort({ createdAt: -1, _id: -1 }).skip((pages - 1) * limit).limit(limit);
+      return res.json({
+        orders: lastPageOrders.map(sanitizeCustomerOrder),
+        total,
+        page,
+        limit,
+        pages,
+        summary,
+      });
+    }
+
+    res.json({
+      orders: orders.map(sanitizeCustomerOrder),
+      total,
+      page,
+      limit,
+      pages,
+      summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 exports.getMerchantOrders = async (req, res, next) => { try { const orders = await Order.find({ 'items.merchant': req.merchant._id }).populate('user', 'name email phone').sort('-createdAt'); const scoped = orders.map((order) => { const myItems = order.items.filter((i) => i.merchant && i.merchant.toString() === req.merchant._id.toString()); return { _id: order._id, orderNumber: order.orderNumber, customer: order.customer, status: order.status, paymentStatus: order.paymentStatus, createdAt: order.createdAt, items: myItems, myTotal: myItems.reduce((s,i)=>s+i.lineTotal,0), myCommission: myItems.reduce((s,i)=>s+i.commissionAmount,0), myNet: myItems.reduce((s,i)=>s+i.merchantAmount,0) }; }); res.json({ orders: scoped }); } catch (err) { next(err); } };
 
 exports.getMerchantSales = async (req, res, next) => {
