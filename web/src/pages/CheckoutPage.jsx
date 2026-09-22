@@ -73,6 +73,7 @@ export default function CheckoutPage() {
     removeCoupon: removeCartCoupon,
   } = useCart();
   const { user } = useAuth();
+  const orderIdempotencyKeyRef = useRef(null);
   const buyNow = location.state?.buyNow || null;
   const selectedItems = Array.isArray(location.state?.selectedItems) ? location.state.selectedItems : null;
   const checkoutItems = useMemo(() => {
@@ -343,6 +344,9 @@ export default function CheckoutPage() {
 
   const submitOrder = async (e) => {
     e.preventDefault(); setError('');
+    if (!orderIdempotencyKeyRef.current) {
+      try { orderIdempotencyKeyRef.current = crypto.randomUUID(); } catch (_) { orderIdempotencyKeyRef.current = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+    }
     if (!user) return navigate('/login', { state: { returnTo: '/checkout', checkoutState: location.state || null } });
     if (pricingLoading) return setError('جارٍ تحديث أسعار المنتجات، حاول تأكيد الطلب بعد اكتمال التحديث.');
     if (pricingError) return setError(pricingError);
@@ -360,7 +364,7 @@ export default function CheckoutPage() {
         shippingMethod: shipping,
         loyaltyPoints: Math.max(0, Math.floor(Number(loyaltyPreview?.acceptedPoints || 0))),
         vodafoneCashInfo: paymentMethod === 'vodafone_cash' ? { senderPhone, transactionRef } : undefined,
-      });
+      }, { headers: { 'Idempotency-Key': orderIdempotencyKeyRef.current } });
       if (buyNow) {} else if (selectedItems) removeItems(selectedItems); else clearCart();
       const createdOrder = data?.order || data?.data?.order || data?.data || data;
       const createdId = createdOrder?._id || createdOrder?.id || data?.orderId || data?.data?.orderId || '';
