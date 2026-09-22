@@ -176,7 +176,7 @@ exports.createOrder = async (req, res, next) => {
       if (coupon.assignedTo.length && !coupon.assignedTo.some((id) => String(id) === String(req.user._id))) return res.status(403).json({ message: 'هذه القسيمة مخصصة لحساب آخر' });
       if (coupon.rewardOnly) return res.status(409).json({ message: 'هذه المكافأة تُسترد من قسم القسائم ولا تُستخدم مباشرة عند الدفع' });
       if (coupon.perUserLimit != null) {
-        const customerUsageCount = await Order.countDocuments({ user: req.user._id, couponCode: normalizedCode });
+        const customerUsageCount = await Order.countDocuments({ user: req.user._id, couponCode: normalizedCode, status: { $ne: 'cancelled' } });
         if (customerUsageCount >= Number(coupon.perUserLimit)) {
           return res.status(409).json({ message: 'لقد استخدمت هذه القسيمة الحد الأقصى المسموح به لهذا الحساب' });
         }
