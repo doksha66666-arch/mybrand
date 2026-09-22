@@ -82,6 +82,12 @@ exports.createOrder = async (req, res, next) => {
   };
   try {
     const { items: rawItems, shippingAddress, customer, paymentMethod = 'cod', vodafoneCashInfo, couponCode, shippingMethod = 'standard' } = req.body;
+    const idempotencyKey = String(req.get('Idempotency-Key') || '').trim();
+    if (idempotencyKey.length > 128) return res.status(400).json({ message: 'معرّف الطلب غير صالح' });
+    if (idempotencyKey) {
+      const existingOrder = await Order.findOne({ user: req.user._id, idempotencyKey }).select('+idempotencyKey');
+      if (existingOrder) return res.status(200).json({ order: sanitizeCustomerOrder(existingOrder), idempotent: true });
+    }
     const allowedPaymentMethods = ['cod', 'card', 'wallet', 'vodafone_cash'];
     if (!allowedPaymentMethods.includes(paymentMethod)) return res.status(400).json({ message: 'طريقة دفع غير صالحة' });
 
@@ -220,6 +226,7 @@ exports.createOrder = async (req, res, next) => {
       couponCode: appliedCouponCode || undefined,
       vodafoneCashInfo: paymentMethod === 'vodafone_cash' ? { senderPhone: String(vodafoneCashInfo.senderPhone).trim(), transactionRef: String(vodafoneCashInfo.transactionRef || '').trim() } : undefined,
       status: 'pending',
+      idempotencyKey: idempotencyKey || undefined,
     };
 
     let order;
@@ -229,6 +236,13 @@ exports.createOrder = async (req, res, next) => {
         break;
       } catch (err) {
         const duplicateOrderNumber = err?.code === 11000 && (err?.keyPattern?.orderNumber || err?.keyValue?.orderNumber);
+        const duplicateIdempotencyKey = err?.code === 11000 && (err?.keyPattern?.idempotencyKey || err?.keyValue?.idempotencyKey);
+        if (duplicateIdempotencyKey && idempotencyKey) {
+          await rollbackReservations();
+          await rollbackCoupon();
+          const existingOrder = await Order.findOne({ user: req.user._id, idempotencyKey }).select('+idempotencyKey');
+          if (existingOrder) return res.status(200).json({ order: sanitizeCustomerOrder(existingOrder), idempotent: true });
+        }
         if (!duplicateOrderNumber || attempt === 4) throw err;
       }
     }
