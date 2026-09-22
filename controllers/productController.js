@@ -63,7 +63,7 @@ exports.getProducts = async (req, res, next) => {
     const products = await populatePublicProduct(Product.find(filter))
       .skip((page - 1) * limit)
       .limit(limit)
-      .sort('-createdAt');
+      .sort({ createdAt: -1, _id: -1 });
     const total = await Product.countDocuments(filter);
     const responseProducts = req.query.pricing === '1' ? await attachPricing(products) : products;
     res.json({ products: responseProducts, total, page, pages: Math.ceil(total / limit) });
