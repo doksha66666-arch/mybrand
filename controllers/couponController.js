@@ -38,7 +38,7 @@ function calculateDiscount(coupon, amount) {
 }
 
 async function customerCouponUsage(userId, code) {
-  return Order.countDocuments({ user: userId, couponCode: code });
+  return Order.countDocuments({ user: userId, couponCode: code, status: { $ne: 'cancelled' } });
 }
 
 function statusMessage(status) {
