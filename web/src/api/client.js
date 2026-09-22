@@ -29,7 +29,8 @@ api.interceptors.request.use((config) => {
   const url = String(config.url || '').split('?')[0];
   if (method === 'post' && (url === '/orders' || url.endsWith('/orders'))) {
     const storedPoints = Math.max(0, Math.floor(Number(localStorage.getItem('mybrand_loyalty_points') || 0)));
-    if (storedPoints > 0) config.data = { ...(config.data || {}), loyaltyPoints: storedPoints };
+    const hasExplicitLoyaltyPoints = Boolean(config.data && typeof config.data === 'object' && Object.prototype.hasOwnProperty.call(config.data, 'loyaltyPoints'));
+    if (storedPoints > 0 && !hasExplicitLoyaltyPoints) config.data = { ...(config.data || {}), loyaltyPoints: storedPoints };
   }
   return config;
 });
