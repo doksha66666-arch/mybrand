@@ -61,8 +61,13 @@ export default function CheckoutPage() {
   );
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [country, setCountry] = useState('مصر');
+  const [governorate, setGovernorate] = useState('');
+  const [center, setCenter] = useState('');
   const [city, setCity] = useState('');
   const [street, setStreet] = useState('');
+  const [building, setBuilding] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cod');
@@ -82,6 +87,19 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState(buyNow ? 'standard' : (shippingFee === 45 ? 'express' : 'standard'));
 
   const selectedAddress = useMemo(() => savedAddresses.find((address) => String(address?._id || '') === String(selectedAddressId)) || null, [savedAddresses, selectedAddressId]);
+  const applyAddress = (address) => {
+    if (!address) return;
+    setSelectedAddressId(String(address._id || ''));
+    setName(address.fullName || user?.name || '');
+    setPhone(address.phone || user?.phone || '');
+    setCountry(address.country || 'مصر');
+    setGovernorate(address.governorate || '');
+    setCenter(address.center || '');
+    setCity(address.city || '');
+    setStreet(address.street || '');
+    setBuilding(address.building || '');
+    setPostalCode(address.postalCode || '');
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -105,8 +123,13 @@ export default function CheckoutPage() {
           setSelectedAddressId(String(preferred._id || ''));
           setName(preferred.fullName || data?.user?.name || '');
           setPhone(preferred.phone || data?.user?.phone || '');
+          setCountry(preferred.country || 'مصر');
+          setGovernorate(preferred.governorate || '');
+          setCenter(preferred.center || '');
           setCity(preferred.city || '');
-          setStreet([preferred.street, preferred.building].filter(Boolean).join('، '));
+          setStreet(preferred.street || '');
+          setBuilding(preferred.building || '');
+          setPostalCode(preferred.postalCode || '');
         }
       }).catch(() => {});
     }
@@ -194,7 +217,15 @@ export default function CheckoutPage() {
       const { data } = await api.post('/orders', {
         items: checkoutItems.map((i) => ({ productId: i.id || i._id, variantId: i.variantId || null, selectedOptions: getOptions(i), quantity: Number(i.quantity || 1) })),
         customer: { name, phone, email: user?.email },
-        shippingAddress: { city, street },
+        shippingAddress: {
+          country: String(country || '').trim(),
+          governorate: String(governorate || '').trim(),
+          center: String(center || '').trim(),
+          city: String(city || '').trim(),
+          street: String(street || '').trim(),
+          building: String(building || '').trim(),
+          postalCode: String(postalCode || '').trim(),
+        },
         paymentMethod,
         couponCode: coupon?.code || null,
         shippingMethod: shipping,
@@ -217,7 +248,7 @@ export default function CheckoutPage() {
       <div className="checkout-app">
         <header className="topbar" style={getStyle('header')}><button type="button" className="back-btn" onClick={() => navigate(-1)} aria-label="رجوع">‹</button><h1 className="display">إتمام الدفع</h1></header>
         <div className="steps" aria-label="مراحل الطلب" style={getStyle('steps')}><div className="step"><div className="dot">✓</div><span className="lbl">السلة</span></div><div className="step-line" /><div className="step"><div className="dot">2</div><span className="lbl">الدفع</span></div><div className="step-line" /><div className="step todo"><div className="dot">3</div><span className="lbl">تأكيد</span></div></div>
-        <section className="block address-block" style={getStyle('address')}><div className="addr-row"><div className="addr-body"><div className="addr-name-row"><b>{name || 'بيانات العميل'}</b><span className="addr-tag">{selectedAddress?.label || 'عنوان الشحن'}</span></div><div className="addr-phone">{phone || '01xxxxxxxxx'}</div><div className="addr-text">{street || 'أدخل عنوان التوصيل'}{city ? ` — ${city}` : ''}</div></div></div>{savedAddresses.length > 0 && <div className="saved-address-row"><label>استخدم عنوانًا محفوظًا<select value={selectedAddressId} onChange={(e) => { const id = e.target.value; setSelectedAddressId(id); const address = savedAddresses.find((item) => String(item?._id || '') === String(id)); if (!address) return; setName(address.fullName || ''); setPhone(address.phone || ''); setCity(address.city || ''); setStreet([address.street, address.building].filter(Boolean).join('، ')); }}><option value="">اختيار عنوان محفوظ</option>{savedAddresses.map((address) => <option key={address._id} value={address._id}>{address.label || 'عنوان'} — {address.city || 'مدينة غير محددة'}{address.isDefault ? ' (افتراضي)' : ''}</option>)}</select></label></div>}}<div className="address-fields"><label>الاسم الكامل<input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم الكامل" autoComplete="name" /></label><label>رقم الهاتف<input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01xxxxxxxxx" inputMode="tel" autoComplete="tel" /></label><label>المدينة<input value={city} onChange={(e) => setCity(e.target.value)} placeholder="المدينة" autoComplete="address-level2" /></label><label>العنوان بالتفصيل<input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="الشارع، رقم المنزل، الدور، علامة مميزة" autoComplete="street-address" /></label></div></section>
+        <section className="block address-block" style={getStyle('address')}><div className="addr-row"><div className="addr-body"><div className="addr-name-row"><b>{name || 'بيانات العميل'}</b><span className="addr-tag">{selectedAddress?.label || 'عنوان الشحن'}</span></div><div className="addr-phone">{phone || '01xxxxxxxxx'}</div><div className="addr-text">{street || 'أدخل عنوان التوصيل'}{city ? ` — ${city}` : ''}</div></div></div>{savedAddresses.length > 0 && <div className="saved-address-row"><label>استخدم عنوانًا محفوظًا<select value={selectedAddressId} onChange={(e) => { const id = e.target.value; const address = savedAddresses.find((item) => String(item?._id || '') === String(id)); if (!address) { setSelectedAddressId(''); return; } applyAddress(address); }}><option value="">اختيار عنوان محفوظ</option>{savedAddresses.map((address) => <option key={address._id} value={address._id}>{address.label || 'عنوان'} — {address.city || 'مدينة غير محددة'}{address.isDefault ? ' (افتراضي)' : ''}</option>)}</select></label></div>}}<div className="address-fields"><label>الاسم الكامل<input value={name} onChange={(e) => { setSelectedAddressId(''); setName(e.target.value); }} placeholder="الاسم الكامل" autoComplete="name" /></label><label>رقم الهاتف<input value={phone} onChange={(e) => { setSelectedAddressId(''); setPhone(e.target.value); }} placeholder="01xxxxxxxxx أو رقم دولي" inputMode="tel" autoComplete="tel" dir="ltr" /></label><label>الدولة<input value={country} onChange={(e) => { setSelectedAddressId(''); setCountry(e.target.value); }} placeholder="الدولة" autoComplete="country-name" /></label><label>المحافظة<input value={governorate} onChange={(e) => { setSelectedAddressId(''); setGovernorate(e.target.value); }} placeholder="المحافظة / الولاية" autoComplete="address-level1" /></label><label>المركز<input value={center} onChange={(e) => { setSelectedAddressId(''); setCenter(e.target.value); }} placeholder="المركز / المنطقة" /></label><label>المدينة<input value={city} onChange={(e) => { setSelectedAddressId(''); setCity(e.target.value); }} placeholder="المدينة" autoComplete="address-level2" /></label><label>الشارع<input value={street} onChange={(e) => { setSelectedAddressId(''); setStreet(e.target.value); }} placeholder="اسم الشارع" autoComplete="street-address" /></label><label>رقم المنزل / المبنى<input value={building} onChange={(e) => { setSelectedAddressId(''); setBuilding(e.target.value); }} placeholder="رقم المنزل أو المبنى" autoComplete="address-line2" /></label><label>الرمز البريدي<input value={postalCode} onChange={(e) => { setSelectedAddressId(''); setPostalCode(e.target.value); }} placeholder="الرمز البريدي (اختياري)" inputMode="numeric" autoComplete="postal-code" /></label></div></section>
         <section className="block" style={getStyle('delivery')}><div className="block-title">طريقة الشحن</div><button type="button" className={`delivery-opt ${shipping === 'standard' ? 'selected' : ''}`} onClick={() => chooseShipping('standard')}><div className="delivery-left"><div className={`radio ${shipping === 'standard' ? 'on' : ''}`} /><div className="delivery-info"><b>شحن قياسي</b><span>يصل خلال 3-5 أيام عمل</span></div></div><span className="delivery-price free">مجاني</span></button><button type="button" className={`delivery-opt ${shipping === 'express' ? 'selected' : ''}`} onClick={() => chooseShipping('express')}><div className="delivery-left"><div className={`radio ${shipping === 'express' ? 'on' : ''}`} /><div className="delivery-info"><b>شحن سريع</b><span>يصل خلال 24-48 ساعة</span></div></div><span className="delivery-price">٤٥ج</span></button></section>
         <section className="block" style={getStyle('payment')}><div className="block-title">طريقة الدفع</div>{paymentMethodsLoading ? <div className="coupon-message">جارٍ تحميل طرق الدفع...</div> : availablePaymentOptions.length === 0 ? <div className="coupon-message">لا توجد طرق دفع مفعّلة حاليًا</div> : availablePaymentOptions.map((method) => { const target = method.key === 'cards' ? 'card' : method.key === 'vodafone' ? 'vodafone_cash' : method.key === 'instapay' ? 'wallet' : method.key; const selected = paymentMethod === target; const icon = method.key === 'cod' ? 'CASH' : method.key === 'cards' ? 'VISA' : method.key === 'vodafone' ? '💳' : method.key === 'instapay' ? 'IP' : 'PAY'; return <button type="button" className="pay-opt" key={method._id || method.key} onClick={() => setPaymentMethod(target)}><div className={`radio ${selected ? 'on' : ''}`} /><div className="pay-icon">{icon}</div><div className="pay-label">{method.nameAr}<span>{method.descriptionAr || method.nameEn}</span></div></button>; })}{paymentMethod === 'vodafone_cash' && configured.vodafone && <div className="vodafone-fields"><div className="vodafone-number"><span>حوّل المبلغ إلى</span><b>{configured.vodafone.displayValue || vodafoneNumber}</b></div><input value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} placeholder="رقم الهاتف الذي حوّلت منه" inputMode="tel" /><input value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)} placeholder="رقم العملية (اختياري)" /><small>{configured.vodafone.instructionsAr || 'سيتم تأكيد الطلب بعد مراجعة التحويل.'}</small></div>}{paymentMethod === 'wallet' && configured.instapay && <div className="vodafone-fields"><div className="vodafone-number"><span>{configured.instapay.nameAr}</span><b>{configured.instapay.displayValue}</b></div><input value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)} placeholder="رقم العملية (اختياري)" /><small>{configured.instapay.instructionsAr || 'سيتم تأكيد الطلب بعد مراجعة التحويل.'}</small></div>}</section>
         <section className="block" style={getStyle('products')}><div className="block-title">المنتجات ({checkoutItems.length.toLocaleString('ar-EG')})</div>{checkoutItems.slice(0, 10).map((item, index) => { const color = getOption(item, 'color'); const size = getOption(item, 'size'); return <div className="order-item" key={`${lineKey(item)}-${index}`}><div className="oi-img">{item.image && <img src={item.image} alt="" />}</div><div className="oi-body"><div className="oi-title">{item.nameAr || item.name || item.nameEn || 'منتج'}</div><div className="oi-attrs">{color ? `اللون: ${color}` : 'متنوع'}{size ? ` · المقاس: ${size}` : ''}</div><div className="oi-price">{money(Number(item.price || 0) * Number(item.quantity || 0))}ج</div></div><div className="oi-qty">×{item.quantity}</div></div>; })}</section>
