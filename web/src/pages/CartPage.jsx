@@ -100,7 +100,12 @@ function CartPage() {
           try {
             const { data } = await api.get(`/products/${encodeURIComponent(String(identifier).trim())}`);
             const product = data?.product || data?.data || data;
-            if (product) { next[String(lineKey(item))] = product; break; }
+            if (product) {
+              normalized
+                .filter((line) => String(line?.id ?? line?._id ?? '') === String(item?.id ?? item?._id ?? ''))
+                .forEach((line) => { next[String(lineKey(line))] = product; });
+              break;
+            }
           } catch (_) {}
         }
       }));
