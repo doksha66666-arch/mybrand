@@ -75,9 +75,9 @@ export default function TrackingPage() {
           return;
         }
         if (orderNumber) {
-          const { data } = await api.get('/orders/my');
+          const { data } = await api.get('/orders/my', { params: { orderNumber: String(orderNumber).trim(), page: 1, limit: 1 } });
           const list = Array.isArray(data?.orders) ? data.orders : [];
-          const found = list.find((item) => item && String(item.orderNumber) === String(orderNumber));
+          const found = list[0];
           if (!found) throw new Error('الطلب غير موجود');
           if (alive) setOrder(found);
           return;

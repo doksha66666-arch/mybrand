@@ -257,7 +257,9 @@ exports.getMyOrders = async (req, res, next) => {
     const requestedPage = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
     const requestedStatus = String(req.query.status || '').trim().toLowerCase();
+    const requestedOrderNumber = String(req.query.orderNumber || '').trim().toUpperCase();
     const query = { user: req.user._id };
+    if (requestedOrderNumber) query.orderNumber = requestedOrderNumber;
     if (requestedStatus === 'delivered' || requestedStatus === 'cancelled') query.status = requestedStatus;
     else if (requestedStatus === 'active') query.status = { $nin: ['delivered', 'cancelled'] };
     else if (requestedStatus && requestedStatus !== 'all') return res.status(400).json({ message: 'فلتر الطلبات غير صالح' });
